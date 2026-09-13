@@ -1,0 +1,14 @@
+name = "phuyaiporn-fish-farm"
+main = "_worker.js"
+compatibility_date = "2024-09-01"
+
+# Cloudflare Static Assets
+[assets]
+directory = "."
+binding = "ASSETS"
+
+# Cloudflare D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "phuyaiporn-db"
+database_id = "phuyaiporn-db"
