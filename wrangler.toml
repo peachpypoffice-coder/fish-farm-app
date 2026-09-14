@@ -7,8 +7,3 @@ compatibility_date = "2024-09-01"
 directory = "."
 binding = "ASSETS"
 
-# Cloudflare D1 Database Binding
-[[d1_databases]]
-binding = "DB"
-database_name = "phuyaiporn-db"
-database_id = "2b48a32a-a2b9-43f7-acba-8e588eda7821"
