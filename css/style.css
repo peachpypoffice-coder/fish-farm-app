@@ -196,3 +196,14 @@ input, select, textarea {
     padding-bottom: 0.65rem;
   }
 }
+
+/* ====================================================================
+   MODAL SCROLLING & TOUCH ENHANCEMENTS (เลื่อนหน้าจอโมดอลลื่นไหลบนมือถือ)
+   ==================================================================== */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+.overscroll-contain {
+  overscroll-behavior: contain;
+}

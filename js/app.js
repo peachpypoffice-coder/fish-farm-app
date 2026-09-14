@@ -3384,6 +3384,9 @@ function openModal(modalId) {
   if (m) {
     m.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    m.scrollTop = 0;
+    const scrollBodies = m.querySelectorAll('.overflow-y-auto');
+    scrollBodies.forEach(sb => { sb.scrollTop = 0; });
   }
   lucide.createIcons();
 }
@@ -3392,7 +3395,10 @@ function closeModal(modalId) {
   const m = document.getElementById(modalId);
   if (m) {
     m.classList.add('hidden');
-    document.body.style.overflow = 'auto';
+    const anyModalOpen = Array.from(document.querySelectorAll('.fixed.z-50, #login-gate')).some(el => !el.classList.contains('hidden') && el.id !== modalId);
+    if (!anyModalOpen) {
+      document.body.style.overflow = '';
+    }
   }
 }
 

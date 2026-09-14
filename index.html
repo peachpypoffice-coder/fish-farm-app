@@ -39,11 +39,11 @@
   <!-- ================================================================= -->
   <!-- FULLSCREEN LOGIN GATE (บังคับล็อกอินก่อนเข้าถึงข้อมูล) -->
   <!-- ================================================================= -->
-  <div id="login-gate" class="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+  <div id="login-gate" class="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[92vh] flex flex-col overflow-hidden my-auto border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
       
       <!-- Brand Header -->
-      <div class="bg-gradient-to-r from-sky-600 to-sky-800 p-6 text-white text-center">
+      <div class="bg-gradient-to-r from-sky-600 to-sky-800 p-5 sm:p-6 text-white text-center flex-shrink-0">
         <div class="w-16 h-16 mx-auto bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-3xl shadow-inner mb-3">
           🐟
         </div>
@@ -52,7 +52,7 @@
       </div>
 
       <!-- Login Form -->
-      <div class="p-6 sm:p-8 space-y-5">
+      <div class="p-5 sm:p-8 space-y-5 flex-1 overflow-y-auto overscroll-contain">
         <div class="text-center">
           <h2 class="text-lg font-bold text-slate-800">เข้าสู่ระบบเพื่อใช้งาน</h2>
           <p class="text-xs text-slate-500 mt-1">กรุณากรอกอีเมลและรหัสผ่านเพื่อเข้าถึงระบบงาน</p>
@@ -794,11 +794,11 @@
   <!-- ================================================================= -->
 
   <!-- 1. MODAL บันทึกการจองพันธุ์ปลาใหม่ (NEW ORDER MODAL) -->
-  <div id="modal-new-order" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+  <div id="modal-new-order" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
       
       <!-- Modal Header -->
-      <div class="bg-sky-600 px-6 py-4 text-white flex items-center justify-between" id="modal-order-header-bar">
+      <div class="bg-sky-600 px-6 py-4 text-white flex items-center justify-between flex-shrink-0" id="modal-order-header-bar">
         <div class="flex items-center space-x-2">
           <span class="text-2xl" id="modal-order-icon">📝</span>
           <h3 class="text-xl font-bold" id="modal-order-title">บันทึกการจองพันธุ์ปลาและสินค้าใหม่</h3>
@@ -809,7 +809,7 @@
       </div>
 
       <!-- Modal Body (Scrollable) -->
-      <div class="p-6 overflow-y-auto space-y-6 flex-1">
+      <div class="p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-6 flex-1">
         <input type="hidden" id="order-edit-id" value="">
 
         <!-- EDIT AUDIT SECTION (แสดงเฉพาะเวลาแก้ไขข้อมูลการจอง) -->
@@ -1015,7 +1015,7 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="bg-slate-100 px-6 py-4 border-t border-slate-200 flex items-center justify-end space-x-3">
+      <div class="bg-slate-100 px-5 sm:px-6 py-3.5 border-t border-slate-200 flex items-center justify-end space-x-3 flex-shrink-0 sticky bottom-0 z-10">
         <button type="button" onclick="closeModal('modal-new-order')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2.5 px-5 rounded-xl border border-slate-300">
           ยกเลิก
         </button>
@@ -1030,11 +1030,11 @@
 
 
   <!-- 2. MODAL ดู / พิมพ์ใบจอง & ใบส่งของ (PRINT / SHARE SLIP MODAL) -->
-  <div id="modal-print-slip" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] flex flex-col overflow-hidden">
+  <div id="modal-print-slip" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
       
       <!-- Slip Action Bar (No Print) -->
-      <div class="bg-sky-700 px-6 py-3.5 text-white flex items-center justify-between no-print">
+      <div class="bg-sky-700 px-6 py-3.5 text-white flex items-center justify-between flex-shrink-0 no-print">
         <div class="font-bold flex items-center gap-2">
           <i data-lucide="file-text" class="w-5 h-5"></i>
           <span>ใบสั่งจอง / ใบส่งมอบสินค้า</span>
@@ -1053,7 +1053,7 @@
       </div>
 
       <!-- Printable Slip Content Container -->
-      <div id="print-slip-content" class="p-6 sm:p-8 overflow-y-auto bg-white text-slate-800 space-y-6">
+      <div id="print-slip-content" class="p-4 sm:p-8 overflow-y-auto overscroll-contain bg-white text-slate-800 space-y-6 flex-1">
         <!-- Filled dynamically by JS -->
       </div>
 
@@ -1062,10 +1062,10 @@
 
 
   <!-- 3. MODAL บันทึกคิวส่ง & ชำระเงินหน้างาน (UPDATE STATUS & PAYMENT) -->
-  <div id="modal-delivery-update" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+  <div id="modal-delivery-update" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
       
-      <div class="bg-sky-600 px-6 py-4 text-white flex items-center justify-between">
+      <div class="bg-sky-600 px-5 sm:px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
         <div class="font-bold text-lg flex items-center gap-2">
           <i data-lucide="truck" class="w-5 h-5"></i>
           <span>อัปเดตสถานะจัดส่ง & รับเงินหน้างาน</span>
@@ -1075,7 +1075,7 @@
         </button>
       </div>
 
-      <div class="p-6 space-y-4 text-sm">
+      <div class="p-4 sm:p-6 space-y-4 text-sm flex-1 overflow-y-auto overscroll-contain">
         <input type="hidden" id="update-order-id">
 
         <div class="bg-sky-50 p-3 rounded-xl border border-sky-200">
@@ -1162,11 +1162,11 @@
         </div>
       </div>
 
-      <div class="bg-slate-100 px-6 py-3.5 border-t border-slate-200 flex justify-end space-x-2">
+      <div class="bg-slate-100 px-5 sm:px-6 py-3.5 border-t border-slate-200 flex justify-end space-x-2 flex-shrink-0 sticky bottom-0 z-10">
         <button onclick="closeModal('modal-delivery-update')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl border border-slate-300 text-sm">
           ปิด
         </button>
-        <button onclick="saveDeliveryUpdate()" class="btn-large btn-primary-blue py-2 px-5 text-sm font-bold">
+        <button onclick="saveDeliveryUpdate()" class="btn-large btn-primary-blue py-2 px-5 text-sm font-bold shadow-md">
           <i data-lucide="check" class="w-4 h-4"></i>
           <span>บันทึกสถานะ</span>
         </button>
@@ -1176,10 +1176,10 @@
   </div>
 
   <!-- MODAL ปิดจ็อบส่งส่วนที่ค้าง (COMPLETE BACKORDER JOB MODAL) -->
-  <div id="modal-complete-backorder" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+  <div id="modal-complete-backorder" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
       
-      <div class="bg-emerald-600 px-6 py-4 text-white flex items-center justify-between">
+      <div class="bg-emerald-600 px-5 sm:px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
         <div class="font-bold text-lg flex items-center gap-2">
           <i data-lucide="check-check" class="w-5 h-5"></i>
           <span>ส่งมอบส่วนที่ค้าง & ปิดจ็อบคำสั่งซื้อ</span>
@@ -1189,7 +1189,7 @@
         </button>
       </div>
 
-      <div class="p-6 space-y-4 text-sm">
+      <div class="p-4 sm:p-6 space-y-4 text-sm flex-1 overflow-y-auto overscroll-contain">
         <input type="hidden" id="complete-backorder-order-id">
 
         <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
@@ -1227,7 +1227,7 @@
         </div>
       </div>
 
-      <div class="bg-slate-100 px-6 py-3.5 border-t border-slate-200 flex justify-end space-x-2">
+      <div class="bg-slate-100 px-5 sm:px-6 py-3.5 border-t border-slate-200 flex justify-end space-x-2 flex-shrink-0 sticky bottom-0 z-10">
         <button onclick="closeModal('modal-complete-backorder')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl border border-slate-300 text-sm">
           ยกเลิก
         </button>
@@ -1241,10 +1241,10 @@
   </div>
 
   <!-- MODAL ยกเลิกการจอง (CANCEL ORDER CONFIRMATION) -->
-  <div id="modal-cancel-order" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+  <div id="modal-cancel-order" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
 
-      <div class="bg-rose-600 px-6 py-4 text-white flex items-center justify-between">
+      <div class="bg-rose-600 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
         <div class="font-bold text-lg flex items-center gap-2">
           <i data-lucide="x-circle" class="w-5 h-5"></i>
           <span>ยกเลิกการจอง</span>
@@ -1254,7 +1254,7 @@
         </button>
       </div>
 
-      <div class="p-6 space-y-4 text-sm">
+      <div class="p-4 sm:p-6 space-y-4 text-sm flex-1 overflow-y-auto overscroll-contain">
 
         <!-- Order info summary -->
         <div class="bg-rose-50 border border-rose-200 rounded-xl p-4" id="cancel-order-info">
@@ -1274,7 +1274,7 @@
         </div>
       </div>
 
-      <div class="bg-slate-100 px-6 py-3.5 border-t border-slate-200 flex justify-end gap-2">
+      <div class="bg-slate-100 px-6 py-3.5 border-t border-slate-200 flex justify-end gap-2 flex-shrink-0 sticky bottom-0 z-10">
         <button onclick="closeModal('modal-cancel-order')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl border border-slate-300 text-sm">
           ยกเลิก / ปิด
         </button>
@@ -1289,9 +1289,9 @@
 
 
       <!-- MODAL แก้ไขข้อมูลลูกค้า -->
-      <div id="modal-edit-customer" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-          <div class="bg-sky-600 px-6 py-4 text-white flex items-center justify-between">
+      <div id="modal-edit-customer" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+          <div class="bg-sky-600 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
             <div class="font-bold text-lg flex items-center gap-2">
               <i data-lucide="edit-3" class="w-5 h-5"></i>
               <span>แก้ไขข้อมูลลูกค้า</span>
@@ -1300,7 +1300,7 @@
               <i data-lucide="x" class="w-5 h-5"></i>
             </button>
           </div>
-          <div class="p-6 space-y-4 text-sm">
+          <div class="p-4 sm:p-6 space-y-4 text-sm flex-1 overflow-y-auto overscroll-contain">
             <input type="hidden" id="edit-customer-id" />
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อลูกค้า</label>
@@ -1319,7 +1319,7 @@
               <textarea id="edit-customer-notes" class="input-large w-full" rows="2"></textarea>
             </div>
           </div>
-          <div class="bg-slate-100 px-6 py-3.5 border-t border-slate-200 flex justify-end gap-2">
+          <div class="bg-slate-100 px-6 py-3.5 border-t border-slate-200 flex justify-end gap-2 flex-shrink-0 sticky bottom-0 z-10">
             <button onclick="closeModal('modal-edit-customer')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl border border-slate-300 text-sm">ยกเลิก</button>
             <button onclick="saveCustomerEdits()" class="btn-large bg-sky-600 hover:bg-sky-700 text-white py-2 px-5 text-sm font-bold rounded-xl shadow">บันทึก</button>
           </div>
@@ -1327,9 +1327,9 @@
       </div>
 
       <!-- MODAL เพิ่ม/แก้ไขข้อมูลพนักงานขับรถ (DRIVER MODAL) -->
-      <div id="modal-driver" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-          <div class="bg-orange-600 px-6 py-4 text-white flex items-center justify-between">
+      <div id="modal-driver" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+          <div class="bg-orange-600 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
             <div class="font-bold text-lg flex items-center gap-2">
               <span class="text-xl">🚚</span>
               <span id="modal-driver-title">เพิ่มพนักงานขับรถส่งของ</span>
@@ -1338,7 +1338,7 @@
               <i data-lucide="x" class="w-5 h-5"></i>
             </button>
           </div>
-          <div class="p-6 space-y-4 text-sm">
+          <div class="p-4 sm:p-6 space-y-4 text-sm flex-1 overflow-y-auto overscroll-contain">
             <input type="hidden" id="driver-edit-id" />
 
             <div>
@@ -1375,7 +1375,7 @@
               </select>
             </div>
           </div>
-          <div class="bg-slate-100 px-6 py-3.5 border-t border-slate-200 flex justify-end gap-2">
+          <div class="bg-slate-100 px-6 py-3.5 border-t border-slate-200 flex justify-end gap-2 flex-shrink-0 sticky bottom-0 z-10">
             <button onclick="closeModal('modal-driver')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl border border-slate-300 text-sm">
               ยกเลิก
             </button>
@@ -1388,9 +1388,9 @@
       </div>
 
   <!-- MODAL เพิ่ม / แก้ไขข้อมูลผู้ใช้งาน (USER EDIT MODAL - CEO ONLY) -->
-  <div id="modal-manage-user" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-      <div class="bg-gradient-to-r from-sky-600 to-indigo-700 px-6 py-4 text-white flex items-center justify-between">
+  <div id="modal-manage-user" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+      <div class="bg-gradient-to-r from-sky-600 to-indigo-700 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
         <div class="font-bold text-lg flex items-center gap-2">
           <span class="text-xl">👤</span>
           <span id="modal-manage-user-title">เพิ่มผู้ใช้งานใหม่</span>
@@ -1399,44 +1399,46 @@
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
-      <form onsubmit="saveUserData(event)" class="p-6 space-y-4 text-sm">
-        <input type="hidden" id="user-manage-id">
+      <form onsubmit="saveUserData(event)" class="flex-1 flex flex-col overflow-hidden">
+        <div class="p-4 sm:p-6 space-y-4 text-sm flex-1 overflow-y-auto overscroll-contain">
+          <input type="hidden" id="user-manage-id">
 
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อ - นามสกุล / ชื่อเรียก <span class="text-red-500">*</span></label>
-          <input id="user-manage-name" class="input-large w-full" type="text" placeholder="เช่น คุณสมศักดิ์ (ผู้จัดการ)" required>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">อีเมลสำหรับล็อกอิน <span class="text-red-500">*</span></label>
-          <input id="user-manage-email" class="input-large w-full text-xs" type="email" placeholder="name@phuyaiporn.farm" required>
-        </div>
-
-        <div id="user-manage-password-box">
-          <label class="block text-xs font-bold text-slate-700 mb-1">รหัสผ่านเริ่มต้น <span class="text-red-500">*</span></label>
-          <input id="user-manage-password" class="input-large w-full text-xs" type="text" placeholder="กำหนดรหัสผ่าน เช่น farm1234">
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">ตำแหน่ง / บทบาท</label>
-            <select id="user-manage-role" class="input-large w-full bg-white text-xs font-semibold" onchange="onUserRoleSelectChange(this.value)">
-              <option value="Manager">📋 ผู้จัดการฟาร์ม</option>
-              <option value="QC">🔬 หัวหน้า QC</option>
-              <option value="Driver">🚚 คนขับรถส่งของ</option>
-              <option value="CEO">👨‍🌾 CEO / เจ้าของฟาร์ม</option>
-            </select>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อ - นามสกุล / ชื่อเรียก <span class="text-red-500">*</span></label>
+            <input id="user-manage-name" class="input-large w-full" type="text" placeholder="เช่น คุณสมศักดิ์ (ผู้จัดการ)" required>
           </div>
+
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">สถานะบัญชี</label>
-            <select id="user-manage-status" class="input-large w-full bg-white text-xs font-semibold">
-              <option value="active">🟢 เปิดใช้งานปกติ</option>
-              <option value="suspended">🔴 ระงับการใช้งาน (ลาออก)</option>
-            </select>
+            <label class="block text-xs font-bold text-slate-700 mb-1">อีเมลสำหรับล็อกอิน <span class="text-red-500">*</span></label>
+            <input id="user-manage-email" class="input-large w-full text-xs" type="email" placeholder="name@phuyaiporn.farm" required>
+          </div>
+
+          <div id="user-manage-password-box">
+            <label class="block text-xs font-bold text-slate-700 mb-1">รหัสผ่านเริ่มต้น <span class="text-red-500">*</span></label>
+            <input id="user-manage-password" class="input-large w-full text-xs" type="text" placeholder="กำหนดรหัสผ่าน เช่น farm1234">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">ตำแหน่ง / บทบาท</label>
+              <select id="user-manage-role" class="input-large w-full bg-white text-xs font-semibold" onchange="onUserRoleSelectChange(this.value)">
+                <option value="Manager">📋 ผู้จัดการฟาร์ม</option>
+                <option value="QC">🔬 หัวหน้า QC</option>
+                <option value="Driver">🚚 คนขับรถส่งของ</option>
+                <option value="CEO">👨‍🌾 CEO / เจ้าของฟาร์ม</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">สถานะบัญชี</label>
+              <select id="user-manage-status" class="input-large w-full bg-white text-xs font-semibold">
+                <option value="active">🟢 เปิดใช้งานปกติ</option>
+                <option value="suspended">🔴 ระงับการใช้งาน (ลาออก)</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div class="bg-slate-100 -mx-6 -mb-6 p-4 border-t border-slate-200 flex justify-end gap-2 mt-6">
+        <div class="bg-slate-100 p-4 border-t border-slate-200 flex justify-end gap-2 flex-shrink-0 sticky bottom-0 z-10">
           <button type="button" onclick="closeModal('modal-manage-user')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl border border-slate-300 text-sm">
             ยกเลิก
           </button>
@@ -1450,9 +1452,9 @@
   </div>
 
   <!-- MODAL เปลี่ยนรหัสผ่านพนักงาน (CHANGE PASSWORD MODAL - CEO ONLY) -->
-  <div id="modal-change-password" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-      <div class="bg-gradient-to-r from-amber-600 to-amber-700 px-6 py-4 text-white flex items-center justify-between">
+  <div id="modal-change-password" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+      <div class="bg-gradient-to-r from-amber-600 to-amber-700 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
         <div class="font-bold text-lg flex items-center gap-2">
           <i data-lucide="key" class="w-5 h-5"></i>
           <span>เปลี่ยนรหัสผ่านพนักงาน</span>
@@ -1461,24 +1463,26 @@
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
-      <form onsubmit="saveUserPassword(event)" class="p-6 space-y-4 text-sm">
-        <input type="hidden" id="change-pwd-user-id">
+      <form onsubmit="saveUserPassword(event)" class="flex-1 flex flex-col overflow-hidden">
+        <div class="p-4 sm:p-6 space-y-4 text-sm flex-1 overflow-y-auto overscroll-contain">
+          <input type="hidden" id="change-pwd-user-id">
 
-        <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200">
-          <div class="text-xs text-slate-500">พนักงานที่ต้องการเปลี่ยนรหัส:</div>
-          <div class="font-bold text-slate-900 text-base" id="change-pwd-user-name">-</div>
-          <div class="text-xs text-sky-800 font-medium mt-0.5" id="change-pwd-user-email">-</div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">กำหนดรหัสผ่านใหม่ <span class="text-red-500">*</span></label>
-          <div class="relative">
-            <input type="text" id="change-pwd-new-password" class="input-large w-full font-bold text-base" placeholder="เช่น farm2026" required minlength="4">
+          <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200">
+            <div class="text-xs text-slate-500">พนักงานที่ต้องการเปลี่ยนรหัส:</div>
+            <div class="font-bold text-slate-900 text-base" id="change-pwd-user-name">-</div>
+            <div class="text-xs text-sky-800 font-medium mt-0.5" id="change-pwd-user-email">-</div>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1">รหัสผ่านใหม่จะมีผลทันที พนักงานจะต้องใช้รหัสนี้ในการเข้าสู่ระบบ</p>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">กำหนดรหัสผ่านใหม่ <span class="text-red-500">*</span></label>
+            <div class="relative">
+              <input type="text" id="change-pwd-new-password" class="input-large w-full font-bold text-base" placeholder="เช่น farm2026" required minlength="4">
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">รหัสผ่านใหม่จะมีผลทันที พนักงานจะต้องใช้รหัสนี้ในการเข้าสู่ระบบ</p>
+          </div>
         </div>
 
-        <div class="bg-slate-100 -mx-6 -mb-6 p-4 border-t border-slate-200 flex justify-end gap-2 mt-6">
+        <div class="bg-slate-100 p-4 border-t border-slate-200 flex justify-end gap-2 flex-shrink-0 sticky bottom-0 z-10">
           <button type="button" onclick="closeModal('modal-change-password')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl border border-slate-300 text-sm">
             ยกเลิก
           </button>
@@ -1491,8 +1495,8 @@
     </div>
   </div>
   <!-- 4. MODAL แจ้งเคลมสินค้า & แนบรูปถ่าย/วิดีโอยืนยันความเสียหาย -->
-  <div id="modal-new-claim" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[94vh] flex flex-col overflow-hidden">
+  <div id="modal-new-claim" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
 
       <!-- Header -->
       <div class="bg-red-600 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
@@ -1506,7 +1510,7 @@
       </div>
 
       <!-- Body -->
-      <div class="p-6 overflow-y-auto space-y-5 flex-1 text-sm">
+      <div class="p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-5 flex-1 text-sm">
 
         <!-- เลือกออเดอร์ -->
         <div>
@@ -1606,7 +1610,7 @@
       </div>
 
       <!-- Footer -->
-      <div class="bg-slate-100 px-6 py-4 border-t border-slate-200 flex justify-end space-x-3 flex-shrink-0">
+      <div class="bg-slate-100 px-5 sm:px-6 py-3.5 border-t border-slate-200 flex justify-end space-x-3 flex-shrink-0 sticky bottom-0 z-10">
         <button onclick="closeModal('modal-new-claim')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2.5 px-5 rounded-xl border border-slate-300">ยกเลิก</button>
         <button onclick="saveNewClaim()" class="btn-large bg-red-600 hover:bg-red-700 text-white py-2.5 px-6 rounded-xl font-bold shadow">
           <i data-lucide="check" class="w-5 h-5"></i>
@@ -1631,9 +1635,9 @@
 
 
   <!-- 6. MODAL ดูประวัติการแก้ไขข้อมูลการจอง (ORDER EDIT HISTORY MODAL) -->
-  <div id="modal-order-history" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-      <div class="bg-gradient-to-r from-purple-700 to-indigo-800 px-6 py-4 text-white flex items-center justify-between">
+  <div id="modal-order-history" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+      <div class="bg-gradient-to-r from-purple-700 to-indigo-800 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
         <div class="flex items-center space-x-2">
           <i data-lucide="history" class="w-5 h-5 text-purple-200"></i>
           <div>
@@ -1645,10 +1649,10 @@
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
-      <div class="p-6 max-h-[70vh] overflow-y-auto space-y-3" id="history-modal-content">
+      <div class="p-4 sm:p-6 flex-1 overflow-y-auto overscroll-contain space-y-3" id="history-modal-content">
         <!-- Populated by JS -->
       </div>
-      <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-end">
+      <div class="bg-slate-50 px-5 sm:px-6 py-3.5 border-t border-slate-200 flex justify-end flex-shrink-0 sticky bottom-0 z-10">
         <button onclick="closeModal('modal-order-history')" class="btn-large bg-slate-200 hover:bg-slate-300 text-slate-700 py-1.5 px-4 text-sm font-semibold rounded-lg">
           ปิดหน้าต่าง
         </button>
@@ -1657,10 +1661,10 @@
   </div>
 
   <!-- 7. MODAL ล็อกอิน & สลับบทบาทผู้ใช้งาน (LOGIN & ROLE SWITCHER) -->
-  <div id="modal-login" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+  <div id="modal-login" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
       
-      <div class="bg-gradient-to-r from-sky-600 to-sky-800 px-6 py-5 text-white flex items-center justify-between">
+      <div class="bg-gradient-to-r from-sky-600 to-sky-800 px-6 py-5 text-white flex items-center justify-between flex-shrink-0">
         <div>
           <h3 class="text-xl font-bold flex items-center gap-2">
             <span>🔐</span> เข้าสู่ระบบ / สลับบทบาท
@@ -1672,7 +1676,7 @@
         </button>
       </div>
 
-      <div class="p-6 space-y-5">
+      <div class="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto overscroll-contain">
         
         <!-- Quick Role Switch Buttons (สำหรับ CEO เท่านั้น) -->
         <div id="ceo-quick-role-container" class="space-y-4">
