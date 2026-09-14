@@ -547,7 +547,11 @@ function renderMonthlyCalendar() {
 
 function selectCalendarDate(dateKey) {
   state.selectedDate = dateKey;
-  renderMonthlyCalendar();
+  const dailyPicker = document.getElementById('daily-date-picker');
+  if (dailyPicker) {
+    dailyPicker.value = dateKey;
+  }
+  switchTab('daily');
 }
 
 function renderSelectedDayInspector() {

@@ -21,8 +21,8 @@
 1. ที่เมนูด้านซ้าย เลือก **Storage & Databases** → **D1 SQL Database**
 2. กดปุ่ม **Create database**
 3. ตั้งชื่อ Database Name: `phuyaiporn-db`
+4. กดปุ่ม **Create** เพื่อยืนยันการสร้างฐานข้อมูล
 5. ในหน้า Database ที่สร้างเสร็จ ให้กดแท็บ **Console** 
-   - **ต้องคัดลอก "ข้อความโค้ดด้านในไฟล์" มาวางครับ (ไม่ใช่พิมพ์แค่ชื่อไฟล์)**
    - หรือคัดลอกโค้ด SQL สำเร็จรูปด้านล่างนี้ไปวางในช่อง Console ได้ทันทีเลยครับ:
 
 ```sql
@@ -59,6 +59,10 @@ INSERT OR IGNORE INTO app_state (key, value, updated_at)
 VALUES ('global_state', '{}', datetime('now', '+7 hours'));
 ```
 6. เมื่อวางเสร็จแล้ว กดปุ่ม **Execute** ด้านล่าง เป็นอันเสร็จสิ้นการตั้งค่าฐานข้อมูล!
+
+---
+
+#### ขั้นตอนที่ 3: นำเว็บไซต์ขึ้น Cloudflare Pages
 1. ที่เมนูด้านซ้าย เลือก **Compute (Workers & Pages)** → **Create application**
 2. เลือกแท็บ **Pages**
 3. เลือกได้ 2 แบบ:

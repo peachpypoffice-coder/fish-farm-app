@@ -1,0 +1,10 @@
+index.js
+wrangler.toml
+schema.sql
+CLOUDFLARE_DEPLOY_GUIDE.md
+_worker.js
+worker.js
+package.json
+server.js
+server.ps1
+.git*
