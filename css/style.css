@@ -5,11 +5,12 @@
   --primary-blue: #0284c7;
   --primary-blue-dark: #0369a1;
   --primary-blue-light: #e0f2fe;
-  --farm-yellow: #f59e0b;
-  --farm-yellow-dark: #d97706;
+  --primary-blue-vibrant: #0ea5e9;
+  --farm-yellow: #fbbf24;
+  --farm-yellow-dark: #f59e0b;
   --farm-yellow-light: #fef3c7;
-  --farm-bg: #f8fafc;
-  --card-border: #e2e8f0;
+  --farm-bg: #f0f7ff;
+  --card-border: #e0f0fe;
   --text-main: #0f172a;
   --text-muted: #64748b;
 }
@@ -31,23 +32,23 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #f0f7ff;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #bae6fd;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #7dd3fc;
 }
 
 /* Big Touch-Friendly Buttons (ปุ่มใหญ่ ใช้งานง่ายบนมือถือ) */
 .btn-large {
   min-height: 48px;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
+  padding: 0.75rem 1.35rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  border-radius: 0.75rem;
+  border-radius: 0.875rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -62,21 +63,25 @@ body {
 }
 
 .btn-primary-blue {
-  background-color: var(--primary-blue);
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
   color: #ffffff;
-  box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.2), 0 2px 4px -2px rgba(2, 132, 199, 0.15);
+  box-shadow: 0 4px 14px -1px rgba(2, 132, 199, 0.35), 0 2px 4px -1px rgba(2, 132, 199, 0.2);
+  border: 1px solid rgba(125, 211, 252, 0.4);
 }
 .btn-primary-blue:hover {
-  background-color: var(--primary-blue-dark);
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  color: #ffffff;
 }
 
 .btn-farm-yellow {
-  background-color: var(--farm-yellow);
-  color: #78350f;
-  box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2), 0 2px 4px -2px rgba(245, 158, 11, 0.15);
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #0f172a;
+  font-weight: 700;
+  box-shadow: 0 4px 14px -1px rgba(245, 158, 11, 0.35), 0 2px 4px -1px rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(253, 230, 138, 0.6);
 }
 .btn-farm-yellow:hover {
-  background-color: var(--farm-yellow-dark);
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: #ffffff;
 }
 
@@ -91,16 +96,16 @@ body {
   font-weight: 600;
 }
 
-/* Card Styles */
+/* Modern Card Styles (สไตล์การ์ดโทนสีฟ้าอ่อนและขอบมนละมุนตามรูปที่ 2) */
 .farm-card {
   background: #ffffff;
   border: 1px solid var(--card-border);
-  border-radius: 1rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  border-radius: 1.125rem;
+  box-shadow: 0 4px 20px -2px rgba(2, 132, 199, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .farm-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 25px -4px rgba(2, 132, 199, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.05);
 }
 
 /* Calendar Styling */

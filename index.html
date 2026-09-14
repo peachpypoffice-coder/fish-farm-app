@@ -34,7 +34,7 @@
     }
   </script>
 </head>
-<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col antialiased">
+<body class="bg-[#f0f7ff] min-h-screen text-slate-800 flex flex-col antialiased">
 
   <!-- ================================================================= -->
   <!-- FULLSCREEN LOGIN GATE (บังคับล็อกอินก่อนเข้าถึงข้อมูล) -->
@@ -43,12 +43,10 @@
     <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[92vh] flex flex-col overflow-hidden my-auto border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
       
       <!-- Brand Header -->
-      <div class="bg-gradient-to-r from-sky-600 to-sky-800 p-5 sm:p-6 text-white text-center flex-shrink-0">
-        <div class="w-16 h-16 mx-auto bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-3xl shadow-inner mb-3">
-          🐟
-        </div>
+      <div class="bg-gradient-to-r from-sky-600 via-sky-700 to-sky-800 p-5 sm:p-6 text-white text-center flex-shrink-0">
+        <img src="logo.png" alt="Sutthi Inter Farm" class="h-16 w-auto mx-auto object-contain bg-white p-2 rounded-2xl shadow-lg mb-3">
         <h1 class="text-xl font-black tracking-tight">บจก.สุทธิ อินเตอร์ ฟาร์ม</h1>
-        <p class="text-xs text-sky-200 mt-1">ระบบบริหารการจองพันธุ์ปลาและคิวจัดส่ง (ฟาร์มปลาผู้ใหญ่พร)</p>
+        <p class="text-xs text-sky-100 mt-1">ระบบบริหารการจองพันธุ์ปลาและคิวจัดส่ง (ฟาร์มปลาผู้ใหญ่พร)</p>
       </div>
 
       <!-- Login Form -->
@@ -95,42 +93,42 @@
   </div>
 
   <!-- TOP HEADER / NAVBAR -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-20">
+  <header class="bg-white/95 backdrop-blur-sm border-b border-sky-100 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 sm:h-20 gap-2">
         
-        <!-- Brand Logo & Title -->
-        <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('calendar')">
-          <img src="logo.svg" onerror="this.onerror=null; this.src='logo.png';" alt="โลโก้ฟาร์มปลาผู้ใหญ่พร" class="w-14 h-14 object-contain rounded-2xl bg-white p-1 shadow-md border-2 border-amber-300 flex-shrink-0">
-          <div>
-            <div class="flex items-center space-x-2">
-              <h1 class="text-lg sm:text-xl font-bold text-sky-950 tracking-tight">บจก.สุทธิ อินเตอร์ ฟาร์ม</h1>
-              <span class="bg-amber-100 text-amber-800 text-[11px] font-bold px-2 py-0.5 rounded-full border border-amber-300">ฟาร์มปลาผู้ใหญ่พร</span>
+        <!-- Brand Logo & Title (จัดวางแบบ Mobile-First อ่านง่าย ไม่แตกแถว) -->
+        <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer min-w-0" onclick="switchTab('calendar')">
+          <img src="logo.png" alt="Sutthi Inter Farm" class="h-10 sm:h-14 w-auto object-contain rounded-xl bg-white p-1 shadow-sm border border-sky-200 flex-shrink-0">
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <h1 class="text-xs sm:text-lg font-bold text-sky-950 tracking-tight whitespace-nowrap">บจก.สุทธิ อินเตอร์ ฟาร์ม</h1>
+              <span class="bg-amber-100 text-amber-900 text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full border border-amber-300 whitespace-nowrap flex-shrink-0">ผู้ใหญ่พร</span>
             </div>
             <p class="text-xs text-slate-500 hidden sm:block">68 ม.1 ต.มารวิชัย อ.เสนา จ.พระนครศรีอยุธยา • โทร 095-996-5569, 081-928-6697</p>
-            <p class="text-[11px] text-slate-500 sm:hidden">โทร 095-996-5569, 081-928-6697</p>
+            <p class="text-[10px] text-slate-500 sm:hidden whitespace-nowrap truncate">โทร 095-996-5569, 081-928-6697</p>
           </div>
         </div>
 
         <!-- Right Side: New Booking Button & User Profile -->
-        <div class="flex items-center space-x-2 sm:space-x-4">
+        <div class="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0">
           <!-- Big Yellow Booking Button -->
-          <button id="btn-top-new-order" onclick="openNewOrderModal()" class="btn-large btn-farm-yellow shadow-md hover:brightness-105">
-            <i data-lucide="plus-circle" class="w-5 h-5"></i>
+          <button id="btn-top-new-order" onclick="openNewOrderModal()" class="btn-large btn-farm-yellow shadow-md hover:brightness-105 py-2 px-2.5 sm:px-4 text-xs sm:text-sm font-bold">
+            <i data-lucide="plus-circle" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             <span class="hidden sm:inline">จองพันธุ์ปลาใหม่</span>
             <span class="sm:hidden">จองใหม่</span>
           </button>
 
           <!-- Cloudflare / Server Sync Status Indicator -->
-          <div id="cloud-sync-indicator" class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200" title="สถานะการเชื่อมต่อ Cloudflare">
+          <div id="cloud-sync-indicator" class="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200" title="สถานะการเชื่อมต่อ Cloudflare">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span id="cloud-sync-text">คลาวด์ออนไลน์</span>
           </div>
 
           <!-- User Role / Profile Button & Logout -->
-          <div class="flex items-center space-x-1.5 sm:space-x-2">
-            <button onclick="openLoginModal()" class="flex items-center space-x-2 p-1.5 sm:p-2 rounded-xl hover:bg-slate-100 border border-slate-200 transition" title="ข้อมูลผู้ใช้งาน">
-              <span id="current-user-avatar" class="text-xl sm:text-2xl">👨‍🌾</span>
+          <div class="flex items-center space-x-1 sm:space-x-2">
+            <button onclick="openLoginModal()" class="flex items-center space-x-1.5 p-1.5 sm:p-2 rounded-xl hover:bg-sky-50 border border-slate-200 hover:border-sky-300 transition" title="ข้อมูลผู้ใช้งาน">
+              <span id="current-user-avatar" class="text-lg sm:text-xl">👨‍🌾</span>
               <div class="text-left hidden md:block">
                 <p id="current-user-name" class="text-sm font-semibold text-slate-800 leading-tight">ผู้ใหญ่พร</p>
                 <span id="current-user-badge" class="badge-tag bg-amber-500 text-white text-[10px] py-0 px-1.5">CEO</span>
@@ -139,7 +137,7 @@
             </button>
 
             <!-- Logout Button -->
-            <button onclick="logoutUser()" class="flex items-center space-x-1 p-2 px-2.5 sm:px-3 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 transition text-xs font-semibold" title="ออกจากระบบ">
+            <button onclick="logoutUser()" class="flex items-center space-x-1 p-2 sm:px-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition text-xs font-semibold" title="ออกจากระบบ">
               <i data-lucide="log-out" class="w-4 h-4"></i>
               <span class="hidden sm:inline">ออกจากระบบ</span>
             </button>
@@ -211,16 +209,14 @@
           <p class="text-sm text-slate-500 mt-1">เช็คคิวงานทั้งเดือน ดูวันที่คิวว่าง และวางแผนเตรียมปลาล่วงหน้า</p>
         </div>
 
-        <div class="flex items-center space-x-3 self-start md:self-auto">
-          <button onclick="changeMonth(-1)" class="btn-large bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl">
+        <div class="flex items-center space-x-2 sm:space-x-3 self-center md:self-auto">
+          <button onclick="changeMonth(-1)" title="เดือนก่อนหน้า" class="btn-large bg-white hover:bg-sky-50 text-sky-800 border border-sky-200 py-2 px-3 sm:px-3.5 rounded-xl shadow-xs transition">
             <i data-lucide="chevron-left" class="w-5 h-5"></i>
-            <span>เดือนก่อนหน้า</span>
           </button>
-          <span id="calendar-month-label" class="text-lg font-bold text-sky-900 px-3 py-1 bg-sky-50 rounded-xl border border-sky-200 min-w-[160px] text-center">
+          <span id="calendar-month-label" class="text-base sm:text-lg font-bold text-sky-950 px-4 py-2 bg-white rounded-xl border border-sky-200 min-w-[150px] sm:min-w-[180px] text-center shadow-xs">
             กันยายน 2567
           </span>
-          <button onclick="changeMonth(1)" class="btn-large bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl">
-            <span>เดือนถัดไป</span>
+          <button onclick="changeMonth(1)" title="เดือนถัดไป" class="btn-large bg-white hover:bg-sky-50 text-sky-800 border border-sky-200 py-2 px-3 sm:px-3.5 rounded-xl shadow-xs transition">
             <i data-lucide="chevron-right" class="w-5 h-5"></i>
           </button>
         </div>
@@ -228,32 +224,32 @@
 
       <!-- Legend & Stats bar -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center space-x-3">
-          <div class="w-4 h-4 rounded-full bg-sky-500"></div>
-          <div>
-            <div class="text-xs text-slate-500">คิวจัดส่งถึงที่</div>
-            <div id="stat-month-delivery" class="text-base font-bold text-sky-700">0 ออเดอร์</div>
+        <div class="bg-white p-3.5 rounded-2xl border border-sky-100 shadow-xs flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-base flex-shrink-0">🚚</div>
+          <div class="min-w-0">
+            <div class="text-xs text-slate-500 font-medium">คิวจัดส่งถึงที่</div>
+            <div id="stat-month-delivery" class="text-base font-bold text-sky-800">0 ออเดอร์</div>
           </div>
         </div>
-        <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center space-x-3">
-          <div class="w-4 h-4 rounded-full bg-amber-500"></div>
-          <div>
-            <div class="text-xs text-slate-500">คิวมารับเองหน้าฟาร์ม</div>
-            <div id="stat-month-pickup" class="text-base font-bold text-amber-700">0 ออเดอร์</div>
+        <div class="bg-white p-3.5 rounded-2xl border border-sky-100 shadow-xs flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-base flex-shrink-0">🏠</div>
+          <div class="min-w-0">
+            <div class="text-xs text-slate-500 font-medium">คิวมารับเองหน้าฟาร์ม</div>
+            <div id="stat-month-pickup" class="text-base font-bold text-amber-800">0 ออเดอร์</div>
           </div>
         </div>
-        <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center space-x-3">
-          <div class="w-4 h-4 rounded-full bg-emerald-500"></div>
-          <div>
-            <div class="text-xs text-slate-500">ส่งสำเร็จแล้ว</div>
+        <div class="bg-white p-3.5 rounded-2xl border border-sky-100 shadow-xs flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-base flex-shrink-0">✅</div>
+          <div class="min-w-0">
+            <div class="text-xs text-slate-500 font-medium">ส่งสำเร็จแล้ว</div>
             <div id="stat-month-delivered" class="text-base font-bold text-emerald-700">0 ออเดอร์</div>
           </div>
         </div>
-        <div class="bg-white p-3 rounded-xl border border-slate-200 flex items-center space-x-3">
-          <div class="w-4 h-4 rounded-full bg-red-500"></div>
-          <div>
-            <div class="text-xs text-slate-500">มีเคลม/ปัญหา</div>
-            <div id="stat-month-problem" class="text-base font-bold text-red-700">0 ออเดอร์</div>
+        <div class="bg-white p-3.5 rounded-2xl border border-sky-100 shadow-xs flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-base flex-shrink-0">⚠️</div>
+          <div class="min-w-0">
+            <div class="text-xs text-slate-500 font-medium">มีเคลม/ปัญหา</div>
+            <div id="stat-month-problem" class="text-base font-bold text-rose-700">0 ออเดอร์</div>
           </div>
         </div>
       </div>
@@ -409,7 +405,7 @@
           <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
               <thead>
-                <tr class="bg-slate-100/80 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                <tr class="bg-sky-50/80 border-b border-sky-100 text-xs font-bold text-sky-950 uppercase tracking-wider">
                   <th class="py-3 px-3 w-28 sm:w-32 cursor-pointer select-none group" onclick="toggleOrderDateSort()">
                     <div class="flex items-center gap-1">
                       <span>รหัส/วันส่ง</span>

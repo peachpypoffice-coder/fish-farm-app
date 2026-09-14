@@ -962,171 +962,173 @@ function renderDailyQueue() {
   dayOrders.forEach((order, index) => {
     const isPickup = order.deliveryType === 'pickup';
     const statusBadge = getStatusBadgeHtml(order.status);
-    const mapsLink = order.mapsUrl ? `<a href="${order.mapsUrl}" target="_blank" class="btn-large bg-sky-500 hover:bg-sky-600 text-white py-2 px-3 text-xs rounded-lg font-semibold inline-flex items-center gap-1 shadow-sm"><i data-lucide="map-pin" class="w-4 h-4"></i> <span>เปิด Google Maps</span></a>` : '';
+    const isPartiallyDelivered = order.status === 'partially_delivered';
 
     html += `
-      <div class="farm-card p-5 border-l-4 ${order.status === 'cancelled' ? 'border-l-rose-400 opacity-60' : order.status === 'problem' ? 'border-l-red-500' : isPickup ? 'border-l-amber-500' : 'border-l-sky-500'} space-y-4">
+      <div class="farm-card p-4 sm:p-5 border-l-4 ${order.status === 'cancelled' ? 'border-l-rose-400 opacity-60' : order.status === 'problem' ? 'border-l-red-500' : isPickup ? 'border-l-amber-500' : 'border-l-sky-500'} space-y-3.5">
         
         <!-- Header of Order -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-          <div class="flex items-center space-x-3">
-            <span class="w-9 h-9 rounded-xl ${isPickup ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'} flex items-center justify-center font-bold text-sm">
+        <div class="flex items-start justify-between gap-2 pb-3 border-b border-slate-100">
+          <div class="flex items-center space-x-2.5 min-w-0">
+            <span class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl ${isPickup ? 'bg-amber-100 text-amber-900' : 'bg-sky-100 text-sky-900'} flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0">
               #${index + 1}
             </span>
-            <div>
-              <div class="flex items-center gap-2">
-                <h4 class="text-lg font-bold text-slate-900">${order.customerName}</h4>
-                <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isPickup ? 'bg-amber-100 text-amber-900' : 'bg-sky-100 text-sky-900'}">
-                  ${isPickup ? '🏠 มารับเองหน้าฟาร์ม' : '🚚 จัดส่งถึงที่'}
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <h4 class="text-base sm:text-lg font-bold text-slate-900 truncate">${order.customerName}</h4>
+                <span class="text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold ${isPickup ? 'bg-amber-100 text-amber-900 border border-amber-200' : 'bg-sky-100 text-sky-900 border border-sky-200'} whitespace-nowrap">
+                  ${isPickup ? '🏠 มารับเอง' : '🚚 ส่งถึงที่'}
                 </span>
               </div>
-              <p class="text-xs text-slate-500">รหัสจอง: ${order.id} • บันทึกเมื่อ: ${formatThaiDate(order.createdAt, true)}</p>
+              <p class="text-[11px] text-slate-500">รหัสจอง: <strong class="text-sky-800">${order.id}</strong> • ส่ง: ${formatThaiDate(order.deliveryDate)}</p>
             </div>
           </div>
 
-          <div class="flex items-center gap-2 self-start sm:self-auto">
+          <div class="flex flex-col items-end gap-1 flex-shrink-0">
             ${statusBadge}
+            ${order.editHistory && order.editHistory.length > 0 ? `
+              <button onclick="viewOrderHistory('${order.id}')" class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-bold hover:bg-purple-200">
+                📝 แก้ไข (${order.editHistory.length})
+              </button>
+            ` : ''}
           </div>
         </div>
 
-        <!-- Details Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <!-- Left: Location & Contact -->
-          <div class="space-y-2">
-            <!-- Quick Contact & Maps Bar for Mobile Driver -->
-            <div class="grid grid-cols-2 gap-2 pt-1 pb-1">
-              <a href="tel:${order.customerPhone}" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-3 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm">
-                <i data-lucide="phone-call" class="w-4 h-4"></i>
-                <span>โทรหาลูกค้า</span>
-              </a>
-              ${order.mapsUrl ? `
-              <a href="${order.mapsUrl}" target="_blank" class="btn-large bg-sky-600 hover:bg-sky-700 text-white py-2.5 px-3 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm">
-                <i data-lucide="navigation" class="w-4 h-4"></i>
-                <span>เปิดแผนที่นำทาง</span>
-              </a>
-              ` : `
-              <div class="p-2 bg-slate-100 rounded-xl text-[11px] text-slate-400 text-center flex items-center justify-center">
-                <span>ไม่มีพิกัด Maps</span>
-              </div>
-              `}
+        <!-- Quick Contact & Location Bar for Driver / Staff -->
+        <div class="space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <a href="tel:${order.customerPhone}" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-3 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm">
+              <i data-lucide="phone-call" class="w-4 h-4"></i>
+              <span>โทร: ${order.customerPhone}</span>
+            </a>
+            ${order.mapsUrl ? `
+            <a href="${order.mapsUrl}" target="_blank" class="btn-large bg-sky-600 hover:bg-sky-700 text-white py-2.5 px-3 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-sm">
+              <i data-lucide="navigation" class="w-4 h-4"></i>
+              <span>เปิดแผนที่นำทาง</span>
+            </a>
+            ` : `
+            <div class="p-2 bg-slate-100 rounded-xl text-[11px] text-slate-400 text-center flex items-center justify-center font-medium">
+              <span>ไม่มีพิกัด Maps</span>
             </div>
-
-            <div class="flex items-start gap-2 pt-1">
-              <i data-lucide="map-pin" class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0"></i>
-              <div class="text-xs">
-                <span class="text-slate-500">สถานที่ส่ง: </span>
-                <span class="text-slate-800 font-medium">${order.deliveryAddress || '-'}</span>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 p-2 rounded-lg">
-              <i data-lucide="clock" class="w-4 h-4 text-amber-500"></i>
-              <span>เวลานัด: <strong>${order.deliveryTimeSlot || '-'}</strong></span>
-            </div>
+            `}
           </div>
 
-          <!-- Right: Items & Financials -->
-          <div class="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200 space-y-2">
-            <div class="text-xs font-bold text-slate-700 uppercase tracking-wider">รายการสินค้า:</div>
-            <div class="space-y-1">
-              ${order.items.map(it => {
-                const delivered = it.deliveredQty !== undefined ? it.deliveredQty : (order.status === 'delivered' ? it.qty : 0);
-                const backorder = it.backorderQty !== undefined ? it.backorderQty : (order.status === 'partially_delivered' ? Math.max(0, it.qty - delivered) : 0);
-                const isPartial = order.status === 'partially_delivered' && (backorder > 0 || delivered < it.qty);
+          <div class="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+            <div class="flex items-start gap-1.5 min-w-0">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0"></i>
+              <span class="text-slate-700 truncate">${isPickup ? 'รับเองที่ฟาร์มปลาผู้ใหญ่พร' : (order.deliveryAddress || '-')}</span>
+            </div>
+            <div class="flex items-center gap-1 text-[11px] text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 flex-shrink-0">
+              <i data-lucide="clock" class="w-3 h-3 text-amber-600"></i>
+              <span>เวลานัด: <strong>${order.deliveryTimeSlot || 'ตามนัดหมาย'}</strong></span>
+            </div>
+          </div>
+        </div>
 
-                return `
-                  <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-800 py-1 border-b border-slate-100 last:border-none gap-1">
-                    <div>
-                      <span>• ${it.name} ${it.size ? `(${it.size})` : ''} <strong class="text-sky-800">${formatItemQtyPrice(it)}</strong> ${it.unit}</span>
-                      ${isPartial ? `
-                        <span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 ml-1">
-                          ส่งแล้ว ${formatNumber(delivered)} | ค้าง ${formatNumber(backorder)}
-                        </span>
-                      ` : ''}
-                    </div>
-                    <span class="font-semibold text-slate-700 text-right">${formatMoney(it.totalPrice)}</span>
+        <!-- Items List (แยกบรรทัดชัดเจน สวยงาม อ่านง่าย) -->
+        <div class="space-y-1.5">
+          <div class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
+            <span>รายการสินค้าที่ต้องส่งมอบ:</span>
+            <span class="text-[10px] text-slate-400 font-normal">รวม ${order.items.length} รายการ</span>
+          </div>
+          
+          <div class="space-y-1.5">
+            ${order.items.map(it => {
+              const delivered = it.deliveredQty !== undefined ? it.deliveredQty : (order.status === 'delivered' ? it.qty : 0);
+              const backorder = it.backorderQty !== undefined ? it.backorderQty : (isPartiallyDelivered ? Math.max(0, it.qty - delivered) : 0);
+              const hasBackorder = isPartiallyDelivered && (backorder > 0 || delivered < it.qty);
+
+              return `
+                <div class="p-2.5 rounded-xl ${hasBackorder ? 'bg-amber-50 border border-amber-200' : 'bg-white border border-slate-200/90'} text-xs flex items-center justify-between gap-2 shadow-xs">
+                  <div>
+                    <span class="font-bold text-slate-900">• ${it.name}</span>
+                    ${it.size ? `<span class="text-slate-500 text-[11px]">(${it.size})</span>` : ''}
+                    <span class="text-sky-800 font-bold ml-1">${formatItemQtyPrice(it)} ${it.unit}</span>
                   </div>
-                `;
-              }).join('')}
-
-              ${order.status === 'partially_delivered' ? `
-                <div class="p-2 bg-amber-100/70 rounded-lg border border-amber-300 text-[11px] text-amber-950 mt-1">
-                  <span class="font-bold">🗓️ นัดส่งส่วนที่ค้าง:</span> ${order.backorderDate ? formatThaiDate(order.backorderDate) : 'ยังไม่ระบุวัน'}
-                  ${order.backorderReason ? `<span class="italic text-amber-800"> (${order.backorderReason})</span>` : ''}
+                  <div class="text-right flex-shrink-0">
+                    ${hasBackorder ? `
+                      <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 whitespace-nowrap">
+                        <span>ส่ง ${formatNumber(delivered)}</span> | <span class="text-rose-700">ค้าง ${formatNumber(backorder)}</span>
+                      </span>
+                    ` : `
+                      <span class="font-semibold text-slate-700 text-[11px]">${formatMoney(it.totalPrice)}</span>
+                    `}
+                  </div>
                 </div>
-              ` : ''}
-            </div>
+              `;
+            }).join('')}
 
-            <div class="pt-2 border-t border-slate-200 text-xs space-y-1">
-              <div class="flex justify-between text-slate-600">
-                <span>ยอดรวมสุทธิ:</span>
-                <span class="font-bold text-slate-900">${formatMoney(order.netTotal)}</span>
+            ${isPartiallyDelivered ? `
+              <div class="p-2.5 bg-amber-100/80 rounded-xl border border-amber-300 text-[11px] text-amber-950 flex flex-wrap items-center justify-between gap-1">
+                <div class="font-semibold flex items-center gap-1">
+                  <span>🗓️ นัดส่งรอบถัดไป:</span>
+                  <span class="font-bold text-amber-900">${order.backorderDate ? formatThaiDate(order.backorderDate) : 'ยังไม่ระบุวัน'}</span>
+                </div>
+                ${order.backorderReason ? `<div class="text-[10px] text-amber-800 italic">(${order.backorderReason})</div>` : ''}
               </div>
-              <div class="flex justify-between text-emerald-700">
-                <span>มัดจำแล้ว:</span>
-                <span class="font-bold">${formatMoney(order.deposit)}</span>
-              </div>
-              <div class="flex justify-between text-sm font-bold text-amber-800 bg-amber-100 p-2 rounded-lg">
-                <span>ยอดที่ต้องเก็บวันส่ง:</span>
-                <span class="text-base">${formatMoney(order.remainingBalance)}</span>
-              </div>
-            </div>
+            ` : ''}
           </div>
         </div>
 
-        <!-- Bottom Action Bar (ปุ่มใหญ่พิเศษสำหรับคนขับรถบนมือถือ) -->
-        <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+        <!-- Financial Summary Grid (3 ช่อง ชัดเจน) -->
+        <div class="grid grid-cols-3 gap-2 bg-sky-50/70 p-2.5 rounded-xl border border-sky-200 text-center text-xs">
+          <div>
+            <div class="text-[10px] text-slate-500 font-medium">ยอดสุทธิ</div>
+            <div class="font-black text-slate-900 text-xs sm:text-sm">${formatMoney(order.netTotal)}</div>
+          </div>
+          <div class="border-x border-sky-200">
+            <div class="text-[10px] text-slate-500 font-medium">มัดจำแล้ว</div>
+            <div class="font-bold text-emerald-700 text-xs">${formatMoney(order.deposit)}</div>
+          </div>
+          <div>
+            <div class="text-[10px] text-amber-900 font-medium">ยอดต้องเก็บวันส่ง</div>
+            <div class="font-black text-amber-900 text-xs sm:text-sm">${formatMoney(order.remainingBalance)}</div>
+          </div>
+        </div>
+
+        <!-- Bottom Action Bar -->
+        <div class="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
           <div class="text-xs text-slate-500 flex items-center gap-1">
             <i data-lucide="user-check" class="w-4 h-4 text-sky-600"></i>
-            <span>ผู้ขับ/ผู้รับผิดชอบ: ${order.driverName || 'ยังไม่ระบุ'}</span>
+            <span>ผู้ขับ: <strong class="text-slate-800">${order.driverName || 'ยังไม่ระบุ'}</strong></span>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
-            ${order.status === 'partially_delivered' && state.currentUser.role !== 'Driver' ? `
-            <button onclick="openCompleteBackorderModal('${order.id}')" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 text-xs font-bold rounded-xl shadow-sm flex items-center gap-1">
+          <div class="flex flex-wrap items-center gap-1.5 ml-auto">
+            ${isPartiallyDelivered && state.currentUser.role !== 'Driver' ? `
+            <button onclick="openCompleteBackorderModal('${order.id}')" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1">
               <i data-lucide="check-check" class="w-4 h-4"></i>
-              <span>🚚 ปิดจ็อบส่งครบ</span>
+              <span>ปิดจ็อบ</span>
+            </button>
+            ` : ''}
+
+            ${canCurrentUser('update_delivery') ? `
+            <button onclick="openDeliveryUpdateModal('${order.id}')" class="btn-large btn-primary-blue py-2 px-3 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1">
+              <i data-lucide="truck" class="w-4 h-4"></i>
+              <span>ส่ง/รับเงิน</span>
             </button>
             ` : ''}
 
             ${canCurrentUser('print_slip') ? `
-            <button onclick="viewOrderSlip('${order.id}')" class="btn-large bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 text-xs rounded-xl font-semibold">
-              <i data-lucide="printer" class="w-4 h-4"></i> พิมพ์ใบส่งของ
+            <button onclick="viewOrderSlip('${order.id}')" title="พิมพ์/ส่ง LINE" class="btn-large bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-2.5 text-xs rounded-xl font-semibold border border-slate-200">
+              <i data-lucide="file-text" class="w-4 h-4"></i>
             </button>
             ` : ''}
 
             ${canCurrentUser('edit_order') ? `
-            <button onclick="openEditOrderModal('${order.id}')" class="btn-large bg-purple-50 hover:bg-purple-100 text-purple-700 py-2 px-3 text-xs font-bold rounded-xl border border-purple-200">
-              <i data-lucide="edit" class="w-4 h-4 text-purple-600"></i>
-              <span>แก้ไขการจอง</span>
-            </button>
-            ` : ''}
-
-            ${order.editHistory && order.editHistory.length > 0 ? `
-              <button onclick="viewOrderHistory('${order.id}')" class="btn-large bg-purple-100 hover:bg-purple-200 text-purple-800 py-2 px-3 text-xs font-semibold rounded-xl">
-                <i data-lucide="history" class="w-4 h-4 text-purple-700"></i>
-                <span>ประวัติแก้ไข (${order.editHistory.length})</span>
-              </button>
-            ` : ''}
-
-            ${canCurrentUser('update_delivery') ? `
-            <button onclick="openDeliveryUpdateModal('${order.id}')" class="btn-large btn-primary-blue py-2 px-4 text-xs font-bold rounded-xl shadow-sm">
-              <i data-lucide="check-circle" class="w-4 h-4"></i>
-              <span>อัปเดตสถานะ / รับเงิน</span>
+            <button onclick="openEditOrderModal('${order.id}')" title="แก้ไขการจอง" class="btn-large bg-purple-50 hover:bg-purple-100 text-purple-700 py-2 px-2.5 text-xs font-bold rounded-xl border border-purple-200">
+              <i data-lucide="edit-3" class="w-4 h-4"></i>
             </button>
             ` : ''}
 
             ${canCurrentUser('create_claim') ? `
-            <button onclick="openClaimFromOrder('${order.id}')" class="btn-large bg-red-100 hover:bg-red-200 text-red-700 py-2 px-3 text-xs font-bold rounded-xl border border-red-200">
-              <i data-lucide="alert-triangle" class="w-4 h-4 text-red-600"></i>
-              <span>แจ้งเคลมปลา</span>
+            <button onclick="openClaimFromOrder('${order.id}')" title="แจ้งเคลมปลา" class="btn-large bg-red-50 hover:bg-red-100 text-red-700 py-2 px-2.5 text-xs font-bold rounded-xl border border-red-200">
+              <i data-lucide="alert-triangle" class="w-4 h-4"></i>
             </button>
             ` : ''}
 
             ${order.status !== 'cancelled' && order.status !== 'delivered' && canCurrentUser('cancel_order') ? `
-            <button onclick="openCancelOrderModal('${order.id}')" class="btn-large bg-rose-50 hover:bg-rose-100 text-rose-700 py-2 px-3 text-xs font-bold rounded-xl border border-rose-200">
-              <i data-lucide="x-circle" class="w-4 h-4 text-rose-600"></i>
-              <span>ยกเลิกการจอง</span>
+            <button onclick="openCancelOrderModal('${order.id}')" title="ยกเลิกการจอง" class="btn-large bg-rose-50 hover:bg-rose-100 text-rose-700 py-2 px-2 text-xs font-bold rounded-xl border border-rose-200">
+              <i data-lucide="x-circle" class="w-4 h-4"></i>
             </button>
             ` : ''}
           </div>
@@ -1846,18 +1848,19 @@ function viewOrderSlip(orderId) {
       
       <!-- Farm Header -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b-2 border-slate-200 gap-4">
-        <div class="flex items-center space-x-4">
-          <div class="w-16 h-16 rounded-2xl bg-sky-600 text-white flex items-center justify-center text-3xl font-bold shadow-md">
-            🐟
-          </div>
+        <div class="flex items-center space-x-3.5">
+          <img src="logo.png" alt="Sutthi Inter Farm" class="h-14 sm:h-16 w-auto object-contain bg-white p-1 rounded-xl shadow-xs border border-sky-200 flex-shrink-0">
           <div>
-            <h2 class="text-2xl font-black text-sky-950">ฟาร์มปลาผู้ใหญ่พร</h2>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 class="text-xl sm:text-2xl font-black text-sky-950">บจก.สุทธิ อินเตอร์ ฟาร์ม</h2>
+              <span class="bg-amber-100 text-amber-900 text-xs font-bold px-2 py-0.5 rounded-full border border-amber-300">ฟาร์มปลาผู้ใหญ่พร</span>
+            </div>
             <p class="text-xs text-slate-500">จำหน่ายพันธุ์ปลาน้ำจืดคุณภาพ อาหารปลา กระชัง และเวชภัณฑ์ครบวงจร</p>
-            <p class="text-xs text-slate-600 font-medium">โทร: 081-999-8888, 089-777-6666 • LINE ID: @phuyaiporn_farm</p>
+            <p class="text-xs text-slate-600 font-medium">68 ม.1 ต.มารวิชัย อ.เสนา จ.พระนครศรีอยุธยา • โทร 095-996-5569, 081-928-6697</p>
           </div>
         </div>
 
-        <div class="text-left sm:text-right">
+        <div class="text-left sm:text-right flex-shrink-0">
           <span class="inline-block bg-sky-100 text-sky-900 font-bold px-3 py-1 rounded-full text-xs uppercase tracking-wider mb-1">
             ${isPickup ? 'ใบรับสินค้าหน้าฟาร์ม' : 'ใบสั่งจอง / ใบส่งมอบพันธุ์ปลา'}
           </span>
@@ -1871,7 +1874,17 @@ function viewOrderSlip(orderId) {
         <div>
           <span class="text-slate-400 font-semibold uppercase">ข้อมูลผู้สั่งจอง:</span>
           <div class="font-bold text-sm text-slate-900 mt-0.5">${order.customerName}</div>
-          <div class="text-slate-600">เบอร์โทรศัพท์: <strong>${order.customerPhone}</strong></div>
+          <div class="mt-1.5 flex items-center gap-1.5 flex-wrap">
+            <span class="text-slate-600 font-medium">เบอร์โทรศัพท์:</span>
+            <div class="inline-flex items-center gap-1 bg-sky-50 px-2 py-0.5 rounded-lg border border-sky-300">
+              <i data-lucide="phone" class="w-3.5 h-3.5 text-sky-600 no-print"></i>
+              <input type="tel" id="slip-customer-phone" value="${order.customerPhone || ''}" 
+                     oninput="onSlipPhoneChange(this.value)" 
+                     class="bg-transparent font-bold text-sky-950 text-xs sm:text-sm focus:outline-none focus:bg-white px-1 py-0.5 rounded border-b border-dashed border-sky-400 w-32 sm:w-36"
+                     title="แตะเพื่อแก้ไขเบอร์โทรศัพท์ก่อนพิมพ์หรือส่ง LINE">
+            </div>
+            <span class="text-[10px] text-slate-400 no-print">(แตะแก้ไขเบอร์ได้)</span>
+          </div>
         </div>
 
         <div>
@@ -1986,12 +1999,25 @@ function viewOrderSlip(orderId) {
   `;
 
   openModal('modal-print-slip');
+  lucide.createIcons();
+}
+
+function onSlipPhoneChange(newPhone) {
+  if (currentSlipOrder) {
+    currentSlipOrder.customerPhone = newPhone;
+    const ord = state.orders.find(o => o.id === currentSlipOrder.id);
+    if (ord) {
+      ord.customerPhone = newPhone;
+      saveLocalState();
+    }
+  }
 }
 
 function copyOrderSummaryForLine() {
   if (!currentSlipOrder) return;
   const o = currentSlipOrder;
   const isPickup = o.deliveryType === 'pickup';
+  const activePhone = document.getElementById('slip-customer-phone')?.value.trim() || o.customerPhone;
 
   const itemsText = o.items.map(i => {
     let line = `• ${i.name} ${i.size ? `(${i.size})` : ''} ${formatItemQtyPrice(i)} ${i.unit} = ${formatMoney(i.totalPrice)}`;
@@ -2002,7 +2028,7 @@ function copyOrderSummaryForLine() {
 --------------------------------
 📋 *รหัสการจอง:* ${o.id}
 👤 *ชื่อลูกค้า:* ${o.customerName}
-📞 *เบอร์โทร:* ${o.customerPhone}
+📞 *เบอร์โทร:* ${activePhone}
 🗓️ *วันนัดรับ/ส่ง:* ${formatThaiDate(o.deliveryDate)} (${o.deliveryTimeSlot || 'ตามนัดหมาย'})
 📍 *สถานที่:* ${isPickup ? 'มารับเองที่หน้าฟาร์ม' : o.deliveryAddress}
 
@@ -2016,7 +2042,7 @@ ${itemsText}
 🔥 *ยอดคงเหลือวันส่ง: ${formatMoney(o.remainingBalance)}*
 --------------------------------
 ฟาร์มปลาผู้ใหญ่พร ขอขอบพระคุณครับ 🙏
-สอบถามเพิ่มเติม โทร 081-999-8888`;
+สอบถามเพิ่มเติม โทร 095-996-5569, 081-928-6697`;
 
   navigator.clipboard.writeText(text).then(() => {
     showNotification('คัดลอกข้อความสรุปแล้ว! สามารถนำไปวางส่งใน LINE ได้ทันที', 'success');
