@@ -36,6 +36,64 @@
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col antialiased">
 
+  <!-- ================================================================= -->
+  <!-- FULLSCREEN LOGIN GATE (บังคับล็อกอินก่อนเข้าถึงข้อมูล) -->
+  <!-- ================================================================= -->
+  <div id="login-gate" class="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Brand Header -->
+      <div class="bg-gradient-to-r from-sky-600 to-sky-800 p-6 text-white text-center">
+        <div class="w-16 h-16 mx-auto bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-3xl shadow-inner mb-3">
+          🐟
+        </div>
+        <h1 class="text-xl font-black tracking-tight">บจก.สุทธิ อินเตอร์ ฟาร์ม</h1>
+        <p class="text-xs text-sky-200 mt-1">ระบบบริหารการจองพันธุ์ปลาและคิวจัดส่ง (ฟาร์มปลาผู้ใหญ่พร)</p>
+      </div>
+
+      <!-- Login Form -->
+      <div class="p-6 sm:p-8 space-y-5">
+        <div class="text-center">
+          <h2 class="text-lg font-bold text-slate-800">เข้าสู่ระบบเพื่อใช้งาน</h2>
+          <p class="text-xs text-slate-500 mt-1">กรุณากรอกอีเมลและรหัสผ่านเพื่อเข้าถึงระบบงาน</p>
+        </div>
+
+        <form onsubmit="handleGateLogin(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">อีเมลผู้ใช้งาน:</label>
+            <div class="relative">
+              <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3 top-3.5"></i>
+              <input type="email" id="gate-email" placeholder="เช่น ceo@phuyaiporn.farm" class="input-large pl-9 w-full text-sm" required autocomplete="email">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">รหัสผ่าน:</label>
+            <div class="relative">
+              <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-3.5"></i>
+              <input type="password" id="gate-password" placeholder="••••••••" class="input-large pl-9 w-full text-sm" required autocomplete="current-password">
+            </div>
+          </div>
+
+          <div id="gate-error-msg" class="text-xs text-red-600 hidden bg-red-50 p-2.5 rounded-xl border border-red-200 flex items-center gap-1.5">
+            <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+            <span id="gate-error-text">อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือบัญชีถูกระงับ</span>
+          </div>
+
+          <button type="submit" class="btn-large btn-primary-blue w-full py-3 font-bold text-base shadow-lg shadow-sky-600/25 mt-2">
+            <i data-lucide="log-in" class="w-5 h-5"></i>
+            <span>เข้าสู่ระบบ</span>
+          </button>
+        </form>
+
+        <div class="pt-4 border-t border-slate-100 text-center">
+          <p class="text-[11px] text-slate-400">🔒 บัญชีใช้งานเฉพาะเจ้าหน้าที่และผู้เกี่ยวข้องที่ได้รับอนุญาตเท่านั้น</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- TOP HEADER / NAVBAR -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -69,15 +127,21 @@
             <span id="cloud-sync-text">คลาวด์ออนไลน์</span>
           </div>
 
-          <!-- User Role / Profile Button -->
-          <div class="relative">
-            <button onclick="openLoginModal()" class="flex items-center space-x-2 p-2 rounded-xl hover:bg-slate-100 border border-slate-200 transition">
-              <span id="current-user-avatar" class="text-2xl">👨‍🌾</span>
+          <!-- User Role / Profile Button & Logout -->
+          <div class="flex items-center space-x-1.5 sm:space-x-2">
+            <button onclick="openLoginModal()" class="flex items-center space-x-2 p-1.5 sm:p-2 rounded-xl hover:bg-slate-100 border border-slate-200 transition" title="ข้อมูลผู้ใช้งาน">
+              <span id="current-user-avatar" class="text-xl sm:text-2xl">👨‍🌾</span>
               <div class="text-left hidden md:block">
                 <p id="current-user-name" class="text-sm font-semibold text-slate-800 leading-tight">ผู้ใหญ่พร</p>
                 <span id="current-user-badge" class="badge-tag bg-amber-500 text-white text-[10px] py-0 px-1.5">CEO</span>
               </div>
-              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 hidden md:block"></i>
+            </button>
+
+            <!-- Logout Button -->
+            <button onclick="logoutUser()" class="flex items-center space-x-1 p-2 px-2.5 sm:px-3 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 transition text-xs font-semibold" title="ออกจากระบบ">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+              <span class="hidden sm:inline">ออกจากระบบ</span>
             </button>
           </div>
         </div>
@@ -309,11 +373,12 @@
           </div>
 
           <div>
-            <select id="filter-order-status" onchange="renderOrdersList()" class="input-large w-full bg-white">
+            <select id="filter-order-status" onchange="renderOrdersList()" class="input-large w-full bg-white font-medium">
               <option value="all">ทุกสถานะการส่ง</option>
               <option value="pending">⏳ รอดำเนินการ</option>
               <option value="preparing">🐟 กำลังเตรียมปลา</option>
               <option value="in_transit">🚚 อยู่ระหว่างจัดส่ง</option>
+              <option value="partially_delivered">📦 ค้างส่ง (ส่งมอบบางส่วน)</option>
               <option value="delivered">✅ ส่งสำเร็จ</option>
               <option value="problem">⚠️ มีปัญหา / เคลม</option>
               <option value="cancelled">❌ ยกเลิกแล้ว</option>
@@ -336,19 +401,19 @@
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-slate-100/80 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                <th class="py-3.5 px-4 cursor-pointer select-none group" onclick="toggleOrderDateSort()">
-                  <div class="flex items-center gap-1.5">
-                    <span>รหัส / วันที่ส่ง</span>
+                <th class="py-3 px-3 w-28 sm:w-32 cursor-pointer select-none group" onclick="toggleOrderDateSort()">
+                  <div class="flex items-center gap-1">
+                    <span>รหัส/วันส่ง</span>
                     <span id="order-sort-icon" class="text-sky-500 font-black text-sm">↓</span>
                   </div>
                 </th>
-                <th class="py-3.5 px-4">ลูกค้า & ที่อยู่</th>
-                <th class="py-3.5 px-4">รูปแบบ</th>
-                <th class="py-3.5 px-4">รายการสินค้า</th>
-                <th class="py-3.5 px-4 text-right">ยอดสุทธิ</th>
-                <th class="py-3.5 px-4 text-right">มัดจำ / คงเหลือ</th>
-                <th class="py-3.5 px-4 text-center">สถานะ</th>
-                <th class="py-3.5 px-4 text-center">จัดการ</th>
+                <th class="py-3 px-3 min-w-[160px]">ลูกค้า & ที่อยู่</th>
+                <th class="py-3 px-2 text-center w-24">รูปแบบ</th>
+                <th class="py-3 px-4 min-w-[320px]">รายการสินค้า & สถานะค้างส่ง</th>
+                <th class="py-3 px-3 text-right whitespace-nowrap">ยอดสุทธิ</th>
+                <th class="py-3 px-3 text-right whitespace-nowrap">มัดจำ/คงเหลือ</th>
+                <th class="py-3 px-3 text-center w-32">สถานะ</th>
+                <th class="py-3 px-3 text-center w-36">จัดการ</th>
               </tr>
             </thead>
             <tbody id="orders-table-body" class="divide-y divide-slate-100 text-sm">
@@ -656,6 +721,42 @@
           <div id="drivers-list-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- Rendered by JS -->
           </div>
+        </div>
+      </div>
+
+      <!-- Staff & Password Management Section (เฉพาะ CEO) -->
+      <div class="farm-card overflow-hidden">
+        <div class="p-5 bg-gradient-to-r from-sky-50 to-indigo-50 border-b border-sky-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+              <span class="text-xl">👥</span>
+              <span>จัดการบัญชีผู้ใช้งาน & รหัสผ่านพนักงาน (ป้องกันคนลาออก)</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">
+              เปลี่ยนรหัสผ่าน แก้ไขข้อมูล หรือระงับ/ลบบัญชีพนักงานที่ลาออก เพื่อไม่ให้เข้าใช้งานระบบได้อีก
+            </p>
+          </div>
+          <button onclick="openAddUserModal()" class="btn-large btn-primary-blue text-xs py-2 px-4 rounded-xl font-bold shadow-sm flex items-center gap-1.5 self-start sm:self-auto">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span>+ เพิ่มผู้ใช้งานใหม่</span>
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-xs font-bold text-slate-700 uppercase border-b border-slate-200">
+                <th class="py-3 px-4">ชื่อ - นามสกุล</th>
+                <th class="py-3 px-4">อีเมลสำหรับล็อกอิน</th>
+                <th class="py-3 px-3 text-center">บทบาท/ตำแหน่ง</th>
+                <th class="py-3 px-3 text-center">สถานะบัญชี</th>
+                <th class="py-3 px-4 text-center">จัดการรหัสผ่าน & บัญชี</th>
+              </tr>
+            </thead>
+            <tbody id="users-management-table-body" class="divide-y divide-slate-100 text-sm">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -984,14 +1085,46 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">เปลี่ยนสถานะการส่ง:</label>
-          <select id="update-status-select" class="input-large w-full bg-white font-semibold">
+          <label class="block text-xs font-bold text-slate-700 mb-1">สถานะการส่ง:</label>
+          <select id="update-status-select" class="input-large w-full bg-white font-semibold" onchange="onDeliveryStatusSelectChange(this.value)">
             <option value="pending">⏳ รอดำเนินการ</option>
             <option value="preparing">🐟 กำลังเตรียมปลา / อัดออกซิเจน</option>
             <option value="in_transit">🚚 อยู่ระหว่างเดินทาง</option>
-            <option value="delivered">✅ จัดส่งสำเร็จ / รับมอบแล้ว</option>
+            <option value="partially_delivered">📦 ค้างส่ง (ส่งมอบบางส่วน / มีของค้างส่ง)</option>
+            <option value="delivered">✅ จัดส่งสำเร็จครบถ้วน / รับมอบแล้ว</option>
             <option value="problem">⚠️ ติดปัญหาหน้างาน / มีการเคลม</option>
           </select>
+        </div>
+
+        <!-- Backorder / Partial Delivery Items Section (ซ่อนสำหรับคนขับรถ ให้เฉพาะ CEO, Manager, QC) -->
+        <div id="update-backorder-section" class="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-amber-900 uppercase flex items-center gap-1.5">
+              <span>📦</span>
+              <span>ตรวจสอบจำนวนส่งมอบ & ค้างส่งรายชนิด</span>
+            </span>
+            <span class="text-[11px] text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded-full font-semibold">ระบุจำนวนที่ส่งจริง</span>
+          </div>
+
+          <p class="text-[11px] text-slate-500">หากส่งครบทุกตัว ให้ใส่เท่ากับยอดสั่ง หากมีค้างส่ง ระบบจะคำนวณจำนวนค้างให้อัตโนมัติ</p>
+
+          <div id="update-backorder-items-list" class="space-y-2">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Backorder Follow-up Date (แสดงเมื่อมีรายการค้างส่ง) -->
+          <div id="update-backorder-date-container" class="hidden pt-2 border-t border-amber-200/80 space-y-2">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-bold text-amber-950 mb-1">🗓️ วันนัดส่งส่วนที่ค้าง (รอบถัดไป):</label>
+                <input type="date" id="update-backorder-date" class="input-large w-full bg-white text-xs font-semibold border-amber-300">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-amber-950 mb-1">เหตุผลในการค้างส่ง:</label>
+                <input type="text" id="update-backorder-reason" placeholder="เช่น รอไซส์ปลา 3 วัน, กระชังกำลังตัดเย็บ" class="input-large w-full bg-white text-xs border-amber-300">
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Payment handling section -->
@@ -1042,7 +1175,70 @@
     </div>
   </div>
 
+  <!-- MODAL ปิดจ็อบส่งส่วนที่ค้าง (COMPLETE BACKORDER JOB MODAL) -->
+  <div id="modal-complete-backorder" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="bg-emerald-600 px-6 py-4 text-white flex items-center justify-between">
+        <div class="font-bold text-lg flex items-center gap-2">
+          <i data-lucide="check-check" class="w-5 h-5"></i>
+          <span>ส่งมอบส่วนที่ค้าง & ปิดจ็อบคำสั่งซื้อ</span>
+        </div>
+        <button onclick="closeModal('modal-complete-backorder')" class="text-emerald-100 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
 
+      <div class="p-6 space-y-4 text-sm">
+        <input type="hidden" id="complete-backorder-order-id">
+
+        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+          <div class="font-bold text-emerald-950 text-base" id="complete-backorder-cust-name">ลูกค้า: -</div>
+          <div class="text-xs text-slate-500 mt-0.5" id="complete-backorder-order-no">รหัสการจอง: -</div>
+          <div class="text-xs text-emerald-800 font-semibold mt-1.5 flex items-center gap-1">
+            <i data-lucide="info" class="w-4 h-4"></i>
+            <span>ยืนยันว่าได้ส่งมอบสินค้าส่วนที่ค้างส่งทั้งหมดให้ลูกค้าเรียบร้อยแล้ว</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            รายการสินค้าที่ค้างส่ง (จะถูกปรับเป็นส่งครบ):
+          </label>
+          <div id="complete-backorder-items-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div id="complete-backorder-payment-box" class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2 text-xs">
+          <div class="flex justify-between items-center">
+            <span class="text-slate-600 font-medium">ยอดเงินคงเหลือที่ต้องเก็บ:</span>
+            <span id="complete-backorder-due" class="text-sm font-bold text-amber-700">฿0.00</span>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">ยอดเงินที่เก็บเพิ่มรอบนี้:</label>
+            <input type="number" id="complete-backorder-collected" class="input-large w-full font-bold text-emerald-600 py-1.5">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">หมายเหตุการปิดจ็อบ:</label>
+          <input type="text" id="complete-backorder-notes" placeholder="เช่น ส่งครบเรียบร้อย ลูกค้ารับของครบถ้วน" class="input-large w-full text-xs py-2">
+        </div>
+      </div>
+
+      <div class="bg-slate-100 px-6 py-3.5 border-t border-slate-200 flex justify-end space-x-2">
+        <button onclick="closeModal('modal-complete-backorder')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl border border-slate-300 text-sm">
+          ยกเลิก
+        </button>
+        <button onclick="confirmCompleteBackorder()" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-5 text-sm font-bold shadow-md flex items-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>ยืนยันส่งครบ (ปิดจ็อบ)</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
 
   <!-- MODAL ยกเลิกการจอง (CANCEL ORDER CONFIRMATION) -->
   <div id="modal-cancel-order" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1190,6 +1386,110 @@
           </div>
         </div>
       </div>
+
+  <!-- MODAL เพิ่ม / แก้ไขข้อมูลผู้ใช้งาน (USER EDIT MODAL - CEO ONLY) -->
+  <div id="modal-manage-user" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="bg-gradient-to-r from-sky-600 to-indigo-700 px-6 py-4 text-white flex items-center justify-between">
+        <div class="font-bold text-lg flex items-center gap-2">
+          <span class="text-xl">👤</span>
+          <span id="modal-manage-user-title">เพิ่มผู้ใช้งานใหม่</span>
+        </div>
+        <button onclick="closeModal('modal-manage-user')" class="text-sky-100 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form onsubmit="saveUserData(event)" class="p-6 space-y-4 text-sm">
+        <input type="hidden" id="user-manage-id">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อ - นามสกุล / ชื่อเรียก <span class="text-red-500">*</span></label>
+          <input id="user-manage-name" class="input-large w-full" type="text" placeholder="เช่น คุณสมศักดิ์ (ผู้จัดการ)" required>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">อีเมลสำหรับล็อกอิน <span class="text-red-500">*</span></label>
+          <input id="user-manage-email" class="input-large w-full text-xs" type="email" placeholder="name@phuyaiporn.farm" required>
+        </div>
+
+        <div id="user-manage-password-box">
+          <label class="block text-xs font-bold text-slate-700 mb-1">รหัสผ่านเริ่มต้น <span class="text-red-500">*</span></label>
+          <input id="user-manage-password" class="input-large w-full text-xs" type="text" placeholder="กำหนดรหัสผ่าน เช่น farm1234">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ตำแหน่ง / บทบาท</label>
+            <select id="user-manage-role" class="input-large w-full bg-white text-xs font-semibold" onchange="onUserRoleSelectChange(this.value)">
+              <option value="Manager">📋 ผู้จัดการฟาร์ม</option>
+              <option value="QC">🔬 หัวหน้า QC</option>
+              <option value="Driver">🚚 คนขับรถส่งของ</option>
+              <option value="CEO">👨‍🌾 CEO / เจ้าของฟาร์ม</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">สถานะบัญชี</label>
+            <select id="user-manage-status" class="input-large w-full bg-white text-xs font-semibold">
+              <option value="active">🟢 เปิดใช้งานปกติ</option>
+              <option value="suspended">🔴 ระงับการใช้งาน (ลาออก)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="bg-slate-100 -mx-6 -mb-6 p-4 border-t border-slate-200 flex justify-end gap-2 mt-6">
+          <button type="button" onclick="closeModal('modal-manage-user')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl border border-slate-300 text-sm">
+            ยกเลิก
+          </button>
+          <button type="submit" class="btn-large btn-primary-blue py-2 px-5 text-sm font-bold shadow">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>บันทึกบัญชี</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL เปลี่ยนรหัสผ่านพนักงาน (CHANGE PASSWORD MODAL - CEO ONLY) -->
+  <div id="modal-change-password" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="bg-gradient-to-r from-amber-600 to-amber-700 px-6 py-4 text-white flex items-center justify-between">
+        <div class="font-bold text-lg flex items-center gap-2">
+          <i data-lucide="key" class="w-5 h-5"></i>
+          <span>เปลี่ยนรหัสผ่านพนักงาน</span>
+        </div>
+        <button onclick="closeModal('modal-change-password')" class="text-amber-100 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form onsubmit="saveUserPassword(event)" class="p-6 space-y-4 text-sm">
+        <input type="hidden" id="change-pwd-user-id">
+
+        <div class="bg-amber-50 p-3.5 rounded-xl border border-amber-200">
+          <div class="text-xs text-slate-500">พนักงานที่ต้องการเปลี่ยนรหัส:</div>
+          <div class="font-bold text-slate-900 text-base" id="change-pwd-user-name">-</div>
+          <div class="text-xs text-sky-800 font-medium mt-0.5" id="change-pwd-user-email">-</div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">กำหนดรหัสผ่านใหม่ <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <input type="text" id="change-pwd-new-password" class="input-large w-full font-bold text-base" placeholder="เช่น farm2026" required minlength="4">
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">รหัสผ่านใหม่จะมีผลทันที พนักงานจะต้องใช้รหัสนี้ในการเข้าสู่ระบบ</p>
+        </div>
+
+        <div class="bg-slate-100 -mx-6 -mb-6 p-4 border-t border-slate-200 flex justify-end gap-2 mt-6">
+          <button type="button" onclick="closeModal('modal-change-password')" class="btn-large bg-white hover:bg-slate-200 text-slate-700 py-2 px-4 rounded-xl border border-slate-300 text-sm">
+            ยกเลิก
+          </button>
+          <button type="submit" class="btn-large bg-amber-600 hover:bg-amber-700 text-white py-2 px-5 text-sm font-bold shadow">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>บันทึกรหัสผ่านใหม่</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
   <!-- 4. MODAL แจ้งเคลมสินค้า & แนบรูปถ่าย/วิดีโอยืนยันความเสียหาย -->
   <div id="modal-new-claim" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
     <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[94vh] flex flex-col overflow-hidden">
@@ -1374,20 +1674,22 @@
 
       <div class="p-6 space-y-5">
         
-        <!-- Quick Role Switch Buttons (สำหรับทดสอบ 4 บทบาทได้ทันทีในคลิกเดียว) -->
-        <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-            สลับบทบาทรวดเร็ว (คลิกเลือกเพื่อทดสอบ):
-          </label>
-          <div class="grid grid-cols-2 gap-2" id="quick-role-buttons">
-            <!-- Populated by JS -->
+        <!-- Quick Role Switch Buttons (สำหรับ CEO เท่านั้น) -->
+        <div id="ceo-quick-role-container" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+              สลับบทบาทรวดเร็ว (เฉพาะ CEO สำหรับตรวจสอบระบบ):
+            </label>
+            <div class="grid grid-cols-2 gap-2" id="quick-role-buttons">
+              <!-- Populated by JS -->
+            </div>
           </div>
-        </div>
 
-        <div class="relative flex py-1 items-center">
-          <div class="flex-grow border-t border-slate-200"></div>
-          <span class="flex-shrink mx-3 text-xs text-slate-400 font-semibold">หรือล็อกอินด้วยอีเมล</span>
-          <div class="flex-grow border-t border-slate-200"></div>
+          <div class="relative flex py-1 items-center">
+            <div class="flex-grow border-t border-slate-200"></div>
+            <span class="flex-shrink mx-3 text-xs text-slate-400 font-semibold">หรือล็อกอินสลับบัญชีด้วยอีเมล</span>
+            <div class="flex-grow border-t border-slate-200"></div>
+          </div>
         </div>
 
         <!-- Email & Password Form -->
@@ -1417,29 +1719,6 @@
   </div>
 
 
-  <!-- DATALIST FOR PRODUCT AUTOCOMPLETE -->
-  <datalist id="catalog-products-datalist">
-    <option value="ปลาดุกบิ๊กอุย">พันธุ์ปลา</option>
-    <option value="ปลานิลจิตรลดา">พันธุ์ปลา</option>
-    <option value="ปลาทับทิมซีพี">พันธุ์ปลา</option>
-    <option value="ปลาสวายบ่อ">พันธุ์ปลา</option>
-    <option value="ปลากดคังน้ำจืด">พันธุ์ปลา</option>
-    <option value="ปลาสลิดดอนกระเบื้อง">พันธุ์ปลา</option>
-    <option value="ปลาหมอชุมพร 1">พันธุ์ปลา</option>
-    <option value="อาหารไฮเกรด 9006T อนุบาลลูกปลา (10 กก.)">อาหารปลา</option>
-    <option value="อาหารปลาดุกเล็ก เบอร์ 1 (20 กก.)">อาหารปลา</option>
-    <option value="อาหารปลาดุกใหญ่ เบอร์ 3 (20 กก.)">อาหารปลา</option>
-    <option value="อาหารปลากินพืช เบอร์ 2 (20 กก.)">อาหารปลา</option>
-    <option value="กระชังบกเย็บสำเร็จ ผ้ายาง+มุ้งไนลอน 2x3x1.2 ม.">กระชังเลี้ยงปลา</option>
-    <option value="กระชังบกเย็บสำเร็จ ผ้ายาง+มุ้งไนลอน 3x4x1.2 ม.">กระชังเลี้ยงปลา</option>
-    <option value="กระชังน้ำมุ้งเขียว 3x4x1.5 ม. พร้อมเชือกร้อย">กระชังเลี้ยงปลา</option>
-    <option value="กระชังน้ำมุ้งเขียว 4x6x2.0 ม. หูแขวนหนาพิเศษ">กระชังเลี้ยงปลา</option>
-    <option value="ด่างทับทิมเกรดบ่อปลา ฆ่าเชื้อปรสิต (500 กรัม)">ยารักษาโรคปลา</option>
-    <option value="ยาเหลืองป้องกันแผลและเชื้อรา (ซอง 50 กรัม)">ยารักษาโรคปลา</option>
-    <option value="วิตามินซีเข้มข้น + แร่ธาตุคลายเครียดลูกปลา (1 กก.)">ยารักษาโรคปลา</option>
-    <option value="เกลือสมุทรบริสุทธิ์เกรดบ่อเพาะพันธุ์ (25 กก.)">ยารักษาโรคปลา</option>
-    <option value="จุลินทรีย์บำบัดน้ำและย่อยสลายของเสียก้นบ่อ (5 ลิตร)">ยารักษาโรคปลา</option>
-  </datalist>
 
   <!-- SCRIPTS -->
   <script src="js/data.js"></script>

@@ -116,6 +116,7 @@ export default {
             claims: payload.claims !== undefined ? payload.claims : (currentState.claims || []),
             drivers: payload.drivers !== undefined ? payload.drivers : (currentState.drivers || []),
             permissions: payload.permissions !== undefined ? payload.permissions : (currentState.permissions || null),
+            users: payload.users !== undefined ? payload.users : (currentState.users || []),
             updatedAt: new Date().toISOString()
           };
 

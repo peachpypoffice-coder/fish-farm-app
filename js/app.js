@@ -5,6 +5,7 @@
 
 // Application State
 const state = {
+  isLoggedIn: false,
   currentUser: DEFAULT_USERS[0], // ค่าเริ่มต้น: ผู้ใหญ่พร (CEO)
   users: DEFAULT_USERS,
   customers: [],
@@ -25,6 +26,7 @@ const state = {
 document.addEventListener('DOMContentLoaded', async () => {
   loadLocalState();
   await checkServerSync();
+  checkAuthGate();
   renderUserBadge();
   setupRoleButtons();
   setupEventListeners();
@@ -101,9 +103,11 @@ function loadLocalState() {
     const savedCustomers = localStorage.getItem('phuyaiporn_customers');
     const savedOrders = localStorage.getItem('phuyaiporn_orders');
     const savedClaims = localStorage.getItem('phuyaiporn_claims');
-    const savedUser = localStorage.getItem('phuyaiporn_current_user');
     const savedPerms = localStorage.getItem('phuyaiporn_permissions');
     const savedDrivers = localStorage.getItem('phuyaiporn_drivers');
+    const savedUsers = localStorage.getItem('phuyaiporn_users');
+    const savedLoggedIn = localStorage.getItem('phuyaiporn_logged_in');
+    const savedLoggedUserId = localStorage.getItem('phuyaiporn_logged_user_id');
 
     state.customers = savedCustomers ? JSON.parse(savedCustomers) : INITIAL_CUSTOMERS;
     state.orders = savedOrders ? JSON.parse(savedOrders) : INITIAL_ORDERS;
@@ -111,9 +115,27 @@ function loadLocalState() {
     state.permissions = savedPerms ? JSON.parse(savedPerms) : getDefaultPermissions();
     state.drivers = savedDrivers ? JSON.parse(savedDrivers) : getDefaultDrivers();
 
-    if (savedUser) {
-      const found = DEFAULT_USERS.find(u => u.id === savedUser);
-      if (found) state.currentUser = found;
+    if (savedUsers) {
+      state.users = JSON.parse(savedUsers);
+    } else {
+      state.users = DEFAULT_USERS.map(u => ({ status: 'active', ...u }));
+    }
+
+    // ตรวจสอบสถานะการล็อกอินแบบถาวร
+    if (savedLoggedIn === 'true' && savedLoggedUserId) {
+      const found = state.users.find(u => u.id === savedLoggedUserId);
+      if (found && found.status !== 'suspended') {
+        state.currentUser = found;
+        state.isLoggedIn = true;
+      } else {
+        state.currentUser = state.users[0];
+        state.isLoggedIn = false;
+        localStorage.removeItem('phuyaiporn_logged_in');
+        localStorage.removeItem('phuyaiporn_logged_user_id');
+      }
+    } else {
+      state.currentUser = state.users[0];
+      state.isLoggedIn = false;
     }
   } catch (err) {
     console.warn('Using default seed data due to storage error:', err);
@@ -122,6 +144,9 @@ function loadLocalState() {
     state.claims = INITIAL_CLAIMS;
     state.permissions = getDefaultPermissions();
     state.drivers = getDefaultDrivers();
+    state.users = DEFAULT_USERS.map(u => ({ status: 'active', ...u }));
+    state.currentUser = state.users[0];
+    state.isLoggedIn = false;
   }
 }
 
@@ -130,7 +155,10 @@ function saveState() {
     localStorage.setItem('phuyaiporn_customers', JSON.stringify(state.customers));
     localStorage.setItem('phuyaiporn_orders', JSON.stringify(state.orders));
     localStorage.setItem('phuyaiporn_claims', JSON.stringify(state.claims));
-    localStorage.setItem('phuyaiporn_current_user', state.currentUser.id);
+    localStorage.setItem('phuyaiporn_users', JSON.stringify(state.users));
+    if (state.currentUser) {
+      localStorage.setItem('phuyaiporn_current_user', state.currentUser.id);
+    }
     if (state.permissions) {
       localStorage.setItem('phuyaiporn_permissions', JSON.stringify(state.permissions));
     }
@@ -151,7 +179,8 @@ function saveState() {
         orders: state.orders,
         claims: state.claims,
         drivers: state.drivers,
-        permissions: state.permissions
+        permissions: state.permissions,
+        users: state.users
       })
     }).catch(e => console.warn('Server sync error:', e));
   }
@@ -193,6 +222,23 @@ async function checkServerSync() {
           state.permissions = json.data.permissions;
           localStorage.setItem('phuyaiporn_permissions', JSON.stringify(state.permissions));
         }
+        if (Array.isArray(json.data.users) && json.data.users.length > 0) {
+          state.users = json.data.users;
+          localStorage.setItem('phuyaiporn_users', JSON.stringify(state.users));
+
+          // ตรวจสอบผู้ใช้ปัจจุบันว่าถูกระงับหรือไม่
+          if (state.isLoggedIn && state.currentUser) {
+            const updatedUser = state.users.find(u => u.id === state.currentUser.id);
+            if (updatedUser) {
+              if (updatedUser.status === 'suspended') {
+                logoutUser(true);
+                return;
+              }
+              state.currentUser = updatedUser;
+              renderUserBadge();
+            }
+          }
+        }
       }
     } else {
       state.isServerOnline = false;
@@ -230,11 +276,11 @@ function renderUserBadge() {
   const nameEl = document.getElementById('current-user-name');
   const badgeEl = document.getElementById('current-user-badge');
 
-  if (avatarEl) avatarEl.textContent = state.currentUser.avatar;
+  if (avatarEl) avatarEl.textContent = state.currentUser.avatar || '👤';
   if (nameEl) nameEl.textContent = state.currentUser.name;
   if (badgeEl) {
     badgeEl.textContent = state.currentUser.role;
-    badgeEl.className = `badge-tag text-[10px] py-0 px-2 ${state.currentUser.badgeColor}`;
+    badgeEl.className = `badge-tag text-[10px] py-0 px-2 ${state.currentUser.badgeColor || 'bg-sky-600 text-white'}`;
   }
 
   // Show/Hide Tabs based on Role:
@@ -283,12 +329,102 @@ function renderUserBadge() {
   }
 }
 
+// Fullscreen Login Gate & Auth State
+function checkAuthGate() {
+  const gate = document.getElementById('login-gate');
+  if (!gate) return;
+
+  if (state.isLoggedIn) {
+    gate.classList.add('hidden');
+    renderUserBadge();
+    setupRoleButtons();
+  } else {
+    gate.classList.remove('hidden');
+    const errEl = document.getElementById('gate-error-msg');
+    if (errEl) errEl.classList.add('hidden');
+    const pwdInput = document.getElementById('gate-password');
+    if (pwdInput) pwdInput.value = '';
+  }
+}
+
+function handleGateLogin(e) {
+  if (e) e.preventDefault();
+  const emailInput = document.getElementById('gate-email');
+  const pwdInput = document.getElementById('gate-password');
+  const errEl = document.getElementById('gate-error-msg');
+  const errText = document.getElementById('gate-error-text');
+
+  const email = (emailInput?.value || '').trim().toLowerCase();
+  const password = (pwdInput?.value || '').trim();
+
+  const user = state.users.find(u => u.email && u.email.toLowerCase() === email);
+
+  if (!user || user.password !== password) {
+    if (errEl) {
+      errEl.classList.remove('hidden');
+      if (errText) errText.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
+    }
+    return;
+  }
+
+  if (user.status === 'suspended') {
+    if (errEl) {
+      errEl.classList.remove('hidden');
+      if (errText) errText.textContent = 'บัญชีผู้ใช้นี้ถูกระงับการใช้งาน กรุณาติดต่อ CEO / เจ้าของฟาร์ม';
+    }
+    return;
+  }
+
+  // เข้าสู่ระบบสำเร็จ บันทึก session ถาวรใน localStorage
+  if (errEl) errEl.classList.add('hidden');
+  state.currentUser = user;
+  state.isLoggedIn = true;
+
+  localStorage.setItem('phuyaiporn_logged_in', 'true');
+  localStorage.setItem('phuyaiporn_logged_user_id', user.id);
+  localStorage.setItem('phuyaiporn_current_user', user.id);
+
+  checkAuthGate();
+  showNotification(`เข้าสู่ระบบสำเร็จ: คุณ${user.name} (${user.roleLabel})`, 'success');
+
+  if (user.role === 'Driver') {
+    switchTab('daily');
+  } else if (user.role === 'QC') {
+    switchTab('claims');
+  } else {
+    switchTab(state.activeTab || 'calendar');
+  }
+}
+
+function logoutUser(force = false) {
+  if (!force) {
+    if (!confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) return;
+  }
+
+  state.isLoggedIn = false;
+  localStorage.removeItem('phuyaiporn_logged_in');
+  localStorage.removeItem('phuyaiporn_logged_user_id');
+
+  checkAuthGate();
+  if (force) {
+    showNotification('บัญชีของคุณถูกระงับการใช้งานหรือออกจากระบบแล้ว', 'error');
+  } else {
+    showNotification('ออกจากระบบเรียบร้อยแล้ว', 'info');
+  }
+}
+
 function setupRoleButtons() {
+  const roleContainer = document.getElementById('ceo-quick-role-container');
+  const isCeo = state.currentUser && state.currentUser.role === 'CEO';
+  if (roleContainer) {
+    roleContainer.style.display = isCeo ? 'block' : 'none';
+  }
+
   const container = document.getElementById('quick-role-buttons');
   if (!container) return;
   container.innerHTML = '';
 
-  DEFAULT_USERS.forEach(user => {
+  state.users.filter(u => u.status !== 'suspended').forEach(user => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `p-3 rounded-xl border text-left flex items-center space-x-2.5 transition ${
@@ -297,9 +433,9 @@ function setupRoleButtons() {
     btn.onclick = () => switchUserRole(user.id);
 
     btn.innerHTML = `
-      <span class="text-2xl">${user.avatar}</span>
+      <span class="text-2xl">${user.avatar || '👤'}</span>
       <div class="overflow-hidden">
-        <div class="text-xs font-bold text-slate-800 truncate">${user.roleLabel}</div>
+        <div class="text-xs font-bold text-slate-800 truncate">${user.roleLabel || user.name}</div>
         <div class="text-[11px] text-slate-500 truncate">${user.email}</div>
       </div>
     `;
@@ -308,9 +444,15 @@ function setupRoleButtons() {
 }
 
 function switchUserRole(userId) {
-  const user = DEFAULT_USERS.find(u => u.id === userId);
+  if (state.currentUser.role !== 'CEO') {
+    showNotification('สิทธิ์เฉพาะ CEO เท่านั้น', 'error');
+    return;
+  }
+
+  const user = state.users.find(u => u.id === userId);
   if (user) {
     state.currentUser = user;
+    localStorage.setItem('phuyaiporn_logged_user_id', user.id);
     saveState();
     renderUserBadge();
     setupRoleButtons();
@@ -331,16 +473,42 @@ function switchUserRole(userId) {
 
 function handleEmailLogin(e) {
   e.preventDefault();
-  const email = document.getElementById('login-email').value.trim();
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
   const pass = document.getElementById('login-password').value.trim();
   const errEl = document.getElementById('login-error-msg');
 
-  const user = DEFAULT_USERS.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
+  const user = state.users.find(u => u.email && u.email.toLowerCase() === email && u.password === pass);
   if (user) {
+    if (user.status === 'suspended') {
+      if (errEl) {
+        errEl.textContent = 'บัญชีนี้ถูกระงับการใช้งาน';
+        errEl.classList.remove('hidden');
+      }
+      return;
+    }
     errEl.classList.add('hidden');
-    switchUserRole(user.id);
+    state.currentUser = user;
+    state.isLoggedIn = true;
+    localStorage.setItem('phuyaiporn_logged_in', 'true');
+    localStorage.setItem('phuyaiporn_logged_user_id', user.id);
+    saveState();
+    renderUserBadge();
+    setupRoleButtons();
+    closeModal('modal-login');
+    showNotification(`เข้าสู่ระบบเป็น: ${user.name} (${user.roleLabel}) เรียบร้อยแล้ว`, 'success');
+
+    if (user.role === 'Driver') {
+      switchTab('daily');
+    } else if (user.role === 'QC') {
+      switchTab('claims');
+    } else {
+      switchTab(state.activeTab);
+    }
   } else {
-    errEl.classList.remove('hidden');
+    if (errEl) {
+      errEl.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+      errEl.classList.remove('hidden');
+    }
   }
 }
 
@@ -399,6 +567,7 @@ function switchTab(tabId) {
   if (tabId === 'permissions') {
     renderPermissionsTable();
     renderDriversList();
+    renderUsersTable();
   }
 
   lucide.createIcons();
@@ -793,12 +962,32 @@ function renderDailyQueue() {
           <div class="bg-slate-50/70 p-3.5 rounded-xl border border-slate-200 space-y-2">
             <div class="text-xs font-bold text-slate-700 uppercase tracking-wider">รายการสินค้า:</div>
             <div class="space-y-1">
-              ${order.items.map(it => `
-                <div class="flex justify-between text-xs text-slate-800 py-0.5 border-b border-slate-100 last:border-none">
-                  <span>• ${it.name} ${it.size ? `(${it.size})` : ''} x <strong>${formatNumber(it.qty)}</strong> ${it.unit}</span>
-                  <span class="font-semibold text-slate-700">${formatMoney(it.totalPrice)}</span>
+              ${order.items.map(it => {
+                const delivered = it.deliveredQty !== undefined ? it.deliveredQty : (order.status === 'delivered' ? it.qty : 0);
+                const backorder = it.backorderQty !== undefined ? it.backorderQty : (order.status === 'partially_delivered' ? Math.max(0, it.qty - delivered) : 0);
+                const isPartial = order.status === 'partially_delivered' && (backorder > 0 || delivered < it.qty);
+
+                return `
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-800 py-1 border-b border-slate-100 last:border-none gap-1">
+                    <div>
+                      <span>• ${it.name} ${it.size ? `(${it.size})` : ''} x <strong>${formatNumber(it.qty)}</strong> ${it.unit}</span>
+                      ${isPartial ? `
+                        <span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 ml-1">
+                          ส่งแล้ว ${formatNumber(delivered)} | ค้าง ${formatNumber(backorder)}
+                        </span>
+                      ` : ''}
+                    </div>
+                    <span class="font-semibold text-slate-700 text-right">${formatMoney(it.totalPrice)}</span>
+                  </div>
+                `;
+              }).join('')}
+
+              ${order.status === 'partially_delivered' ? `
+                <div class="p-2 bg-amber-100/70 rounded-lg border border-amber-300 text-[11px] text-amber-950 mt-1">
+                  <span class="font-bold">🗓️ นัดส่งส่วนที่ค้าง:</span> ${order.backorderDate ? formatThaiDate(order.backorderDate) : 'ยังไม่ระบุวัน'}
+                  ${order.backorderReason ? `<span class="italic text-amber-800"> (${order.backorderReason})</span>` : ''}
                 </div>
-              `).join('')}
+              ` : ''}
             </div>
 
             <div class="pt-2 border-t border-slate-200 text-xs space-y-1">
@@ -826,6 +1015,13 @@ function renderDailyQueue() {
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
+            ${order.status === 'partially_delivered' && state.currentUser.role !== 'Driver' ? `
+            <button onclick="openCompleteBackorderModal('${order.id}')" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 text-xs font-bold rounded-xl shadow-sm flex items-center gap-1">
+              <i data-lucide="check-check" class="w-4 h-4"></i>
+              <span>🚚 ปิดจ็อบส่งครบ</span>
+            </button>
+            ` : ''}
+
             ${canCurrentUser('print_slip') ? `
             <button onclick="viewOrderSlip('${order.id}')" class="btn-large bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 text-xs rounded-xl font-semibold">
               <i data-lucide="printer" class="w-4 h-4"></i> พิมพ์ใบส่งของ
@@ -882,6 +1078,8 @@ function getStatusBadgeHtml(status) {
   switch (status) {
     case 'delivered':
       return `<span class="badge-tag bg-emerald-100 text-emerald-800 border border-emerald-300"><i data-lucide="check" class="w-3.5 h-3.5"></i> ส่งสำเร็จ</span>`;
+    case 'partially_delivered':
+      return `<span class="badge-tag bg-amber-100 text-amber-900 border border-amber-300 font-bold"><i data-lucide="clock" class="w-3.5 h-3.5 text-amber-600"></i> ค้างส่ง (รอปิดจ็อบ)</span>`;
     case 'in_transit':
       return `<span class="badge-tag bg-sky-100 text-sky-800 border border-sky-300"><i data-lucide="truck" class="w-3.5 h-3.5"></i> อยู่ระหว่างจัดส่ง</span>`;
     case 'preparing':
@@ -1141,7 +1339,7 @@ function addOrderItemRow(defaultItem = null) {
       </select>
     </td>
     <td class="p-2.5">
-      <input type="text" value="${nameVal}" placeholder="ระบุชื่อสินค้า หรือคลิกเลือก" class="input-large py-1 px-2 text-xs w-full font-semibold row-name" list="catalog-products-datalist" oninput="calculateOrderTotals()">
+      <input type="text" value="${nameVal}" placeholder="พิมพ์ชื่อสินค้า เช่น ปลาดุกบิ๊กอุย" class="input-large py-1 px-2 text-xs w-full font-semibold row-name" autocomplete="off" oninput="calculateOrderTotals()">
     </td>
     <td class="p-2.5">
       <input type="text" value="${sizeVal}" placeholder="เช่น 2-3 นิ้ว" class="input-large py-1 px-2 text-xs w-full row-size" oninput="calculateOrderTotals()">
@@ -1765,7 +1963,8 @@ ${itemsText}
 }
 
 // ====================================================================
-// 5. UPDATE DELIVERY STATUS & PAYMENT (อัปเดตคิวส่ง & ชำระเงินหน้างาน)
+// ====================================================================
+// 5. UPDATE DELIVERY STATUS & PAYMENT (อัปเดตคิวส่ง & ชำระเงินหน้างาน & ค้างส่ง)
 // ====================================================================
 let currentUpdateOrderId = null;
 
@@ -1784,6 +1983,60 @@ function openDeliveryUpdateModal(orderId) {
   document.getElementById('update-collected-method').value = order.paymentMethod === 'เงินสด' ? 'เงินสด' : 'โอนเงิน';
   document.getElementById('update-notes-input').value = order.notes || '';
 
+  // ตรวจสอบสิทธิ์: คนขับรถส่งของ (Driver) จะไม่เห็นและไม่สามารถแก้ไขส่วนค้างส่งได้
+  const isDriver = state.currentUser.role === 'Driver';
+  const backorderSection = document.getElementById('update-backorder-section');
+  if (backorderSection) {
+    backorderSection.style.display = isDriver ? 'none' : 'block';
+  }
+
+  // Populate backorder items
+  const itemsContainer = document.getElementById('update-backorder-items-list');
+  if (itemsContainer) {
+    itemsContainer.innerHTML = '';
+    order.items.forEach((it, idx) => {
+      const deliveredQty = it.deliveredQty !== undefined ? it.deliveredQty : (order.status === 'delivered' ? it.qty : it.qty);
+      const backorderQty = Math.max(0, it.qty - deliveredQty);
+
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'bg-white p-2.5 rounded-xl border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2';
+      itemDiv.innerHTML = `
+        <div>
+          <div class="font-bold text-xs text-slate-800">${it.name} ${it.size ? `(${it.size})` : ''}</div>
+          <div class="text-[11px] text-slate-500">สั่งจองทั้งหมด: <b class="text-slate-700 font-bold">${formatNumber(it.qty)}</b> ${it.unit}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-[11px] text-slate-600 font-semibold whitespace-nowrap">ส่งมอบจริง:</label>
+          <input type="number" min="0" max="${it.qty}" value="${deliveredQty}" 
+            class="input-large text-xs py-1 px-2 w-24 text-right font-bold text-sky-800 border-amber-300 backorder-item-delivered" 
+            data-item-idx="${idx}" data-total-qty="${it.qty}" 
+            oninput="recalculateItemBackorder(this, ${it.qty}, ${idx})">
+          <span class="text-xs text-slate-500 font-medium">${it.unit}</span>
+          <div id="backorder-badge-${idx}" class="text-[11px] font-bold px-2 py-0.5 rounded ${backorderQty > 0 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}">
+            ${backorderQty > 0 ? `ค้าง ${formatNumber(backorderQty)}` : '✓ ครบ'}
+          </div>
+        </div>
+      `;
+      itemsContainer.appendChild(itemDiv);
+    });
+  }
+
+  // Backorder date & reason
+  const dateContainer = document.getElementById('update-backorder-date-container');
+  const backorderDateInput = document.getElementById('update-backorder-date');
+  const backorderReasonInput = document.getElementById('update-backorder-reason');
+  if (backorderDateInput) backorderDateInput.value = order.backorderDate || '';
+  if (backorderReasonInput) backorderReasonInput.value = order.backorderReason || '';
+  
+  const hasAnyBackorder = order.items.some(it => (it.backorderQty !== undefined && it.backorderQty > 0)) || order.status === 'partially_delivered';
+  if (dateContainer) {
+    if (hasAnyBackorder) {
+      dateContainer.classList.remove('hidden');
+    } else {
+      dateContainer.classList.add('hidden');
+    }
+  }
+
   // Slip preview
   const slipPreview = document.getElementById('update-slip-preview');
   const slipImg = document.getElementById('update-slip-img');
@@ -1795,6 +2048,70 @@ function openDeliveryUpdateModal(orderId) {
   }
 
   openModal('modal-delivery-update');
+}
+
+function recalculateItemBackorder(inputEl, totalQty, idx) {
+  let val = parseFloat(inputEl.value);
+  if (isNaN(val) || val < 0) val = 0;
+  if (val > totalQty) {
+    val = totalQty;
+    inputEl.value = totalQty;
+  }
+  const backorder = totalQty - val;
+  const badge = document.getElementById(`backorder-badge-${idx}`);
+  if (badge) {
+    if (backorder > 0) {
+      badge.className = 'text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300';
+      badge.textContent = `ค้าง ${formatNumber(backorder)}`;
+    } else {
+      badge.className = 'text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200';
+      badge.textContent = '✓ ครบ';
+    }
+  }
+
+  checkAnyBackorderExists();
+}
+
+function checkAnyBackorderExists() {
+  const inputs = document.querySelectorAll('.backorder-item-delivered');
+  let hasBackorder = false;
+  inputs.forEach(inp => {
+    const total = parseFloat(inp.dataset.totalQty || 0);
+    const val = parseFloat(inp.value || 0);
+    if (val < total) hasBackorder = true;
+  });
+
+  const dateContainer = document.getElementById('update-backorder-date-container');
+  const statusSelect = document.getElementById('update-status-select');
+  if (hasBackorder) {
+    if (dateContainer) dateContainer.classList.remove('hidden');
+    if (statusSelect && statusSelect.value === 'delivered') {
+      statusSelect.value = 'partially_delivered';
+    }
+  } else {
+    if (statusSelect && statusSelect.value === 'partially_delivered') {
+      statusSelect.value = 'delivered';
+      if (dateContainer) dateContainer.classList.add('hidden');
+    }
+  }
+}
+
+function onDeliveryStatusSelectChange(val) {
+  const dateContainer = document.getElementById('update-backorder-date-container');
+  if (val === 'partially_delivered') {
+    if (dateContainer) dateContainer.classList.remove('hidden');
+  } else {
+    const inputs = document.querySelectorAll('.backorder-item-delivered');
+    let hasBackorder = false;
+    inputs.forEach(inp => {
+      const total = parseFloat(inp.dataset.totalQty || 0);
+      const cur = parseFloat(inp.value || 0);
+      if (cur < total) hasBackorder = true;
+    });
+    if (!hasBackorder && dateContainer) {
+      dateContainer.classList.add('hidden');
+    }
+  }
 }
 
 function handleSlipImageUpload(event) {
@@ -1816,11 +2133,43 @@ function saveDeliveryUpdate() {
   const order = state.orders.find(o => o.id === currentUpdateOrderId);
   if (!order) return;
 
-  const newStatus = document.getElementById('update-status-select').value;
+  const isDriver = state.currentUser.role === 'Driver';
+  let newStatus = document.getElementById('update-status-select').value;
   const collectedAmt = parseFloat(document.getElementById('update-collected-amount').value || 0);
   const collectedMethod = document.getElementById('update-collected-method').value;
   const notes = document.getElementById('update-notes-input').value.trim();
   const slipImgSrc = document.getElementById('update-slip-img').src;
+
+  if (!isDriver) {
+    // คำนวณจำนวนส่งมอบจริงและยอดค้างส่งของแต่ละรายการสินค้า
+    const inputs = document.querySelectorAll('.backorder-item-delivered');
+    let totalBackorder = 0;
+    inputs.forEach(inp => {
+      const idx = parseInt(inp.dataset.itemIdx, 10);
+      const total = parseFloat(inp.dataset.totalQty || 0);
+      let delivered = parseFloat(inp.value || 0);
+      if (isNaN(delivered) || delivered < 0) delivered = 0;
+      if (delivered > total) delivered = total;
+
+      const backorder = total - delivered;
+      if (order.items[idx]) {
+        order.items[idx].deliveredQty = delivered;
+        order.items[idx].backorderQty = backorder;
+      }
+      totalBackorder += backorder;
+    });
+
+    if (totalBackorder > 0 || newStatus === 'partially_delivered') {
+      newStatus = 'partially_delivered';
+      order.backorderDate = document.getElementById('update-backorder-date')?.value || '';
+      order.backorderReason = document.getElementById('update-backorder-reason')?.value.trim() || '';
+    } else {
+      order.items.forEach(it => {
+        it.deliveredQty = it.qty;
+        it.backorderQty = 0;
+      });
+    }
+  }
 
   order.status = newStatus;
   order.actualCollected = collectedAmt;
@@ -1834,11 +2183,117 @@ function saveDeliveryUpdate() {
     order.paymentStatus = 'paid_full';
   }
 
+  const logEntry = {
+    id: 'hist_' + Date.now(),
+    timestamp: new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
+    editorName: state.currentUser.name,
+    editorRole: state.currentUser.roleLabel,
+    reason: `อัปเดตสถานะการจัดส่ง → ${newStatus === 'partially_delivered' ? 'ค้างส่งบางส่วน' : newStatus}`,
+    changeSummary: `สถานะ: ${newStatus} • ยอดเก็บจริง: ฿${formatNumber(collectedAmt)} (${collectedMethod}) ${notes ? `• ${notes}` : ''}`
+  };
+  order.editHistory = order.editHistory || [];
+  order.editHistory.unshift(logEntry);
+
   saveState();
   closeModal('modal-delivery-update');
   showNotification(`อัปเดตสถานะออเดอร์ ${order.id} เรียบร้อยแล้ว`, 'success');
 
   // Re-render
+  if (state.activeTab === 'calendar') renderMonthlyCalendar();
+  if (state.activeTab === 'daily') renderDailyQueue();
+  if (state.activeTab === 'orders') renderOrdersList();
+}
+
+// ====================================================================
+// COMPLETE BACKORDER JOB (ระบบปิดจ็อบส่งมอบส่วนที่ค้าง)
+// ====================================================================
+let currentCompleteOrderId = null;
+
+function openCompleteBackorderModal(orderId) {
+  if (state.currentUser.role === 'Driver') {
+    showNotification('คนขับรถไม่มีสิทธิ์ปิดจ็อบส่วนที่ค้างส่ง กรุณาติดต่อหัวหน้าฟาร์มหรือ QC', 'error');
+    return;
+  }
+
+  const order = state.orders.find(o => o.id === orderId);
+  if (!order) return;
+  currentCompleteOrderId = orderId;
+
+  document.getElementById('complete-backorder-order-id').value = order.id;
+  document.getElementById('complete-backorder-cust-name').textContent = `ลูกค้า: ${order.customerName} (${order.customerPhone})`;
+  document.getElementById('complete-backorder-order-no').textContent = `รหัสจอง: ${order.id} • วันที่เริ่มส่ง: ${formatThaiDate(order.deliveryDate)}`;
+  document.getElementById('complete-backorder-due').textContent = formatMoney(order.remainingBalance);
+  document.getElementById('complete-backorder-collected').value = order.remainingBalance;
+  document.getElementById('complete-backorder-notes').value = '';
+
+  const list = document.getElementById('complete-backorder-items-list');
+  if (list) {
+    list.innerHTML = '';
+    order.items.forEach(it => {
+      const delivered = it.deliveredQty !== undefined ? it.deliveredQty : 0;
+      const backorder = it.backorderQty !== undefined ? it.backorderQty : Math.max(0, it.qty - delivered);
+
+      const div = document.createElement('div');
+      div.className = 'p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-xs';
+      div.innerHTML = `
+        <div>
+          <div class="font-bold text-slate-800">${it.name} ${it.size ? `(${it.size})` : ''}</div>
+          <div class="text-[11px] text-slate-500">ยอดสั่ง: ${formatNumber(it.qty)} ${it.unit} • ส่งไปแล้ว: ${formatNumber(delivered)} ${it.unit}</div>
+        </div>
+        <div class="text-right">
+          <span class="inline-flex items-center gap-1 font-bold text-xs px-2.5 py-1 rounded-full ${backorder > 0 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800'}">
+            ${backorder > 0 ? `📦 ค้างส่ง ${formatNumber(backorder)} ${it.unit} → ส่งครบ` : '✓ ส่งครบแล้ว'}
+          </span>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  openModal('modal-complete-backorder');
+  lucide.createIcons();
+}
+
+function confirmCompleteBackorder() {
+  if (state.currentUser.role === 'Driver') {
+    showNotification('คนขับรถไม่มีสิทธิ์ปิดจ็อบ', 'error');
+    return;
+  }
+
+  const order = state.orders.find(o => o.id === currentCompleteOrderId);
+  if (!order) return;
+
+  const collected = parseFloat(document.getElementById('complete-backorder-collected')?.value || 0);
+  const notes = document.getElementById('complete-backorder-notes')?.value.trim() || '';
+
+  // ปรับสินค้าทุกรายการเป็นส่งครบ 100%
+  order.items.forEach(it => {
+    it.deliveredQty = it.qty;
+    it.backorderQty = 0;
+  });
+
+  order.status = 'delivered';
+  order.paymentStatus = 'paid_full';
+  order.remainingBalance = Math.max(0, order.remainingBalance - collected);
+  order.actualCollected = (order.actualCollected || 0) + collected;
+  order.completedBackorderAt = new Date().toLocaleString('th-TH');
+  order.completedBackorderBy = state.currentUser.name;
+
+  const logEntry = {
+    id: 'hist_' + Date.now(),
+    timestamp: new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
+    editorName: state.currentUser.name,
+    editorRole: state.currentUser.roleLabel,
+    reason: 'ส่งมอบสินค้าส่วนที่ค้างส่งครบถ้วน (ปิดจ็อบคำสั่งซื้อ)',
+    changeSummary: `ปิดจ็อบส่งครบทุกรายการ ${notes ? `• หมายเหตุ: ${notes}` : ''}`
+  };
+  order.editHistory = order.editHistory || [];
+  order.editHistory.unshift(logEntry);
+
+  saveState();
+  closeModal('modal-complete-backorder');
+  showNotification(`ปิดจ็อบคำสั่งซื้อ ${order.id} ส่งมอบครบถ้วนแล้ว!`, 'success');
+
   if (state.activeTab === 'calendar') renderMonthlyCalendar();
   if (state.activeTab === 'daily') renderDailyQueue();
   if (state.activeTab === 'orders') renderOrdersList();
@@ -2265,7 +2720,6 @@ function renderOrdersList() {
   const icon = document.getElementById('order-sort-icon');
   if (icon) icon.textContent = orderDateSortDir === 'desc' ? '↓' : '↑';
 
-
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
@@ -2281,56 +2735,116 @@ function renderOrdersList() {
   filtered.forEach(o => {
     const isPickup = o.deliveryType === 'pickup';
     const statusBadge = getStatusBadgeHtml(o.status);
+    const isPartiallyDelivered = o.status === 'partially_delivered';
+    const canCompleteBackorder = isPartiallyDelivered && state.currentUser.role !== 'Driver';
 
     html += `
       <tr class="hover:bg-slate-50/90 transition">
-        <td class="py-3 px-4">
-          <div class="font-bold text-sky-900 flex items-center gap-1.5">
-            <span>${o.id}</span>
-            ${o.editHistory && o.editHistory.length > 0 ? `
-              <button onclick="viewOrderHistory('${o.id}')" title="ดูประวัติการแก้ไข (${o.editHistory.length} ครั้ง)" class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-bold hover:bg-purple-200 cursor-pointer">
-                📝 แก้ไข (${o.editHistory.length})
-              </button>
-            ` : ''}
+        <!-- ช่องรหัสและวันส่ง ขนาดเล็กลงและกระชับขึ้นตามที่ขอ -->
+        <td class="py-3 px-2 sm:px-3 align-top">
+          <div class="font-bold text-sky-950 text-xs sm:text-sm truncate">
+            ${o.id}
           </div>
-          <div class="text-xs text-slate-500">${formatThaiDate(o.deliveryDate)}</div>
+          <div class="text-[11px] text-slate-500 mt-0.5 whitespace-nowrap">
+            ${formatThaiDate(o.deliveryDate)}
+          </div>
+          ${o.editHistory && o.editHistory.length > 0 ? `
+            <button onclick="viewOrderHistory('${o.id}')" title="ดูประวัติการแก้ไข (${o.editHistory.length} ครั้ง)" class="mt-1 inline-block text-[9px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-bold hover:bg-purple-200">
+              📝 แก้ไข (${o.editHistory.length})
+            </button>
+          ` : ''}
         </td>
-        <td class="py-3 px-4">
+
+        <!-- ลูกค้า & ที่อยู่ -->
+        <td class="py-3 px-3 align-top">
           <div class="font-bold text-slate-900">${o.customerName}</div>
           <div class="text-xs text-slate-500">${o.customerPhone}</div>
-          <div class="text-[11px] text-slate-400 truncate max-w-[200px]">${isPickup ? 'รับเองหน้าฟาร์ม' : (o.deliveryAddress || '-')}</div>
+          <div class="text-[11px] text-slate-400 truncate max-w-[180px]">${isPickup ? '🏠 รับเองหน้าฟาร์ม' : (o.deliveryAddress || '-')}</div>
         </td>
-        <td class="py-3 px-4">
-          <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${isPickup ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}">
-            ${isPickup ? '🏠 รับหน้าฟาร์ม' : '🚚 จัดส่ง'}
+
+        <!-- รูปแบบรับสินค้า -->
+        <td class="py-3 px-2 text-center align-top">
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${isPickup ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'} whitespace-nowrap">
+            ${isPickup ? '🏠 หน้าฟาร์ม' : '🚚 จัดส่ง'}
           </span>
         </td>
-        <td class="py-3 px-4">
-          <div class="text-xs text-slate-700 max-w-xs space-y-0.5">
-            ${o.items.map(it => `<div>• ${it.name} (${it.size || ''}) x ${formatNumber(it.qty)} ${it.unit}</div>`).join('')}
+
+        <!-- รายการสินค้า: ขยายกว้างขึ้น แยกรายการเป็นบรรทัด & แสดงจำนวนค้างส่งชัดเจน -->
+        <td class="py-3 px-3 sm:px-4 align-top">
+          <div class="space-y-1.5 min-w-[280px]">
+            ${o.items.map(it => {
+              const delivered = it.deliveredQty !== undefined ? it.deliveredQty : (o.status === 'delivered' ? it.qty : 0);
+              const backorder = it.backorderQty !== undefined ? it.backorderQty : (isPartiallyDelivered ? Math.max(0, it.qty - delivered) : 0);
+              const hasBackorder = isPartiallyDelivered && (backorder > 0 || delivered < it.qty);
+
+              return `
+                <div class="p-2 rounded-xl ${hasBackorder ? 'bg-amber-50/90 border border-amber-200 shadow-2xs' : 'bg-slate-50 border border-slate-100'} text-xs flex items-center justify-between gap-2">
+                  <div class="font-medium text-slate-800">
+                    <span class="font-bold text-slate-900">• ${it.name}</span>
+                    ${it.size ? `<span class="text-slate-500 text-[11px]">(${it.size})</span>` : ''}
+                    <span class="text-slate-700 font-bold ml-1">x ${formatNumber(it.qty)} ${it.unit}</span>
+                  </div>
+                  <div>
+                    ${hasBackorder ? `
+                      <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/90 text-amber-950 whitespace-nowrap">
+                        <span>ส่งแล้ว ${formatNumber(delivered)}</span>
+                        <span>|</span>
+                        <span class="text-red-700">ค้าง ${formatNumber(backorder)}</span>
+                      </span>
+                    ` : `
+                      <span class="text-[10px] text-slate-400 whitespace-nowrap">${formatMoney(it.totalPrice)}</span>
+                    `}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+
+            ${isPartiallyDelivered ? `
+              <div class="p-2 bg-amber-100/70 rounded-xl border border-amber-300 text-[11px] text-amber-950 flex flex-wrap items-center justify-between gap-1">
+                <div class="font-semibold flex items-center gap-1">
+                  <span>🗓️ นัดส่งรอบถัดไป:</span>
+                  <span class="font-bold text-amber-900">${o.backorderDate ? formatThaiDate(o.backorderDate) : 'ยังไม่ระบุวัน'}</span>
+                </div>
+                ${o.backorderReason ? `<div class="text-[10px] text-amber-800 italic">(${o.backorderReason})</div>` : ''}
+              </div>
+            ` : ''}
           </div>
         </td>
-        <td class="py-3 px-4 text-right font-bold text-slate-900">
+
+        <!-- ยอดสุทธิ -->
+        <td class="py-3 px-3 text-right font-bold text-slate-900 whitespace-nowrap align-top">
           ${formatMoney(o.netTotal)}
         </td>
-        <td class="py-3 px-4 text-right text-xs">
-          <div class="text-emerald-700">มัดจำ: ${formatMoney(o.deposit)}</div>
+
+        <!-- มัดจำ/คงเหลือ -->
+        <td class="py-3 px-3 text-right text-xs whitespace-nowrap align-top">
+          <div class="text-emerald-700 font-medium">มัดจำ: ${formatMoney(o.deposit)}</div>
           <div class="font-bold text-amber-800">คงเหลือ: ${formatMoney(o.remainingBalance)}</div>
         </td>
-        <td class="py-3 px-4 text-center">
+
+        <!-- สถานะ -->
+        <td class="py-3 px-2 sm:px-3 text-center align-top">
           ${statusBadge}
         </td>
-        <td class="py-3 px-4 text-center">
-          <div class="flex items-center justify-center space-x-1">
+
+        <!-- จัดการ -->
+        <td class="py-3 px-2 sm:px-3 text-center align-top">
+          <div class="flex items-center justify-center flex-wrap gap-1">
+            ${canCompleteBackorder ? `
+              <button onclick="openCompleteBackorderModal('${o.id}')" title="ส่งมอบส่วนที่ค้างครบแล้ว (ปิดจ็อบ)" class="py-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition">
+                <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
+                <span>ปิดจ็อบ</span>
+              </button>
+            ` : ''}
             ${canCurrentUser('print_slip') ? `
-            <button onclick="viewOrderSlip('${o.id}')" title="ดูใบส่งของ" class="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700">
-              <i data-lucide="file-text" class="w-4 h-4"></i>
-            </button>
+              <button onclick="viewOrderSlip('${o.id}')" title="ดูใบส่งของ" class="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+              </button>
             ` : ''}
             ${canCurrentUser('edit_order') ? `
-            <button onclick="openEditOrderModal('${o.id}')" title="แก้ไขการจอง (เปลี่ยนวัน/ข้อมูลสินค้า)" class="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700">
-              <i data-lucide="edit-3" class="w-4 h-4"></i>
-            </button>
+              <button onclick="openEditOrderModal('${o.id}')" title="แก้ไขการจอง (เปลี่ยนวัน/ข้อมูลสินค้า)" class="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+              </button>
             ` : ''}
             ${o.editHistory && o.editHistory.length > 0 ? `
               <button onclick="viewOrderHistory('${o.id}')" title="ดูประวัติการแก้ไข (${o.editHistory.length} ครั้ง)" class="p-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-800">
@@ -2338,14 +2852,14 @@ function renderOrdersList() {
               </button>
             ` : ''}
             ${canCurrentUser('update_delivery') ? `
-            <button onclick="openDeliveryUpdateModal('${o.id}')" title="อัปเดตสถานะ" class="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700">
-              <i data-lucide="truck" class="w-4 h-4"></i>
-            </button>
+              <button onclick="openDeliveryUpdateModal('${o.id}')" title="อัปเดตสถานะจัดส่ง" class="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700">
+                <i data-lucide="truck" class="w-4 h-4"></i>
+              </button>
             ` : ''}
             ${o.status !== 'cancelled' && o.status !== 'delivered' && canCurrentUser('cancel_order') ? `
-            <button onclick="openCancelOrderModal('${o.id}')" title="ยกเลิกการจอง" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700">
-              <i data-lucide="x-circle" class="w-4 h-4"></i>
-            </button>
+              <button onclick="openCancelOrderModal('${o.id}')" title="ยกเลิกการจอง" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700">
+                <i data-lucide="x-circle" class="w-4 h-4"></i>
+              </button>
             ` : ''}
           </div>
         </td>
@@ -3408,4 +3922,295 @@ function promptResetSystemData() {
   if (state.activeTab === 'analytics') renderAnalyticsDashboard();
 
   alert("✅ ล้างข้อมูลทดสอบเรียบร้อยแล้ว!\nระบบพร้อมสำหรับการลงบันทึกงานจริงจาก 0 แล้วครับ (ซิงค์ขึ้นคลาวด์ทุกอุปกรณ์แล้ว)");
+}
+
+// ====================================================================
+// 12. STAFF & ACCOUNT MANAGEMENT (CEO ONLY - จัดการบัญชี & รหัสผ่านพนักงาน)
+// ====================================================================
+
+function renderUsersTable() {
+  const tbody = document.getElementById('users-management-table-body');
+  if (!tbody) return;
+
+  if (!state.users || state.users.length === 0) {
+    state.users = DEFAULT_USERS.map(u => ({ status: 'active', ...u }));
+  }
+
+  let html = '';
+  state.users.forEach(u => {
+    const isCeo = u.id === 'usr_ceo';
+    const isSuspended = u.status === 'suspended';
+
+    html += `
+      <tr class="hover:bg-slate-50/80 transition ${isSuspended ? 'bg-red-50/40 text-slate-400' : ''}">
+        <td class="py-3.5 px-4 font-semibold text-slate-800">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">${u.avatar || '👤'}</span>
+            <div>
+              <div class="font-bold ${isSuspended ? 'line-through text-slate-500' : 'text-slate-800'}">${u.name}</div>
+              <div class="text-[11px] text-slate-400">${u.roleLabel || u.role}</div>
+            </div>
+          </div>
+        </td>
+        <td class="py-3.5 px-4 font-mono text-xs ${isSuspended ? 'text-slate-400 line-through' : 'text-slate-600'}">
+          ${u.email}
+        </td>
+        <td class="py-3.5 px-3 text-center">
+          <span class="badge-tag text-xs ${u.badgeColor || 'bg-slate-200 text-slate-700'}">
+            ${u.role}
+          </span>
+        </td>
+        <td class="py-3.5 px-3 text-center">
+          <span class="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${isSuspended ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'}">
+            <span>${isSuspended ? '🔴 ระงับใช้งาน' : '🟢 ปกติ'}</span>
+          </span>
+        </td>
+        <td class="py-3.5 px-4 text-center">
+          <div class="flex items-center justify-center gap-1.5 flex-wrap">
+            <button onclick="openChangePasswordModal('${u.id}')" title="เปลี่ยนรหัสผ่าน" class="btn-large bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs py-1.5 px-2.5 rounded-lg border border-amber-300 font-semibold flex items-center gap-1 shadow-2xs">
+              <i data-lucide="key" class="w-3.5 h-3.5"></i>
+              <span>เปลี่ยนรหัส</span>
+            </button>
+            <button onclick="openEditUserModal('${u.id}')" title="แก้ไขข้อมูล" class="btn-large bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs py-1.5 px-2.5 rounded-lg border border-sky-300 font-semibold flex items-center gap-1 shadow-2xs">
+              <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+              <span>แก้ไข</span>
+            </button>
+            ${!isCeo ? `
+              <button onclick="toggleUserStatus('${u.id}')" title="${isSuspended ? 'ปลดระงับการใช้งาน' : 'ระงับการใช้งาน (พนักงานลาออก)'}" class="btn-large ${isSuspended ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300'} text-xs py-1.5 px-2.5 rounded-lg border font-semibold flex items-center gap-1 shadow-2xs">
+                <i data-lucide="${isSuspended ? 'check-circle' : 'slash'}" class="w-3.5 h-3.5"></i>
+                <span>${isSuspended ? 'ปลดระงับ' : 'ระงับ'}</span>
+              </button>
+              <button onclick="deleteUserAccount('${u.id}')" title="ลบบัญชีผู้ใช้ถาวร" class="btn-large bg-red-100 hover:bg-red-200 text-red-700 text-xs py-1.5 px-2 rounded-lg border border-red-300 font-semibold shadow-2xs">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            ` : `
+              <span class="text-[11px] text-slate-400 italic px-2">เจ้าของฟาร์ม</span>
+            `}
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+  lucide.createIcons();
+}
+
+function openChangePasswordModal(userId) {
+  if (state.currentUser.role !== 'CEO') {
+    showNotification('สิทธิ์เฉพาะ CEO เท่านั้น', 'error');
+    return;
+  }
+
+  const user = state.users.find(u => u.id === userId);
+  if (!user) return;
+
+  document.getElementById('change-pwd-user-id').value = user.id;
+  document.getElementById('change-pwd-user-name').textContent = `${user.avatar || '👤'} ${user.name} (${user.roleLabel || user.role})`;
+  document.getElementById('change-pwd-user-email').textContent = `อีเมล: ${user.email}`;
+  document.getElementById('change-pwd-new-password').value = '';
+
+  openModal('modal-change-password');
+}
+
+function saveUserPassword(e) {
+  e.preventDefault();
+  if (state.currentUser.role !== 'CEO') {
+    showNotification('สิทธิ์เฉพาะ CEO เท่านั้น', 'error');
+    return;
+  }
+
+  const userId = document.getElementById('change-pwd-user-id').value;
+  const newPassword = document.getElementById('change-pwd-new-password').value.trim();
+
+  if (!newPassword || newPassword.length < 4) {
+    alert('กรุณากำหนดรหัสผ่านอย่างน้อย 4 ตัวอักษร');
+    return;
+  }
+
+  const user = state.users.find(u => u.id === userId);
+  if (!user) return;
+
+  user.password = newPassword;
+  saveState();
+  closeModal('modal-change-password');
+  renderUsersTable();
+  showNotification(`เปลี่ยนรหัสผ่านสำหรับ ${user.name} เรียบร้อยแล้ว (รหัสใหม่: ${newPassword})`, 'success');
+}
+
+function toggleUserStatus(userId) {
+  if (state.currentUser.role !== 'CEO') {
+    showNotification('สิทธิ์เฉพาะ CEO เท่านั้น', 'error');
+    return;
+  }
+
+  if (userId === 'usr_ceo') {
+    alert('ไม่สามารถระงับบัญชี CEO ได้');
+    return;
+  }
+
+  const user = state.users.find(u => u.id === userId);
+  if (!user) return;
+
+  const willSuspend = user.status !== 'suspended';
+  const confirmMsg = willSuspend 
+    ? `คุณต้องการ "ระงับการใช้งาน" บัญชีของ ${user.name} (${user.email}) ใช่หรือไม่?\nพนักงานจะไม่สามารถล็อกอินเข้าสู่ระบบได้อีก`
+    : `คุณต้องการ "ปลดระงับการใช้งาน" บัญชีของ ${user.name} ใช่หรือไม่?`;
+
+  if (!confirm(confirmMsg)) return;
+
+  user.status = willSuspend ? 'suspended' : 'active';
+  saveState();
+  renderUsersTable();
+  setupRoleButtons();
+  showNotification(`${willSuspend ? 'ระงับ' : 'ปลดระงับ'} บัญชี ${user.name} เรียบร้อยแล้ว`, willSuspend ? 'warning' : 'success');
+}
+
+function deleteUserAccount(userId) {
+  if (state.currentUser.role !== 'CEO') {
+    showNotification('สิทธิ์เฉพาะ CEO เท่านั้น', 'error');
+    return;
+  }
+
+  if (userId === 'usr_ceo') {
+    alert('ไม่สามารถลบบัญชี CEO ได้');
+    return;
+  }
+
+  const user = state.users.find(u => u.id === userId);
+  if (!user) return;
+
+  if (!confirm(`⚠️ ยืนยันการลบบัญชีของ "${user.name}" (${user.email}) ถาวรหรือไม่?\nการกระทำนี้ไม่สามารถย้อนกลับได้`)) {
+    return;
+  }
+
+  state.users = state.users.filter(u => u.id !== userId);
+  saveState();
+  renderUsersTable();
+  setupRoleButtons();
+  showNotification(`ลบบัญชี ${user.name} ออกจากระบบแล้ว`, 'info');
+}
+
+function openAddUserModal() {
+  if (state.currentUser.role !== 'CEO') {
+    showNotification('สิทธิ์เฉพาะ CEO เท่านั้น', 'error');
+    return;
+  }
+
+  document.getElementById('modal-manage-user-title').textContent = 'เพิ่มผู้ใช้งานใหม่';
+  document.getElementById('user-manage-id').value = '';
+  document.getElementById('user-manage-name').value = '';
+  document.getElementById('user-manage-email').value = '';
+  document.getElementById('user-manage-password').value = '';
+  document.getElementById('user-manage-password').required = true;
+  document.getElementById('user-manage-password-box').classList.remove('hidden');
+  document.getElementById('user-manage-role').value = 'Manager';
+  document.getElementById('user-manage-status').value = 'active';
+
+  openModal('modal-manage-user');
+}
+
+function openEditUserModal(userId) {
+  if (state.currentUser.role !== 'CEO') {
+    showNotification('สิทธิ์เฉพาะ CEO เท่านั้น', 'error');
+    return;
+  }
+
+  const user = state.users.find(u => u.id === userId);
+  if (!user) return;
+
+  document.getElementById('modal-manage-user-title').textContent = `แก้ไขข้อมูล: ${user.name}`;
+  document.getElementById('user-manage-id').value = user.id;
+  document.getElementById('user-manage-name').value = user.name;
+  document.getElementById('user-manage-email').value = user.email;
+  document.getElementById('user-manage-password').value = '';
+  document.getElementById('user-manage-password').required = false;
+  document.getElementById('user-manage-password-box').classList.add('hidden');
+  document.getElementById('user-manage-role').value = user.role;
+  document.getElementById('user-manage-status').value = user.status || 'active';
+
+  openModal('modal-manage-user');
+}
+
+function saveUserData(e) {
+  e.preventDefault();
+  if (state.currentUser.role !== 'CEO') {
+    showNotification('สิทธิ์เฉพาะ CEO เท่านั้น', 'error');
+    return;
+  }
+
+  const userId = document.getElementById('user-manage-id').value;
+  const name = document.getElementById('user-manage-name').value.trim();
+  const email = document.getElementById('user-manage-email').value.trim().toLowerCase();
+  const password = document.getElementById('user-manage-password').value.trim();
+  const role = document.getElementById('user-manage-role').value;
+  const status = document.getElementById('user-manage-status').value;
+
+  const roleMeta = {
+    CEO: { label: 'CEO / เจ้าของฟาร์ม', color: 'bg-amber-500 text-white', avatar: '👨‍🌾' },
+    Manager: { label: 'ผู้จัดการฟาร์ม', color: 'bg-sky-600 text-white', avatar: '📋' },
+    QC: { label: 'ฝ่ายตรวจสอบคุณภาพ (QC)', color: 'bg-emerald-600 text-white', avatar: '🔬' },
+    Driver: { label: 'พนักงานขับรถส่งของ', color: 'bg-orange-500 text-white', avatar: '🚚' }
+  };
+
+  const meta = roleMeta[role] || { label: role, color: 'bg-slate-600 text-white', avatar: '👤' };
+
+  if (userId) {
+    // โหมดแก้ไข
+    const user = state.users.find(u => u.id === userId);
+    if (!user) return;
+
+    // เช็คอีเมลซ้ำกับคนอื่น
+    const existing = state.users.find(u => u.id !== userId && u.email.toLowerCase() === email);
+    if (existing) {
+      alert('อีเมลนี้ถูกใช้งานโดยบัญชีอื่นแล้ว กรุณาใช้อีเมลอื่น');
+      return;
+    }
+
+    user.name = name;
+    user.email = email;
+    user.role = role;
+    user.roleLabel = meta.label;
+    user.badgeColor = meta.color;
+    user.avatar = meta.avatar;
+    user.status = status;
+    if (password) user.password = password;
+
+    showNotification(`อัปเดตข้อมูล ${user.name} เรียบร้อยแล้ว`, 'success');
+  } else {
+    // โหมดเพิ่มใหม่
+    const existing = state.users.find(u => u.email.toLowerCase() === email);
+    if (existing) {
+      alert('อีเมลนี้ถูกใช้งานในระบบแล้ว กรุณาใช้อีเมลอื่น');
+      return;
+    }
+
+    if (!password || password.length < 4) {
+      alert('กรุณากำหนดรหัสผ่านเริ่มต้นอย่างน้อย 4 ตัวอักษร');
+      return;
+    }
+
+    const newUser = {
+      id: 'usr_' + Date.now(),
+      name,
+      email,
+      password,
+      role,
+      roleLabel: meta.label,
+      badgeColor: meta.color,
+      avatar: meta.avatar,
+      status
+    };
+    state.users.push(newUser);
+    showNotification(`เพิ่มผู้ใช้งาน ${newUser.name} เรียบร้อยแล้ว`, 'success');
+  }
+
+  saveState();
+  closeModal('modal-manage-user');
+  renderUsersTable();
+  setupRoleButtons();
+}
+
+function onUserRoleSelectChange(role) {
+  // Hook for future role-specific defaults if needed
 }
