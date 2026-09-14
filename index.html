@@ -314,18 +314,24 @@
       </div>
 
       <!-- Quick Fish Loading Summary Box (สรุปยอดรวมปลาที่ต้องเตรียมตัก/ขึ้นรถในวันนั้น) -->
-      <div class="farm-card p-5 bg-amber-50/80 border-amber-200">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="font-bold text-amber-900 flex items-center gap-2 text-lg">
-            <i data-lucide="package-check" class="w-6 h-6 text-amber-600"></i>
+      <div id="daily-prep-summary-card" class="farm-card p-4 sm:p-5 bg-amber-50/80 border-amber-200 transition-all">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-amber-900 flex items-center gap-2 text-base sm:text-lg">
+            <i data-lucide="package-check" class="w-5 h-5 sm:w-6 sm:h-6 text-amber-600"></i>
             <span>สรุปสินค้าที่ต้องเตรียมขึ้นรถ / ส่งมอบในวันนี้</span>
           </h3>
-          <span class="text-xs bg-amber-200 text-amber-900 font-semibold px-2.5 py-1 rounded-full">
-            รวมทุกออเดอร์
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="hidden sm:inline text-xs bg-amber-200 text-amber-900 font-semibold px-2.5 py-1 rounded-full">
+              รวมทุกออเดอร์
+            </span>
+            <button type="button" onclick="toggleDailyPrepSummary()" id="btn-toggle-prep-summary" title="เปิด/ปิดการแสดงผลสรุป" class="btn-large bg-white hover:bg-amber-100 text-amber-950 text-xs py-1.5 px-3 rounded-xl border border-amber-300 flex items-center gap-1 font-bold shadow-xs transition">
+              <i data-lucide="chevron-up" id="icon-toggle-prep" class="w-4 h-4"></i>
+              <span id="text-toggle-prep">ซ่อนสรุป</span>
+            </button>
+          </div>
         </div>
         
-        <div id="daily-prep-summary-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <div id="daily-prep-summary-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mt-3">
           <!-- Populated by JS -->
         </div>
       </div>
@@ -395,32 +401,42 @@
         </div>
       </div>
 
-      <!-- Orders Table Container -->
-      <div class="farm-card overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-slate-100/80 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                <th class="py-3 px-3 w-28 sm:w-32 cursor-pointer select-none group" onclick="toggleOrderDateSort()">
-                  <div class="flex items-center gap-1">
-                    <span>รหัส/วันส่ง</span>
-                    <span id="order-sort-icon" class="text-sky-500 font-black text-sm">↓</span>
-                  </div>
-                </th>
-                <th class="py-3 px-3 min-w-[160px]">ลูกค้า & ที่อยู่</th>
-                <th class="py-3 px-2 text-center w-24">รูปแบบ</th>
-                <th class="py-3 px-4 min-w-[320px]">รายการสินค้า & สถานะค้างส่ง</th>
-                <th class="py-3 px-3 text-right whitespace-nowrap">ยอดสุทธิ</th>
-                <th class="py-3 px-3 text-right whitespace-nowrap">มัดจำ/คงเหลือ</th>
-                <th class="py-3 px-3 text-center w-32">สถานะ</th>
-                <th class="py-3 px-3 text-center w-36">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody id="orders-table-body" class="divide-y divide-slate-100 text-sm">
-              <!-- Rendered by JS -->
-            </tbody>
-          </table>
+      <!-- Orders Table Container (Desktop: Table / Mobile: Cards) -->
+      <div class="space-y-4">
+        
+        <!-- DESKTOP TABLE VIEW (แสดงเฉพาะจอขนาดกลางขึ้นไป: hidden md:block) -->
+        <div class="farm-card overflow-hidden hidden md:block">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-100/80 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  <th class="py-3 px-3 w-28 sm:w-32 cursor-pointer select-none group" onclick="toggleOrderDateSort()">
+                    <div class="flex items-center gap-1">
+                      <span>รหัส/วันส่ง</span>
+                      <span id="order-sort-icon" class="text-sky-500 font-black text-sm">↓</span>
+                    </div>
+                  </th>
+                  <th class="py-3 px-3 min-w-[160px]">ลูกค้า & ที่อยู่</th>
+                  <th class="py-3 px-2 text-center w-24">รูปแบบ</th>
+                  <th class="py-3 px-4 min-w-[320px]">รายการสินค้า & สถานะค้างส่ง</th>
+                  <th class="py-3 px-3 text-right whitespace-nowrap">ยอดสุทธิ</th>
+                  <th class="py-3 px-3 text-right whitespace-nowrap">มัดจำ/คงเหลือ</th>
+                  <th class="py-3 px-3 text-center w-32">สถานะ</th>
+                  <th class="py-3 px-3 text-center w-36">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="orders-table-body" class="divide-y divide-slate-100 text-sm">
+                <!-- Rendered by JS -->
+              </tbody>
+            </table>
+          </div>
         </div>
+
+        <!-- MOBILE CARDS VIEW (แสดงเฉพาะบนมือถือ: block md:hidden) ไม่ต้องเลื่อนซ้ายขวา -->
+        <div id="orders-mobile-cards" class="space-y-3 block md:hidden">
+          <!-- Rendered by JS -->
+        </div>
+
       </div>
 
     </section>
@@ -1124,6 +1140,37 @@
                 <input type="text" id="update-backorder-reason" placeholder="เช่น รอไซส์ปลา 3 วัน, กระชังกำลังตัดเย็บ" class="input-large w-full bg-white text-xs border-amber-300">
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Backorder Payment Choice Box (คำนวณราคาจากปลาที่ได้รับจริง vs จ่ายเต็มตามบิล) -->
+        <div id="update-backorder-pay-box" class="hidden bg-amber-50/90 border border-amber-300 rounded-xl p-3.5 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+              <span>💰</span>
+              <span>เลือกการคิดยอดเงิน (กรณีส่งไม่ครบ):</span>
+            </span>
+            <span id="update-backorder-calc-actual-text" class="text-[11px] font-bold text-sky-800 bg-sky-100 px-2 py-0.5 rounded-full">
+              ส่งจริง: ฿0.00
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button type="button" onclick="selectBackorderPayOption('actual')" id="btn-pay-actual" class="p-2.5 rounded-xl border-2 text-left transition font-semibold text-xs border-sky-600 bg-sky-50 text-sky-950 shadow-xs">
+              <div class="flex items-center justify-between">
+                <span>💵 จ่ายเฉพาะที่ได้รับจริง</span>
+                <span class="font-bold text-sm text-sky-700" id="btn-pay-actual-val">฿0.00</span>
+              </div>
+              <div class="text-[10px] text-slate-500 mt-1">ส่วนที่ค้างส่ง ยกยอดไปเก็บรอบถัดไป</div>
+            </button>
+
+            <button type="button" onclick="selectBackorderPayOption('full')" id="btn-pay-full" class="p-2.5 rounded-xl border-2 text-left transition font-semibold text-xs border-slate-200 bg-white text-slate-700 hover:border-slate-300">
+              <div class="flex items-center justify-between">
+                <span>💳 จ่ายเต็มตามยอดบิล</span>
+                <span class="font-bold text-sm text-amber-800" id="btn-pay-full-val">฿0.00</span>
+              </div>
+              <div class="text-[10px] text-slate-500 mt-1">จ่ายครบตามบิลล่วงหน้า ไม่ต้องเก็บเพิ่ม</div>
+            </button>
           </div>
         </div>
 

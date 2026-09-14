@@ -95,6 +95,73 @@ function formatNumber(num) {
   return Number(num || 0).toLocaleString('th-TH');
 }
 
+// Item Quantity & Price Formatter: (1000*0.50) หรือ (1000*0.50/0.45) กรณีมีส่วนลด
+function formatItemQtyPrice(it, customQty) {
+  if (!it) return '';
+  const qty = customQty !== undefined ? customQty : (it.qty || 0);
+  const qtyStr = formatNumber(qty);
+
+  const formatP = (p) => {
+    const val = Number(p || 0);
+    return Number.isInteger(val) ? val.toString() : val.toFixed(2);
+  };
+
+  const up = Number(it.unitPrice || 0);
+  const discount = Number(it.unitDiscount || 0);
+  const netUp = it.netUnitPrice !== undefined ? Number(it.netUnitPrice) : (up - discount);
+  const hasDiscount = discount > 0 || netUp < up;
+
+  if (hasDiscount) {
+    return `(${qtyStr}*${formatP(up)}/${formatP(netUp)})`;
+  }
+  return `(${qtyStr}*${formatP(up)})`;
+}
+
+// Toggle Daily Preparation Summary Box
+function toggleDailyPrepSummary(forceState) {
+  const grid = document.getElementById('daily-prep-summary-grid');
+  const btn = document.getElementById('btn-toggle-prep-summary');
+  const icon = document.getElementById('icon-toggle-prep');
+  const text = document.getElementById('text-toggle-prep');
+  const card = document.getElementById('daily-prep-summary-card');
+  if (!grid || !btn) return;
+
+  const isCurrentlyHidden = grid.classList.contains('hidden');
+  const shouldHide = forceState !== undefined ? !forceState : !isCurrentlyHidden;
+
+  if (shouldHide) {
+    grid.classList.add('hidden');
+    if (text) text.textContent = 'แสดงสรุป';
+    if (icon) {
+      icon.setAttribute('data-lucide', 'chevron-down');
+    }
+    if (card) {
+      card.classList.remove('p-4', 'sm:p-5');
+      card.classList.add('p-3', 'sm:p-3.5');
+    }
+    localStorage.setItem('phuyaiporn_prep_summary_collapsed', 'true');
+  } else {
+    grid.classList.remove('hidden');
+    if (text) text.textContent = 'ซ่อนสรุป';
+    if (icon) {
+      icon.setAttribute('data-lucide', 'chevron-up');
+    }
+    if (card) {
+      card.classList.remove('p-3', 'sm:p-3.5');
+      card.classList.add('p-4', 'sm:p-5');
+    }
+    localStorage.removeItem('phuyaiporn_prep_summary_collapsed');
+  }
+  lucide.createIcons();
+}
+
+function initDailyPrepSummaryState() {
+  const isCollapsed = localStorage.getItem('phuyaiporn_prep_summary_collapsed') === 'true';
+  if (isCollapsed) {
+    toggleDailyPrepSummary(false);
+  }
+}
+
 // ====================================================================
 // PERSISTENCE & STORAGE (Local & Server Sync)
 // ====================================================================
@@ -772,7 +839,7 @@ function renderSelectedDayInspector() {
           </div>
 
           <div class="text-xs font-semibold text-sky-800 pt-1">
-            📦 รายการ: ${order.items.map(i => `${i.name} (${i.size || ''}) x ${formatNumber(i.qty)} ${i.unit}`).join(', ')}
+            📦 รายการ: ${order.items.map(i => `${i.name} (${i.size || ''}) ${formatItemQtyPrice(i)} ${i.unit}`).join(', ')}
           </div>
         </div>
 
@@ -970,7 +1037,7 @@ function renderDailyQueue() {
                 return `
                   <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-800 py-1 border-b border-slate-100 last:border-none gap-1">
                     <div>
-                      <span>• ${it.name} ${it.size ? `(${it.size})` : ''} x <strong>${formatNumber(it.qty)}</strong> ${it.unit}</span>
+                      <span>• ${it.name} ${it.size ? `(${it.size})` : ''} <strong class="text-sky-800">${formatItemQtyPrice(it)}</strong> ${it.unit}</span>
                       ${isPartial ? `
                         <span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 ml-1">
                           ส่งแล้ว ${formatNumber(delivered)} | ค้าง ${formatNumber(backorder)}
@@ -1070,6 +1137,7 @@ function renderDailyQueue() {
   });
 
   container.innerHTML = html;
+  initDailyPrepSummaryState();
   lucide.createIcons();
 }
 
@@ -1841,7 +1909,7 @@ function viewOrderSlip(orderId) {
                   <span class="text-[10px] text-slate-400 block">${it.category}</span>
                 </td>
                 <td class="py-2 px-2 text-center text-slate-600">${it.size || '-'}</td>
-                <td class="py-2 px-2 text-center font-bold text-slate-800">${formatNumber(it.qty)} ${it.unit}</td>
+                <td class="py-2 px-2 text-center font-bold text-slate-800">${formatItemQtyPrice(it)} ${it.unit}</td>
                 <td class="py-2 px-2 text-right text-slate-500">${formatMoney(it.unitPrice)}</td>
                 <td class="py-2 px-2 text-right text-amber-700 font-medium bg-amber-50/30">
                   ${it.unitDiscount > 0 ? `-${formatMoney(it.unitDiscount)}` : '-'}
@@ -1926,12 +1994,7 @@ function copyOrderSummaryForLine() {
   const isPickup = o.deliveryType === 'pickup';
 
   const itemsText = o.items.map(i => {
-    let line = `• ${i.name} ${i.size ? `(${i.size})` : ''} x ${formatNumber(i.qty)} ${i.unit}`;
-    if (i.unitDiscount > 0) {
-      line += ` [ลด ${formatMoney(i.unitDiscount)}/หน่วย -> สุทธิ ${formatMoney(i.totalPrice)}]`;
-    } else {
-      line += ` [${formatMoney(i.totalPrice)}]`;
-    }
+    let line = `• ${i.name} ${i.size ? `(${i.size})` : ''} ${formatItemQtyPrice(i)} ${i.unit} = ${formatMoney(i.totalPrice)}`;
     return line;
   }).join('\n');
 
@@ -1968,6 +2031,99 @@ ${itemsText}
 // ====================================================================
 let currentUpdateOrderId = null;
 
+let currentBackorderPayMode = 'actual'; // 'actual' หรือ 'full'
+
+function updateBackorderPaymentCalculations(order) {
+  if (!order) order = state.orders.find(o => o.id === currentUpdateOrderId);
+  if (!order) return { actualPayable: 0, fullPayable: 0, actualDeliveredGross: 0, hasAnyBackorder: false };
+
+  const payBox = document.getElementById('update-backorder-pay-box');
+  const actualValSpan = document.getElementById('btn-pay-actual-val');
+  const fullValSpan = document.getElementById('btn-pay-full-val');
+  const actualTextSpan = document.getElementById('update-backorder-calc-actual-text');
+
+  const inputs = document.querySelectorAll('.backorder-item-delivered');
+  let actualDeliveredGross = 0;
+  let hasAnyBackorder = false;
+
+  if (inputs.length > 0) {
+    inputs.forEach(inp => {
+      const idx = parseInt(inp.dataset.itemIdx, 10);
+      const total = parseFloat(inp.dataset.totalQty || 0);
+      let delivered = parseFloat(inp.value || 0);
+      if (isNaN(delivered) || delivered < 0) delivered = 0;
+      if (delivered > total) delivered = total;
+
+      if (delivered < total) hasAnyBackorder = true;
+      const it = order.items[idx];
+      if (it) {
+        const up = it.unitPrice || 0;
+        const discount = it.unitDiscount || 0;
+        const netUp = it.netUnitPrice !== undefined ? it.netUnitPrice : (up - discount);
+        actualDeliveredGross += (delivered * netUp);
+      }
+    });
+  } else {
+    order.items.forEach(it => {
+      const delivered = it.deliveredQty !== undefined ? it.deliveredQty : (order.status === 'delivered' ? it.qty : it.qty);
+      if (delivered < it.qty) hasAnyBackorder = true;
+      const up = it.unitPrice || 0;
+      const discount = it.unitDiscount || 0;
+      const netUp = it.netUnitPrice !== undefined ? it.netUnitPrice : (up - discount);
+      actualDeliveredGross += (delivered * netUp);
+    });
+  }
+
+  const deposit = Number(order.deposit || 0);
+  const actualPayable = Math.max(0, actualDeliveredGross - deposit);
+  const fullPayable = Number(order.remainingBalance || 0);
+
+  if (actualValSpan) actualValSpan.textContent = formatMoney(actualPayable);
+  if (fullValSpan) fullValSpan.textContent = formatMoney(fullPayable);
+  if (actualTextSpan) actualTextSpan.textContent = `ส่งจริง: ${formatMoney(actualDeliveredGross)}`;
+
+  if (payBox) {
+    const isDriver = state.currentUser.role === 'Driver';
+    const statusVal = document.getElementById('update-status-select')?.value;
+    if ((hasAnyBackorder || statusVal === 'partially_delivered') && !isDriver) {
+      payBox.classList.remove('hidden');
+    } else {
+      payBox.classList.add('hidden');
+    }
+  }
+
+  return { actualPayable, fullPayable, actualDeliveredGross, hasAnyBackorder };
+}
+
+function selectBackorderPayOption(mode) {
+  currentBackorderPayMode = mode;
+  const order = state.orders.find(o => o.id === currentUpdateOrderId);
+  if (!order) return;
+
+  const calc = updateBackorderPaymentCalculations(order);
+  const collectedInput = document.getElementById('update-collected-amount');
+  const btnActual = document.getElementById('btn-pay-actual');
+  const btnFull = document.getElementById('btn-pay-full');
+
+  if (mode === 'actual') {
+    if (collectedInput) collectedInput.value = calc.actualPayable;
+    if (btnActual) {
+      btnActual.className = 'p-2.5 rounded-xl border-2 text-left transition font-semibold text-xs border-sky-600 bg-sky-50 text-sky-950 shadow-xs';
+    }
+    if (btnFull) {
+      btnFull.className = 'p-2.5 rounded-xl border-2 text-left transition font-semibold text-xs border-slate-200 bg-white text-slate-700 hover:border-slate-300';
+    }
+  } else {
+    if (collectedInput) collectedInput.value = calc.fullPayable;
+    if (btnFull) {
+      btnFull.className = 'p-2.5 rounded-xl border-2 text-left transition font-semibold text-xs border-amber-600 bg-amber-50 text-amber-950 shadow-xs';
+    }
+    if (btnActual) {
+      btnActual.className = 'p-2.5 rounded-xl border-2 text-left transition font-semibold text-xs border-slate-200 bg-white text-slate-700 hover:border-slate-300';
+    }
+  }
+}
+
 function openDeliveryUpdateModal(orderId) {
   const order = state.orders.find(o => o.id === orderId);
   if (!order) return;
@@ -2003,7 +2159,7 @@ function openDeliveryUpdateModal(orderId) {
       itemDiv.innerHTML = `
         <div>
           <div class="font-bold text-xs text-slate-800">${it.name} ${it.size ? `(${it.size})` : ''}</div>
-          <div class="text-[11px] text-slate-500">สั่งจองทั้งหมด: <b class="text-slate-700 font-bold">${formatNumber(it.qty)}</b> ${it.unit}</div>
+          <div class="text-[11px] text-slate-500">สั่งจอง: <b class="text-sky-800 font-bold">${formatItemQtyPrice(it)}</b> ${it.unit}</div>
         </div>
         <div class="flex items-center gap-2">
           <label class="text-[11px] text-slate-600 font-semibold whitespace-nowrap">ส่งมอบจริง:</label>
@@ -2035,6 +2191,14 @@ function openDeliveryUpdateModal(orderId) {
     } else {
       dateContainer.classList.add('hidden');
     }
+  }
+
+  // Calculate backorder payments and set initial choice
+  const calc = updateBackorderPaymentCalculations(order);
+  if (calc.hasAnyBackorder || order.status === 'partially_delivered') {
+    selectBackorderPayOption(order.backorderPayOption || 'actual');
+  } else {
+    document.getElementById('update-collected-amount').value = order.remainingBalance;
   }
 
   // Slip preview
@@ -2070,6 +2234,10 @@ function recalculateItemBackorder(inputEl, totalQty, idx) {
   }
 
   checkAnyBackorderExists();
+  const calc = updateBackorderPaymentCalculations();
+  if (calc.hasAnyBackorder) {
+    selectBackorderPayOption(currentBackorderPayMode);
+  }
 }
 
 function checkAnyBackorderExists() {
@@ -2179,8 +2347,21 @@ function saveDeliveryUpdate() {
     order.paymentProof = slipImgSrc;
   }
 
-  if (newStatus === 'delivered') {
+  if (newStatus === 'partially_delivered') {
+    order.backorderPayOption = currentBackorderPayMode;
+    // ยอดคงเหลือยกไปเก็บรอบส่งมอบส่วนที่ค้าง
+    order.remainingBalance = Math.max(0, order.netTotal - (order.deposit || 0) - collectedAmt);
+  } else if (newStatus === 'delivered') {
+    order.remainingBalance = Math.max(0, order.remainingBalance - collectedAmt);
+  }
+
+  if (order.remainingBalance <= 0) {
+    order.remainingBalance = 0;
     order.paymentStatus = 'paid_full';
+  } else if ((order.deposit || 0) > 0 || collectedAmt > 0) {
+    order.paymentStatus = 'deposit_paid';
+  } else {
+    order.paymentStatus = 'unpaid';
   }
 
   const logEntry = {
@@ -2238,7 +2419,7 @@ function openCompleteBackorderModal(orderId) {
       div.innerHTML = `
         <div>
           <div class="font-bold text-slate-800">${it.name} ${it.size ? `(${it.size})` : ''}</div>
-          <div class="text-[11px] text-slate-500">ยอดสั่ง: ${formatNumber(it.qty)} ${it.unit} • ส่งไปแล้ว: ${formatNumber(delivered)} ${it.unit}</div>
+          <div class="text-[11px] text-slate-500">ยอดสั่ง: <strong class="text-sky-800">${formatItemQtyPrice(it)}</strong> ${it.unit} • ส่งไปแล้ว: ${formatNumber(delivered)} ${it.unit}</div>
         </div>
         <div class="text-right">
           <span class="inline-flex items-center gap-1 font-bold text-xs px-2.5 py-1 rounded-full ${backorder > 0 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800'}">
@@ -2365,7 +2546,7 @@ function addClaimItemRow() {
   const orderId = document.getElementById('claim-order-select')?.value;
   const order = orderId ? state.orders.find(o => o.id === orderId) : null;
   const itemOptions = order
-    ? order.items.map(it => `<option value="${it.name}${it.size ? ` (${it.size})` : ''}" data-unit="${it.unit}">${it.name} ${it.size ? `(${it.size})` : ''} [${formatNumber(it.qty)} ${it.unit}]</option>`).join('')
+    ? order.items.map(it => `<option value="${it.name}${it.size ? ` (${it.size})` : ''}" data-unit="${it.unit}">${it.name} ${it.size ? `(${it.size})` : ''} [${formatItemQtyPrice(it)} ${it.unit}]</option>`).join('')
     : '<option value="">-- เลือกออเดอร์ก่อน --</option>';
 
   row.innerHTML = `
@@ -2414,7 +2595,7 @@ function populateClaimItems(orderId) {
         const opt = document.createElement('option');
         opt.value = it.name + (it.size ? ` (${it.size})` : '');
         opt.dataset.unit = it.unit;
-        opt.textContent = `${it.name} ${it.size ? `(${it.size})` : ''} [${formatNumber(it.qty)} ${it.unit}]`;
+        opt.textContent = `${it.name} ${it.size ? `(${it.size})` : ''} [${formatItemQtyPrice(it)} ${it.unit}]`;
         if (opt.value === current) opt.selected = true;
         sel.appendChild(opt);
       });
@@ -2782,7 +2963,7 @@ function renderOrdersList() {
                   <div class="font-medium text-slate-800">
                     <span class="font-bold text-slate-900">• ${it.name}</span>
                     ${it.size ? `<span class="text-slate-500 text-[11px]">(${it.size})</span>` : ''}
-                    <span class="text-slate-700 font-bold ml-1">x ${formatNumber(it.qty)} ${it.unit}</span>
+                    <span class="text-sky-800 font-bold ml-1">${formatItemQtyPrice(it)} ${it.unit}</span>
                   </div>
                   <div>
                     ${hasBackorder ? `
@@ -2868,6 +3049,158 @@ function renderOrdersList() {
   });
 
   tbody.innerHTML = html;
+
+  // Render Mobile Cards (สำหรับหน้าจอมือถือ ไม่ต้องเลื่อนซ้ายขวา)
+  const mobileContainer = document.getElementById('orders-mobile-cards');
+  if (mobileContainer) {
+    if (filtered.length === 0) {
+      mobileContainer.innerHTML = `
+        <div class="farm-card p-6 text-center text-slate-400">
+          ไม่พบรายการคำสั่งจองที่ตรงกับเงื่อนไขการค้นหา
+        </div>
+      `;
+    } else {
+      let mHtml = '';
+      filtered.forEach(o => {
+        const isPickup = o.deliveryType === 'pickup';
+        const statusBadge = getStatusBadgeHtml(o.status);
+        const isPartiallyDelivered = o.status === 'partially_delivered';
+        const canCompleteBackorder = isPartiallyDelivered && state.currentUser.role !== 'Driver';
+
+        mHtml += `
+          <div class="farm-card p-4 space-y-3 border-l-4 ${o.status === 'cancelled' ? 'border-l-rose-400 opacity-65' : o.status === 'problem' ? 'border-l-red-500' : isPartiallyDelivered ? 'border-l-amber-500' : o.status === 'delivered' ? 'border-l-emerald-500' : 'border-l-sky-500'} shadow-sm">
+            
+            <!-- Top Header: ID, Date, Status -->
+            <div class="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
+              <div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="font-black text-sky-950 text-sm">${o.id}</span>
+                  <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${isPickup ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}">
+                    ${isPickup ? '🏠 หน้าฟาร์ม' : '🚚 จัดส่ง'}
+                  </span>
+                </div>
+                <div class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                  <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
+                  <span>ส่ง: <strong>${formatThaiDate(o.deliveryDate)}</strong></span>
+                  ${o.deliveryTimeSlot ? `<span class="text-slate-400">(${o.deliveryTimeSlot})</span>` : ''}
+                </div>
+              </div>
+              <div class="flex flex-col items-end gap-1">
+                ${statusBadge}
+                ${o.editHistory && o.editHistory.length > 0 ? `
+                  <button onclick="viewOrderHistory('${o.id}')" class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-bold hover:bg-purple-200">
+                    📝 แก้ไข (${o.editHistory.length})
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- Customer Info -->
+            <div class="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 text-xs space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-900 text-sm">👤 ${o.customerName}</span>
+                <a href="tel:${o.customerPhone}" class="text-sky-700 font-bold hover:underline flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                  <i data-lucide="phone" class="w-3 h-3"></i> ${o.customerPhone}
+                </a>
+              </div>
+              ${!isPickup && o.deliveryAddress ? `
+                <div class="text-[11px] text-slate-500 truncate"><i data-lucide="map-pin" class="w-3 h-3 inline text-slate-400"></i> ${o.deliveryAddress}</div>
+              ` : ''}
+            </div>
+
+            <!-- Items List -->
+            <div class="space-y-1.5">
+              <div class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">รายการสินค้า:</div>
+              ${o.items.map(it => {
+                const delivered = it.deliveredQty !== undefined ? it.deliveredQty : (o.status === 'delivered' ? it.qty : 0);
+                const backorder = it.backorderQty !== undefined ? it.backorderQty : (isPartiallyDelivered ? Math.max(0, it.qty - delivered) : 0);
+                const hasBackorder = isPartiallyDelivered && (backorder > 0 || delivered < it.qty);
+
+                return `
+                  <div class="p-2 rounded-xl ${hasBackorder ? 'bg-amber-50 border border-amber-200' : 'bg-slate-50 border border-slate-100'} text-xs flex items-center justify-between gap-2">
+                    <div>
+                      <span class="font-bold text-slate-900">• ${it.name}</span>
+                      ${it.size ? `<span class="text-slate-500 text-[11px]">(${it.size})</span>` : ''}
+                      <span class="text-sky-800 font-bold ml-1">${formatItemQtyPrice(it)} ${it.unit}</span>
+                    </div>
+                    <div class="text-right">
+                      ${hasBackorder ? `
+                        <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-950 whitespace-nowrap">
+                          <span>ส่ง ${formatNumber(delivered)}</span> | <span class="text-red-700">ค้าง ${formatNumber(backorder)}</span>
+                        </span>
+                      ` : `
+                        <span class="font-semibold text-slate-700 text-[11px]">${formatMoney(it.totalPrice)}</span>
+                      `}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+
+              ${isPartiallyDelivered ? `
+                <div class="p-2 bg-amber-100/70 rounded-xl border border-amber-300 text-[11px] text-amber-950 flex flex-wrap items-center justify-between gap-1">
+                  <div class="font-semibold flex items-center gap-1">
+                    <span>🗓️ นัดส่งรอบถัดไป:</span>
+                    <span class="font-bold text-amber-900">${o.backorderDate ? formatThaiDate(o.backorderDate) : 'ยังไม่ระบุวัน'}</span>
+                  </div>
+                  ${o.backorderReason ? `<div class="text-[10px] text-amber-800 italic">(${o.backorderReason})</div>` : ''}
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Financial Summary Grid -->
+            <div class="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center text-xs">
+              <div>
+                <div class="text-[10px] text-slate-500">ยอดสุทธิ</div>
+                <div class="font-bold text-slate-900 text-xs sm:text-sm">${formatMoney(o.netTotal)}</div>
+              </div>
+              <div class="border-x border-slate-200">
+                <div class="text-[10px] text-slate-500">มัดจำแล้ว</div>
+                <div class="font-semibold text-emerald-700 text-xs">${formatMoney(o.deposit)}</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500">ยอดคงเหลือ</div>
+                <div class="font-bold text-amber-800 text-xs sm:text-sm">${formatMoney(o.remainingBalance)}</div>
+              </div>
+            </div>
+
+            <!-- Mobile Action Buttons -->
+            <div class="pt-2 border-t border-slate-100 flex items-center justify-end gap-1.5 flex-wrap">
+              ${canCompleteBackorder ? `
+                <button onclick="openCompleteBackorderModal('${o.id}')" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl flex items-center gap-1 shadow-sm">
+                  <i data-lucide="check-check" class="w-4 h-4"></i>
+                  <span>ปิดจ็อบ</span>
+                </button>
+              ` : ''}
+              ${canCurrentUser('update_delivery') ? `
+                <button onclick="openDeliveryUpdateModal('${o.id}')" class="btn-large bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-2 px-3 rounded-xl flex items-center gap-1 shadow-sm">
+                  <i data-lucide="truck" class="w-4 h-4"></i>
+                  <span>ส่ง/รับเงิน</span>
+                </button>
+              ` : ''}
+              ${canCurrentUser('print_slip') ? `
+                <button onclick="viewOrderSlip('${o.id}')" title="พิมพ์/ส่ง LINE" class="btn-large bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs py-2 px-2.5 rounded-xl border border-slate-200">
+                  <i data-lucide="file-text" class="w-4 h-4"></i>
+                </button>
+              ` : ''}
+              ${canCurrentUser('edit_order') ? `
+                <button onclick="openEditOrderModal('${o.id}')" title="แก้ไขการจอง" class="btn-large bg-slate-100 hover:bg-slate-200 text-purple-700 text-xs py-2 px-2.5 rounded-xl border border-slate-200">
+                  <i data-lucide="edit-3" class="w-4 h-4"></i>
+                </button>
+              ` : ''}
+              ${o.status !== 'cancelled' && o.status !== 'delivered' && canCurrentUser('cancel_order') ? `
+                <button onclick="openCancelOrderModal('${o.id}')" title="ยกเลิกการจอง" class="btn-large bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs py-2 px-2.5 rounded-xl border border-rose-200">
+                  <i data-lucide="x-circle" class="w-4 h-4"></i>
+                </button>
+              ` : ''}
+            </div>
+
+          </div>
+        `;
+      });
+      mobileContainer.innerHTML = mHtml;
+    }
+  }
+
   lucide.createIcons();
 }
 
@@ -3267,7 +3600,7 @@ function exportOrdersToExcel() {
       'เบอร์โทร': o.customerPhone,
       'รูปแบบ': o.deliveryType === 'pickup' ? 'รับเองหน้าฟาร์ม' : 'จัดส่งถึงที่',
       'ที่อยู่จัดส่ง': o.deliveryAddress,
-      'รายการสินค้า': o.items.map(i => `${i.name} (${i.size || ''}) x ${i.qty} ${i.unit}`).join('; '),
+      'รายการสินค้า': o.items.map(i => `${i.name} (${i.size || ''}) ${formatItemQtyPrice(i)} ${i.unit}`).join('; '),
       'ราคารวมปกติ': o.grossTotal,
       'รวมส่วนลด': o.totalDiscount,
       'ยอดสุทธิ': o.netTotal,
