@@ -659,6 +659,30 @@
         </div>
       </div>
 
+      <!-- ล้างข้อมูลจำลองเพื่อเริ่มต้นใช้งานจริง (CEO Danger Zone) -->
+      <div class="farm-card overflow-hidden border-2 border-red-200 shadow-sm">
+        <div class="p-5 bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 class="font-bold text-red-900 text-lg flex items-center gap-2">
+              <span class="text-xl">🗑️</span>
+              <span>ล้างข้อมูลทดสอบเพื่อเริ่มต้นใช้งานจริง (เฉพาะ CEO)</span>
+            </h3>
+            <p class="text-xs text-red-700 mt-1">
+              ล้างรายการจองและประวัติการเคลมจำลองทั้งหมดออกจากระบบ เพื่อให้ฟาร์มเริ่มบันทึกงานจริงจาก 0
+            </p>
+          </div>
+          <button onclick="promptResetSystemData()" class="btn-large bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm py-2.5 px-5 rounded-xl font-bold shadow-md flex items-center gap-2 self-start sm:self-auto transition">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            <span>ล้างข้อมูลทดสอบทั้งหมด</span>
+          </button>
+        </div>
+        <div class="p-5 bg-white text-xs text-slate-600 space-y-1.5">
+          <p class="flex items-center gap-2"><span class="text-red-500 font-bold">• สิ่งที่จะถูกล้าง:</span> รายการจองพันธุ์ปลาทั้งหมด, สถานะจัดส่ง, และประวัติการแจ้งเคลม</p>
+          <p class="flex items-center gap-2"><span class="text-emerald-600 font-bold">• สิ่งที่จะยังคงอยู่:</span> สายพันธุ์ปลา/สินค้าในระบบ, บัญชีผู้ใช้งานระบบ, และรายชื่อคนขับรถ</p>
+          <p class="text-slate-400 italic mt-2">* เมื่อกดล้าง ข้อมูลจะถูกส่งไปล้างบน Cloudflare D1 อัตโนมัติ ทำให้ทุกอุปกรณ์ซิงค์พร้อมเริ่มงานจริงทันที</p>
+        </div>
+      </div>
+
     </section>
 
   </main>

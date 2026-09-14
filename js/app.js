@@ -173,19 +173,19 @@ async function checkServerSync() {
         syncText.textContent = 'คลาวด์ออนไลน์';
       }
       if (json.success && json.data) {
-        if (json.data.orders && json.data.orders.length > 0) {
+        if (Array.isArray(json.data.orders)) {
           state.orders = json.data.orders;
           localStorage.setItem('phuyaiporn_orders', JSON.stringify(state.orders));
         }
-        if (json.data.customers && json.data.customers.length > 0) {
+        if (Array.isArray(json.data.customers)) {
           state.customers = json.data.customers;
           localStorage.setItem('phuyaiporn_customers', JSON.stringify(state.customers));
         }
-        if (json.data.claims && json.data.claims.length > 0) {
+        if (Array.isArray(json.data.claims)) {
           state.claims = json.data.claims;
           localStorage.setItem('phuyaiporn_claims', JSON.stringify(state.claims));
         }
-        if (json.data.drivers && json.data.drivers.length > 0) {
+        if (Array.isArray(json.data.drivers)) {
           state.drivers = json.data.drivers;
           localStorage.setItem('phuyaiporn_drivers', JSON.stringify(state.drivers));
         }
@@ -3354,4 +3354,58 @@ function toggleDriverStatus(driverId) {
   renderDriversList();
   populateDriverDropdown();
   showNotification(`${drv.status === 'active' ? 'เปิดใช้งาน' : 'ระงับการใช้งาน'} ${drv.name} แล้ว`, 'info');
+}
+
+// ====================================================================
+// RESET SYSTEM / CLEAR MOCK DATA (CEO ONLY)
+// ====================================================================
+function promptResetSystemData() {
+  if (state.currentUser.role !== 'CEO') {
+    alert('เฉพาะผู้ใช้งานบทบาท CEO / เจ้าของฟาร์ม เท่านั้นที่มีสิทธิ์ล้างข้อมูลระบบ');
+    return;
+  }
+
+  const confirmMsg = 
+    "⚠️ คำเตือนสำคัญ!\n\n" +
+    "คุณต้องการ 'ล้างข้อมูลทดสอบทั้งหมด' เพื่อเริ่มต้นใช้งานจริงใช่หรือไม่?\n\n" +
+    "• ข้อมูลที่จะถูกล้าง: รายการจองพันธุ์ปลาทั้งหมด และ รายการแจ้งเคลมทั้งหมด\n" +
+    "• ข้อมูลที่จะคงอยู่: บัญชีผู้ใช้, รายชื่อสินค้า/พันธุ์ปลา, และรายชื่อคนขับรถ\n\n" +
+    "กด 'ตกลง (OK)' เพื่อยืนยันการล้างข้อมูล";
+
+  if (!confirm(confirmMsg)) return;
+
+  // สอบถามเพิ่มเติมเรื่องลูกค้าตัวอย่าง
+  const clearCustomers = confirm(
+    "คุณต้องการล้าง 'รายชื่อลูกค้าตัวอย่าง' ด้วยหรือไม่?\n\n" +
+    "• กด 'ตกลง (OK)' = ล้างลูกค้าตัวอย่างด้วย (เริ่มฐานลูกค้าใหม่จาก 0)\n" +
+    "• กด 'ยกเลิก (Cancel)' = เก็บรายชื่อลูกค้าตัวอย่างไว้"
+  );
+
+  // 1. ล้างข้อมูลใน state
+  state.orders = [];
+  state.claims = [];
+  if (clearCustomers) {
+    state.customers = [];
+  }
+
+  // 2. บันทึกลง LocalStorage
+  localStorage.setItem('phuyaiporn_orders', JSON.stringify([]));
+  localStorage.setItem('phuyaiporn_claims', JSON.stringify([]));
+  if (clearCustomers) {
+    localStorage.setItem('phuyaiporn_customers', JSON.stringify([]));
+  }
+
+  // 3. ซิงค์ไปยัง Cloudflare D1 ทันที
+  saveState();
+
+  // 4. อัปเดตการแสดงผลทุกหน้า
+  updateBadges();
+  if (state.activeTab === 'calendar') renderMonthlyCalendar();
+  if (state.activeTab === 'daily') renderDailyQueue();
+  if (state.activeTab === 'orders') renderOrdersList();
+  if (state.activeTab === 'claims') renderClaimsList();
+  if (state.activeTab === 'customers') renderCustomersList();
+  if (state.activeTab === 'analytics') renderAnalyticsDashboard();
+
+  alert("✅ ล้างข้อมูลทดสอบเรียบร้อยแล้ว!\nระบบพร้อมสำหรับการลงบันทึกงานจริงจาก 0 แล้วครับ (ซิงค์ขึ้นคลาวด์ทุกอุปกรณ์แล้ว)");
 }
