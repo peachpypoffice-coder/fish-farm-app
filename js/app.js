@@ -2946,60 +2946,60 @@ function renderOrdersList() {
     const canCompleteBackorder = isPartiallyDelivered && state.currentUser.role !== 'Driver';
 
     html += `
-      <tr class="hover:bg-slate-50/90 transition">
-        <!-- ช่องรหัสและวันส่ง ขนาดเล็กลงและกระชับขึ้นตามที่ขอ -->
-        <td class="py-3 px-2 sm:px-3 align-top">
-          <div class="font-bold text-sky-950 text-xs sm:text-sm truncate">
+      <tr class="hover:bg-sky-50/40 transition">
+        <!-- ช่องรหัสและวันส่ง ขนาดใหญ่ขึ้น 2px อ่านสบายตา -->
+        <td class="py-3.5 px-3 align-top">
+          <div class="font-bold text-sky-950 text-base truncate">
             ${o.id}
           </div>
-          <div class="text-[11px] text-slate-500 mt-0.5 whitespace-nowrap">
+          <div class="text-[13px] text-slate-500 mt-1 whitespace-nowrap font-medium">
             ${formatThaiDate(o.deliveryDate)}
           </div>
           ${o.editHistory && o.editHistory.length > 0 ? `
-            <button onclick="viewOrderHistory('${o.id}')" title="ดูประวัติการแก้ไข (${o.editHistory.length} ครั้ง)" class="mt-1 inline-block text-[9px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-bold hover:bg-purple-200">
+            <button onclick="viewOrderHistory('${o.id}')" title="ดูประวัติการแก้ไข (${o.editHistory.length} ครั้ง)" class="mt-1.5 inline-block text-[11px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-md font-bold hover:bg-purple-200">
               📝 แก้ไข (${o.editHistory.length})
             </button>
           ` : ''}
         </td>
 
         <!-- ลูกค้า & ที่อยู่ -->
-        <td class="py-3 px-3 align-top">
-          <div class="font-bold text-slate-900">${o.customerName}</div>
-          <div class="text-xs text-slate-500">${o.customerPhone}</div>
-          <div class="text-[11px] text-slate-400 truncate max-w-[180px]">${isPickup ? '🏠 รับเองหน้าฟาร์ม' : (o.deliveryAddress || '-')}</div>
+        <td class="py-3.5 px-3 align-top">
+          <div class="font-bold text-slate-900 text-base">${o.customerName}</div>
+          <div class="text-[14px] text-slate-600 font-semibold mt-0.5">${o.customerPhone}</div>
+          <div class="text-[13px] text-slate-500 truncate max-w-[200px] mt-0.5">${isPickup ? '🏠 รับเองหน้าฟาร์ม' : (o.deliveryAddress || '-')}</div>
         </td>
 
         <!-- รูปแบบรับสินค้า -->
-        <td class="py-3 px-2 text-center align-top">
-          <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${isPickup ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'} whitespace-nowrap">
+        <td class="py-3.5 px-2 text-center align-top">
+          <span class="text-[14px] font-bold px-2.5 py-1 rounded-full ${isPickup ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-sky-100 text-sky-900 border border-sky-300'} whitespace-nowrap">
             ${isPickup ? '🏠 หน้าฟาร์ม' : '🚚 จัดส่ง'}
           </span>
         </td>
 
-        <!-- รายการสินค้า: ขยายกว้างขึ้น แยกรายการเป็นบรรทัด & แสดงจำนวนค้างส่งชัดเจน -->
-        <td class="py-3 px-3 sm:px-4 align-top">
-          <div class="space-y-1.5 min-w-[280px]">
+        <!-- รายการสินค้า: ขนาดใหญ่ขึ้น 2px อ่านสบายตา แยกบรรทัดชัดเจน -->
+        <td class="py-3.5 px-3 sm:px-4 align-top">
+          <div class="space-y-1.5 min-w-[300px]">
             ${o.items.map(it => {
               const delivered = it.deliveredQty !== undefined ? it.deliveredQty : (o.status === 'delivered' ? it.qty : 0);
               const backorder = it.backorderQty !== undefined ? it.backorderQty : (isPartiallyDelivered ? Math.max(0, it.qty - delivered) : 0);
               const hasBackorder = isPartiallyDelivered && (backorder > 0 || delivered < it.qty);
 
               return `
-                <div class="p-2 rounded-xl ${hasBackorder ? 'bg-amber-50/90 border border-amber-200 shadow-2xs' : 'bg-slate-50 border border-slate-100'} text-xs flex items-center justify-between gap-2">
+                <div class="p-2.5 rounded-xl ${hasBackorder ? 'bg-amber-50/90 border border-amber-200 shadow-xs' : 'bg-slate-50 border border-slate-100'} text-[14px] flex items-center justify-between gap-2">
                   <div class="font-medium text-slate-800">
                     <span class="font-bold text-slate-900">• ${it.name}</span>
-                    ${it.size ? `<span class="text-slate-500 text-[11px]">(${it.size})</span>` : ''}
+                    ${it.size ? `<span class="text-slate-500 text-[13px]">(${it.size})</span>` : ''}
                     <span class="text-sky-800 font-bold ml-1">${formatItemQtyPrice(it)} ${it.unit}</span>
                   </div>
                   <div>
                     ${hasBackorder ? `
-                      <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/90 text-amber-950 whitespace-nowrap">
+                      <span class="inline-flex items-center gap-1 text-[12px] font-bold px-2.5 py-0.5 rounded-full bg-amber-200/90 text-amber-950 whitespace-nowrap">
                         <span>ส่งแล้ว ${formatNumber(delivered)}</span>
                         <span>|</span>
                         <span class="text-red-700">ค้าง ${formatNumber(backorder)}</span>
                       </span>
                     ` : `
-                      <span class="text-[10px] text-slate-400 whitespace-nowrap">${formatMoney(it.totalPrice)}</span>
+                      <span class="text-[12px] text-slate-500 font-semibold whitespace-nowrap">${formatMoney(it.totalPrice)}</span>
                     `}
                   </div>
                 </div>
@@ -3007,64 +3007,64 @@ function renderOrdersList() {
             }).join('')}
 
             ${isPartiallyDelivered ? `
-              <div class="p-2 bg-amber-100/70 rounded-xl border border-amber-300 text-[11px] text-amber-950 flex flex-wrap items-center justify-between gap-1">
+              <div class="p-2.5 bg-amber-100/70 rounded-xl border border-amber-300 text-[13px] text-amber-950 flex flex-wrap items-center justify-between gap-1">
                 <div class="font-semibold flex items-center gap-1">
                   <span>🗓️ นัดส่งรอบถัดไป:</span>
                   <span class="font-bold text-amber-900">${o.backorderDate ? formatThaiDate(o.backorderDate) : 'ยังไม่ระบุวัน'}</span>
                 </div>
-                ${o.backorderReason ? `<div class="text-[10px] text-amber-800 italic">(${o.backorderReason})</div>` : ''}
+                ${o.backorderReason ? `<div class="text-[12px] text-amber-800 italic">(${o.backorderReason})</div>` : ''}
               </div>
             ` : ''}
           </div>
         </td>
 
         <!-- ยอดสุทธิ -->
-        <td class="py-3 px-3 text-right font-bold text-slate-900 whitespace-nowrap align-top">
+        <td class="py-3.5 px-3 text-right font-bold text-slate-900 text-base whitespace-nowrap align-top">
           ${formatMoney(o.netTotal)}
         </td>
 
         <!-- มัดจำ/คงเหลือ -->
-        <td class="py-3 px-3 text-right text-xs whitespace-nowrap align-top">
-          <div class="text-emerald-700 font-medium">มัดจำ: ${formatMoney(o.deposit)}</div>
-          <div class="font-bold text-amber-800">คงเหลือ: ${formatMoney(o.remainingBalance)}</div>
+        <td class="py-3.5 px-3 text-right text-[14px] whitespace-nowrap align-top">
+          <div class="text-emerald-700 font-semibold">มัดจำ: ${formatMoney(o.deposit)}</div>
+          <div class="font-bold text-amber-800 mt-0.5">คงเหลือ: ${formatMoney(o.remainingBalance)}</div>
         </td>
 
         <!-- สถานะ -->
-        <td class="py-3 px-2 sm:px-3 text-center align-top">
+        <td class="py-3.5 px-2 sm:px-3 text-center align-top">
           ${statusBadge}
         </td>
 
         <!-- จัดการ -->
-        <td class="py-3 px-2 sm:px-3 text-center align-top">
+        <td class="py-3.5 px-2 sm:px-3 text-center align-top">
           <div class="flex items-center justify-center flex-wrap gap-1">
             ${canCompleteBackorder ? `
-              <button onclick="openCompleteBackorderModal('${o.id}')" title="ส่งมอบส่วนที่ค้างครบแล้ว (ปิดจ็อบ)" class="py-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition">
-                <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
+              <button onclick="openCompleteBackorderModal('${o.id}')" title="ส่งมอบส่วนที่ค้างครบแล้ว (ปิดจ็อบ)" class="py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition">
+                <i data-lucide="check-check" class="w-4 h-4"></i>
                 <span>ปิดจ็อบ</span>
               </button>
             ` : ''}
             ${canCurrentUser('print_slip') ? `
-              <button onclick="viewOrderSlip('${o.id}')" title="ดูใบส่งของ" class="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700">
+              <button onclick="viewOrderSlip('${o.id}')" title="ดูใบส่งของ" class="p-2 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 transition">
                 <i data-lucide="file-text" class="w-4 h-4"></i>
               </button>
             ` : ''}
             ${canCurrentUser('edit_order') ? `
-              <button onclick="openEditOrderModal('${o.id}')" title="แก้ไขการจอง (เปลี่ยนวัน/ข้อมูลสินค้า)" class="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700">
+              <button onclick="openEditOrderModal('${o.id}')" title="แก้ไขการจอง (เปลี่ยนวัน/ข้อมูลสินค้า)" class="p-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 transition">
                 <i data-lucide="edit-3" class="w-4 h-4"></i>
               </button>
             ` : ''}
             ${o.editHistory && o.editHistory.length > 0 ? `
-              <button onclick="viewOrderHistory('${o.id}')" title="ดูประวัติการแก้ไข (${o.editHistory.length} ครั้ง)" class="p-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-800">
+              <button onclick="viewOrderHistory('${o.id}')" title="ดูประวัติการแก้ไข (${o.editHistory.length} ครั้ง)" class="p-2 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-800 transition">
                 <i data-lucide="history" class="w-4 h-4"></i>
               </button>
             ` : ''}
             ${canCurrentUser('update_delivery') ? `
-              <button onclick="openDeliveryUpdateModal('${o.id}')" title="อัปเดตสถานะจัดส่ง" class="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700">
+              <button onclick="openDeliveryUpdateModal('${o.id}')" title="อัปเดตสถานะจัดส่ง" class="p-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 transition">
                 <i data-lucide="truck" class="w-4 h-4"></i>
               </button>
             ` : ''}
             ${o.status !== 'cancelled' && o.status !== 'delivered' && canCurrentUser('cancel_order') ? `
-              <button onclick="openCancelOrderModal('${o.id}')" title="ยกเลิกการจอง" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700">
+              <button onclick="openCancelOrderModal('${o.id}')" title="ยกเลิกการจอง" class="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition">
                 <i data-lucide="x-circle" class="w-4 h-4"></i>
               </button>
             ` : ''}
