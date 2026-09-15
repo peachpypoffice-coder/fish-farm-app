@@ -97,10 +97,74 @@ const PRODUCT_CATALOG = [
   {
     id: 'fish_7',
     category: 'พันธุ์ปลา',
-    name: 'ปลาหมอชุมพร 1',
+    name: 'ปลาหมอแปลงเพศ',
     unit: 'ตัว',
-    defaultSizes: ['2-3 นิ้ว', '3-4 นิ้ว'],
-    defaultPrice: 1.60
+    defaultSizes: ['1.5-2.5 เซน (จ)', '1-1.5 นิ้ว (ล)', '1.5-2 นิ้ว (ก)', '2-2.5 นิ้ว (ก.ส.)', '2.5-3 นิ้ว (ญ)', '3-3.5 นิ้ว (ญ.ส.)', 'ปลาใหญ่'],
+    defaultPrice: 1.80
+  },
+  {
+    id: 'fish_8',
+    category: 'พันธุ์ปลา',
+    name: 'ปลาตะเพียน',
+    unit: 'ตัว',
+    defaultSizes: ['1.5-2 เซน (จ)', '1-1.5 นิ้ว (ล)', '1.8-2 นิ้ว (ก)', '2-2.5 นิ้ว (ก.ส.)', '2.5-3 นิ้ว (ญ.ส.)', '3.5-4 นิ้ว (ญ.พ.)', 'ปลาใหญ่'],
+    defaultPrice: 1.20
+  },
+  {
+    id: 'fish_9',
+    category: 'พันธุ์ปลา',
+    name: 'ปลากระพง',
+    unit: 'ตัว',
+    defaultSizes: ['1-1.5 นิ้ว (ล)', '1.5-2 นิ้ว (ก)', '2-2.5 นิ้ว (ก.ส.)', '2.5-3 นิ้ว (ญ)', '3-3.5 นิ้ว', 'ปลาใหญ่'],
+    defaultPrice: 3.50
+  },
+  {
+    id: 'fish_10',
+    category: 'พันธุ์ปลา',
+    name: 'ปลาบึก',
+    unit: 'ตัว',
+    defaultSizes: ['1.5-2 นิ้ว', '2-3 นิ้ว', '3.5-4 นิ้ว', '4-4.5 นิ้ว', 'ปลาใหญ่'],
+    defaultPrice: 6.00
+  },
+  {
+    id: 'fish_11',
+    category: 'พันธุ์ปลา',
+    name: 'บิ๊กสวาย',
+    unit: 'ตัว',
+    defaultSizes: ['1-1.5 นิ้ว', '1.5-2 นิ้ว', '2-3 นิ้ว', '3-4 นิ้ว', '4-5 นิ้ว', 'ปลาใหญ่'],
+    defaultPrice: 2.20
+  },
+  {
+    id: 'fish_12',
+    category: 'พันธุ์ปลา',
+    name: 'ปลายี่สก',
+    unit: 'ตัว',
+    defaultSizes: ['1-1.5 นิ้ว', '1.5-2 นิ้ว', '2-2.5 นิ้ว', '2.5-3 นิ้ว', 'ปลาใหญ่'],
+    defaultPrice: 1.50
+  },
+  {
+    id: 'fish_13',
+    category: 'พันธุ์ปลา',
+    name: 'ปลาจีนหัวโต',
+    unit: 'ตัว',
+    defaultSizes: ['1-1.5 นิ้ว', '1.5-2 นิ้ว', '2-2.5 นิ้ว', '3-3.5 นิ้ว', 'ปลาใหญ่'],
+    defaultPrice: 1.80
+  },
+  {
+    id: 'fish_14',
+    category: 'พันธุ์ปลา',
+    name: 'ปลากิโล (ปลาเนื้อ/ปลาใหญ่)',
+    unit: 'กก.',
+    defaultSizes: ['ปลาดุกบิ๊กอุย กิโล', 'ปลานิล กิโล', 'ปลาใหญ่รวม'],
+    defaultPrice: 65.00
+  },
+  {
+    id: 'fish_15',
+    category: 'พันธุ์ปลา',
+    name: 'ลูกกุ้งก้ามกราม',
+    unit: 'ตัว',
+    defaultSizes: ['ลูกกุ้งก้ามกราม เล็ก', 'ลูกกุ้งก้ามกราม ชำ'],
+    defaultPrice: 0.35
   },
 
   // หมวดอาหารปลา
@@ -699,3 +763,521 @@ const INITIAL_CLAIMS = [
     createdAt: getDateOffset(0) + ' 11:30'
   }
 ];
+
+// ====================================================================
+// 3. FARM INVENTORY AGENT: ข้อมูลบ่อปลา สต็อกปลา และคลังสินค้า
+// ====================================================================
+
+// ====================================================================
+// ตาคัดขนาดมาตรฐานและตารางราคาตามเกณฑ์ไซส์ปลา (Standard Sieve & Pricing Matrix)
+// ====================================================================
+const STANDARD_SIEVE_GRADES = [
+  { code: 'จ', name: 'ตาคัดจิ๋ว (จ)', sizeRange: '1.5-2.0 ซม.', desc: 'ลูกปลาจิ๋ว/เพิ่งขึ้นอ่าง' },
+  { code: 'ล', name: 'ตาคัดเล็ก (ล)', sizeRange: '1.0-1.5 นิ้ว', desc: 'ลูกปลาเล็ก อนุบาลระยะแรก' },
+  { code: 'ลสส', name: 'ตาคัดเล็กสม่ำเสมอ (ลสส.)', sizeRange: '1.8-1.9 นิ้ว', desc: 'คัดไซส์เสมอกัน' },
+  { code: 'ก', name: 'ตาคัดกลาง (ก)', sizeRange: '1.8-2.0 นิ้ว', desc: 'ไซส์กลางเลี้ยงต่อหรือเริ่มปล่อย' },
+  { code: 'ก.ส.', name: 'ตาคัดกลางสม่ำเสมอ (ก.ส.)', sizeRange: '2.0-2.5 นิ้ว', desc: 'ไซส์ยอดนิยมพร้อมลงบ่อดิน' },
+  { code: 'ญ', name: 'ตาคัดใหญ่ (ญ)', sizeRange: '2.5-3.0 นิ้ว', desc: 'ปลาโตพร้อมส่งมอบ' },
+  { code: 'ญ.ส.', name: 'ตาคัดใหญ่สม่ำเสมอ (ญ.ส.)', sizeRange: '2.5-3.0 นิ้ว', desc: 'ปลาคัดเกรดพิเศษ ขนาดเท่ากัน' },
+  { code: 'ญ.พ.', name: 'ตาคัดใหญ่พิเศษ (ญ.พ.)', sizeRange: '3.0-4.0 นิ้ว', desc: 'ปลาไซส์ใหญ่โตเร็ว' },
+  { code: 'ปลาใหญ่', name: 'ปลาใหญ่ / ปลากิโล', sizeRange: '4 นิ้วขึ้นไป / น้ำหนักต่อ กก.', desc: 'ปลาเนื้อ / พ่อแม่พันธุ์' }
+];
+
+const FISH_SIZE_PRICING = {
+  'ปลาดุกบิ๊กอุย': {
+    '1-1.5 นิ้ว (ล)': { price: 0.80, cost: 0.40, sieve: 'ล', code: '40104001' },
+    '1.5-2 นิ้ว (ก)': { price: 1.00, cost: 0.50, sieve: 'ก', code: '40104002' },
+    '2-3 นิ้ว (ก.ส.)': { price: 1.20, cost: 0.60, sieve: 'ก.ส.', code: '40104003' },
+    '3-4 นิ้ว (ญ)': { price: 1.50, cost: 0.80, sieve: 'ญ', code: '40104004' },
+    '4-5 นิ้ว (ญ.พ.)': { price: 1.90, cost: 1.00, sieve: 'ญ.พ.', code: '40104005' },
+    '5-6 นิ้ว': { price: 2.50, cost: 1.40, sieve: 'ปลาใหญ่', code: '40104006' },
+    'ปลาใหญ่': { price: 3.50, cost: 2.00, sieve: 'ปลาใหญ่', code: '40104007' }
+  },
+  'ปลานิลจิตรลดา': {
+    '2-2.5 เซน (จ)': { price: 0.70, cost: 0.35, sieve: 'จ', code: '40103001' },
+    '1.5-1.8 นิ้ว (ล)': { price: 1.10, cost: 0.55, sieve: 'ล', code: '40103002' },
+    '1.5-2 นิ้ว (ก)': { price: 1.30, cost: 0.65, sieve: 'ก', code: '40103003' },
+    '2-2.5 นิ้ว (ก.ส)': { price: 1.50, cost: 0.75, sieve: 'ก.ส.', code: '40103004' },
+    '2.5-3 นิ้ว (ญ)': { price: 1.80, cost: 0.95, sieve: 'ญ', code: '40103005' },
+    '2.5-3 นิ้ว (ญ.ส)': { price: 2.00, cost: 1.05, sieve: 'ญ.ส.', code: '40103006' },
+    '2.5-3 นิ้ว (ญ.พ.)': { price: 2.20, cost: 1.15, sieve: 'ญ.พ.', code: '40103007' },
+    'ปลาใหญ่': { price: 3.00, cost: 1.60, sieve: 'ปลาใหญ่', code: '40103008' }
+  },
+  'ปลาทับทิมหมัน': {
+    '1.5-2.5 เซน (จ)': { price: 1.20, cost: 0.60, sieve: 'จ', code: '40124001' },
+    '1-1.5 นิ้ว (ล)': { price: 1.60, cost: 0.80, sieve: 'ล', code: '40124002' },
+    '1.5-2 นิ้ว (ก)': { price: 1.90, cost: 0.95, sieve: 'ก', code: '40124003' },
+    '2-2.5 นิ้ว (ก.ส.)': { price: 2.20, cost: 1.10, sieve: 'ก.ส.', code: '40124004' },
+    '2.5-3 นิ้ว (ญ)': { price: 2.60, cost: 1.35, sieve: 'ญ', code: '40124005' },
+    '3-3.5 นิ้ว (ญ.ส)': { price: 3.00, cost: 1.60, sieve: 'ญ.ส.', code: '40124006' },
+    '3.5-4 นิ้ว (ญ.พ.)': { price: 3.50, cost: 1.90, sieve: 'ญ.พ.', code: '40124007' },
+    'ปลาใหญ่': { price: 4.50, cost: 2.50, sieve: 'ปลาใหญ่', code: '40124008' }
+  },
+  'ปลาหมอแปลงเพศ': {
+    '1.5-2.5 เซน (จ)': { price: 0.90, cost: 0.45, sieve: 'จ', code: '40106001' },
+    '1-1.5 นิ้ว (ล)': { price: 1.20, cost: 0.60, sieve: 'ล', code: '40106002' },
+    '1.5-2 นิ้ว (ก)': { price: 1.50, cost: 0.75, sieve: 'ก', code: '40106003' },
+    '2-2.5 นิ้ว (ก.ส.)': { price: 1.80, cost: 0.95, sieve: 'ก.ส.', code: '40106004' },
+    '2.5-3 นิ้ว (ญ)': { price: 2.20, cost: 1.20, sieve: 'ญ', code: '40106005' },
+    '3-3.5 นิ้ว (ญ.ส.)': { price: 2.70, cost: 1.50, sieve: 'ญ.ส.', code: '40106006' },
+    'ปลาใหญ่': { price: 3.80, cost: 2.10, sieve: 'ปลาใหญ่', code: '40106007' }
+  },
+  'ปลาสวาย': {
+    '1.5-2 นิ้ว (ก)': { price: 1.50, cost: 0.70, sieve: 'ก', code: '40105001' },
+    '2-2.5 นิ้ว (ก.ส.)': { price: 1.80, cost: 0.90, sieve: 'ก.ส.', code: '40105002' },
+    '2.5-3 นิ้ว (ญ)': { price: 2.00, cost: 1.05, sieve: 'ญ', code: '40105003' },
+    '3-4 นิ้ว (ญ.พ.)': { price: 2.50, cost: 1.30, sieve: 'ญ.พ.', code: '40105004' },
+    'ปลาใหญ่': { price: 3.50, cost: 1.90, sieve: 'ปลาใหญ่', code: '40105007' }
+  },
+  'ปลาตะเพียน': {
+    '1.5-2 เซน (จ)': { price: 0.60, cost: 0.30, sieve: 'จ', code: '40101001' },
+    '1-1.5 นิ้ว (ล)': { price: 0.80, cost: 0.40, sieve: 'ล', code: '40101002' },
+    '1.8-2 นิ้ว (ก)': { price: 1.00, cost: 0.50, sieve: 'ก', code: '40101004' },
+    '2-2.5 นิ้ว (ก.ส.)': { price: 1.20, cost: 0.60, sieve: 'ก.ส.', code: '40101006' },
+    '2.5-3 นิ้ว (ญ.ส.)': { price: 1.50, cost: 0.75, sieve: 'ญ.ส.', code: '40101007' },
+    '3.5-4 นิ้ว': { price: 2.00, cost: 1.10, sieve: 'ญ.พ.', code: '40101008' },
+    'ปลาใหญ่': { price: 3.00, cost: 1.60, sieve: 'ปลาใหญ่', code: '40101009' }
+  }
+};
+
+// รายการบ่อปลาในฟาร์ม (Live Fish Stock in Ponds)
+const INITIAL_PONDS = [
+  {
+    id: 'pond_1',
+    name: 'บ่อดิน 1',
+    type: 'earthen',
+    typeName: 'บ่อดินธรรมชาติ',
+    sizeDesc: 'ขนาด 1 ไร่ (ลึก 1.8 ม.)',
+    fishId: 'fish_1',
+    fishCode: '40104003',
+    fishName: 'ปลาดุกบิ๊กอุย',
+    fishSize: '2-3 นิ้ว (ก.ส.)',
+    sieveCode: 'ก.ส.',
+    status: 'ready', // ready, growing, resting, empty
+    statusLabel: 'พร้อมขาย',
+    totalQty: 45000,
+    reservedQty: 15000, // ถูกกั๊กยอดโดยออเดอร์ในระบบ (Hold)
+    mortalityQty: 120, // ตายสะสมในรอบนี้
+    unitPrice: 1.20,
+    unitCost: 0.60,
+    stockedDate: getDateOffset(-45),
+    lastGradedDate: getDateOffset(-9), // เกิน 7 วัน -> ขึ้นเตือนรอบคัดขนาด!
+    estReadyDate: getDateOffset(-5),
+    notes: 'น้ำเขียวสวย แข็งแรง กินอาหารดี ถึงรอบคัดขนาดแบ่งไซส์'
+  },
+  {
+    id: 'pond_2',
+    name: 'บ่อดิน 2',
+    type: 'earthen',
+    typeName: 'บ่อดินธรรมชาติ',
+    sizeDesc: 'ขนาด 2 ไร่ (ลึก 2.0 ม.)',
+    fishId: 'fish_2',
+    fishCode: '40103004',
+    fishName: 'ปลานิลจิตรลดา',
+    fishSize: '2-2.5 นิ้ว (ก.ส)',
+    sieveCode: 'ก.ส.',
+    status: 'ready',
+    statusLabel: 'พร้อมขาย',
+    totalQty: 60000,
+    reservedQty: 20000,
+    mortalityQty: 250,
+    unitPrice: 1.50,
+    unitCost: 0.75,
+    stockedDate: getDateOffset(-60),
+    lastGradedDate: getDateOffset(-3), // คัดเมื่อ 3 วันก่อน -> ปกติ
+    estReadyDate: getDateOffset(-10),
+    notes: 'ไซส์สม่ำเสมอ คัดขนาดแล้ว พร้อมส่งมอบ'
+  },
+  {
+    id: 'pond_3',
+    name: 'บ่อดิน 3',
+    type: 'earthen',
+    typeName: 'บ่อดินธรรมชาติ',
+    sizeDesc: 'ขนาด 1.5 ไร่',
+    fishId: 'fish_3',
+    fishCode: '40124006',
+    fishName: 'ปลาทับทิมหมัน',
+    fishSize: '3-3.5 นิ้ว (ญ.ส)',
+    sieveCode: 'ญ.ส.',
+    status: 'ready',
+    statusLabel: 'พร้อมขาย',
+    totalQty: 25000,
+    reservedQty: 4000,
+    mortalityQty: 80,
+    unitPrice: 3.00,
+    unitCost: 1.60,
+    stockedDate: getDateOffset(-50),
+    lastGradedDate: getDateOffset(-12), // เกิน 10 วัน -> เตือนด่วน!
+    estReadyDate: getDateOffset(-3),
+    notes: 'สีแดงชมพูสด เกล็ดแน่น ปลาโตเร็วมาก ควรคัดแยกปลาใหญ่'
+  },
+  {
+    id: 'pond_4',
+    name: 'บ่อดิน 4',
+    type: 'earthen',
+    typeName: 'บ่อดินธรรมชาติ',
+    sizeDesc: 'ขนาด 1 ไร่',
+    fishId: 'fish_7',
+    fishCode: '40106004',
+    fishName: 'ปลาหมอแปลงเพศ',
+    fishSize: '2-2.5 นิ้ว (ก.ส.)',
+    sieveCode: 'ก.ส.',
+    status: 'ready',
+    statusLabel: 'พร้อมขาย',
+    totalQty: 18000,
+    reservedQty: 3000,
+    mortalityQty: 50,
+    unitPrice: 1.80,
+    unitCost: 0.95,
+    stockedDate: getDateOffset(-40),
+    lastGradedDate: getDateOffset(-2), // 2 วันก่อน -> ปกติ
+    estReadyDate: getDateOffset(-2),
+    notes: 'แข็งแรง ปราดเปรียว ไม่เป็นโรค'
+  },
+  {
+    id: 'pond_5',
+    name: 'บ่อปูนอนุบาล 1',
+    type: 'concrete',
+    typeName: 'บ่อปูนซีเมนต์',
+    sizeDesc: 'ขนาด 4x8 ม. ลึก 1 ม.',
+    fishId: 'fish_1',
+    fishCode: '40104001',
+    fishName: 'ปลาดุกบิ๊กอุย',
+    fishSize: '1-1.5 นิ้ว (ล)',
+    sieveCode: 'ล',
+    status: 'growing',
+    statusLabel: 'กำลังอนุบาล',
+    totalQty: 50000,
+    reservedQty: 0,
+    mortalityQty: 310,
+    unitPrice: 0.80,
+    unitCost: 0.40,
+    stockedDate: getDateOffset(-12),
+    lastGradedDate: getDateOffset(-8), // เกิน 7 วัน -> เตือนรอบคัดขนาด!
+    estReadyDate: getDateOffset(14), // อีก 14 วันพร้อมขาย
+    notes: 'ให้อาหารไฮเกรด 9006T วันละ 4 มื้อ ออกซิเจน 24 ชม. ถึงรอบคัดไซส์ลงบ่อดิน'
+  },
+  {
+    id: 'pond_6',
+    name: 'บ่อปูนอนุบาล 2',
+    type: 'concrete',
+    typeName: 'บ่อปูนซีเมนต์',
+    sizeDesc: 'ขนาด 4x8 ม. ลึก 1 ม.',
+    fishId: 'fish_2',
+    fishCode: '40103001',
+    fishName: 'ปลานิลจิตรลดา',
+    fishSize: '2-2.5 เซน (จ)',
+    sieveCode: 'จ',
+    status: 'growing',
+    statusLabel: 'กำลังอนุบาล',
+    totalQty: 40000,
+    reservedQty: 0,
+    mortalityQty: 180,
+    unitPrice: 0.70,
+    unitCost: 0.35,
+    stockedDate: getDateOffset(-10),
+    lastGradedDate: getDateOffset(-4), // ปกติ
+    estReadyDate: getDateOffset(10),
+    notes: 'แปลงเพศเรียบร้อย อัตราการรอด 92%'
+  },
+  {
+    id: 'pond_7',
+    name: 'กระชังน้ำ 1',
+    type: 'cage',
+    typeName: 'กระชังลอยน้ำ',
+    sizeDesc: 'ขนาด 3x6 ม. ลึก 1.5 ม.',
+    fishId: 'fish_4',
+    fishCode: '40105004',
+    fishName: 'ปลาสวาย',
+    fishSize: '3-4 นิ้ว (ญ.พ.)',
+    sieveCode: 'ญ.พ.',
+    status: 'ready',
+    statusLabel: 'พร้อมขาย',
+    totalQty: 8000,
+    reservedQty: 0,
+    mortalityQty: 20,
+    unitPrice: 2.50,
+    unitCost: 1.30,
+    stockedDate: getDateOffset(-70),
+    lastGradedDate: getDateOffset(-15), // เกิน 10 วัน -> เตือนคัดขนาดด่วน!
+    estReadyDate: getDateOffset(-20),
+    notes: 'อยู่ในแม่น้ำน้อย น้ำไหลเวียนดี ปลาไซส์ใหญ่พร้อมตักส่ง'
+  },
+  {
+    id: 'pond_8',
+    name: 'บ่อดิน 5',
+    type: 'earthen',
+    typeName: 'บ่อดินธรรมชาติ',
+    sizeDesc: 'ขนาด 1.5 ไร่',
+    fishId: '',
+    fishCode: '',
+    fishName: 'ว่าง (ไม่มีปลา)',
+    fishSize: '-',
+    sieveCode: '-',
+    status: 'resting',
+    statusLabel: 'พักบ่อ / ตากบ่อ',
+    totalQty: 0,
+    reservedQty: 0,
+    mortalityQty: 0,
+    unitPrice: 0,
+    unitCost: 0,
+    stockedDate: '',
+    lastGradedDate: '',
+    estReadyDate: '',
+    notes: 'สูบน้ำแห้ง ตากแดดและโรยปูนขาวฆ่าเชื้อ พร้อมลงปลารุ่นใหม่ใน 7 วัน'
+  }
+];
+
+// รายการคลังอาหารปลาและเวชภัณฑ์ (Feed & Supplies Inventory)
+const INITIAL_SUPPLIES = [
+  {
+    id: 'sup_1',
+    category: 'อาหารปลา',
+    name: 'อาหารไฮเกรด 9006T อนุบาลลูกปลา',
+    packageSize: 'กระสอบ 10 กก.',
+    unit: 'กระสอบ',
+    stockQty: 18,
+    minThreshold: 10,
+    unitPrice: 620,
+    supplier: 'ซีพีเอฟ'
+  },
+  {
+    id: 'sup_2',
+    category: 'อาหารปลา',
+    name: 'อาหารปลาดุกเล็ก เบอร์ 1',
+    packageSize: 'กระสอบ 20 กก.',
+    unit: 'กระสอบ',
+    stockQty: 6, // ต่ำกว่าเกณฑ์เตือน! (ROP = 15)
+    minThreshold: 15,
+    unitPrice: 480,
+    supplier: 'เบทาโกร'
+  },
+  {
+    id: 'sup_3',
+    category: 'อาหารปลา',
+    name: 'อาหารปลาดุกใหญ่ เบอร์ 3',
+    packageSize: 'กระสอบ 20 กก.',
+    unit: 'กระสอบ',
+    stockQty: 24,
+    minThreshold: 10,
+    unitPrice: 440,
+    supplier: 'เบทาโกร'
+  },
+  {
+    id: 'sup_4',
+    category: 'อาหารปลา',
+    name: 'อาหารปลากินพืช เบอร์ 2',
+    packageSize: 'กระสอบ 20 กก.',
+    unit: 'กระสอบ',
+    stockQty: 14,
+    minThreshold: 10,
+    unitPrice: 410,
+    supplier: 'ไทยเพ็ทฟู๊ด'
+  },
+  {
+    id: 'sup_5',
+    category: 'ยารักษาโรคปลา',
+    name: 'ด่างทับทิมเกรดบ่อปลา ฆ่าเชื้อปรสิต',
+    packageSize: 'ขวด 500 กรัม',
+    unit: 'ขวด',
+    stockQty: 3, // ต่ำกว่าเกณฑ์เตือน! (ROP = 8)
+    minThreshold: 8,
+    unitPrice: 85,
+    supplier: 'เคมีเกษตรอยุธยา'
+  },
+  {
+    id: 'sup_6',
+    category: 'ยารักษาโรคปลา',
+    name: 'วิตามินซีเข้มข้น + แร่ธาตุคลายเครียด',
+    packageSize: 'กระปุก 1 กก.',
+    unit: 'กระปุก',
+    stockQty: 11,
+    minThreshold: 5,
+    unitPrice: 320,
+    supplier: 'อควาฟาร์มา'
+  },
+  {
+    id: 'sup_7',
+    category: 'สารปรับสภาพน้ำ',
+    name: 'ปูนขาวร้อน ปรับสภาพกรด-ด่างดินบ่อ',
+    packageSize: 'กระสอบ 25 กก.',
+    unit: 'กระสอบ',
+    stockQty: 28,
+    minThreshold: 15,
+    unitPrice: 110,
+    supplier: 'โรงปูนสระบุรี'
+  },
+  {
+    id: 'sup_8',
+    category: 'สารปรับสภาพน้ำ',
+    name: 'เกลือสมุทรเม็ดใหญ่ ฆ่าเชื้อบ่อปลา',
+    packageSize: 'กระสอบ 50 กก.',
+    unit: 'กระสอบ',
+    stockQty: 19,
+    minThreshold: 10,
+    unitPrice: 190,
+    supplier: 'เกลือสมุทรสาคร'
+  }
+];
+
+// รายการประวัติปลาตาย/สูญเสีย (Mortality Logs)
+const INITIAL_MORTALITY_LOGS = [
+  {
+    id: 'mort_1',
+    date: getDateOffset(-1),
+    pondId: 'pond_1',
+    pondName: 'บ่อดิน 1 (ปลาดุกบิ๊กอุย)',
+    qty: 120,
+    cause: 'สภาพอากาศร้อนจัดช่วงบ่าย ออกซิเจนผิวน้ำลดลงชั่วคราว',
+    reporter: 'คุณสมศักดิ์ (ผู้จัดการฟาร์ม)',
+    actionTaken: 'เปิดกังหันตีน้ำเพิ่ม 2 ตัว และเติมวิตามินซีลดเครียด'
+  },
+  {
+    id: 'mort_2',
+    date: getDateOffset(-3),
+    pondId: 'pond_5',
+    pondName: 'บ่อปูนอนุบาล 1 (ลูกปลาดุก)',
+    qty: 150,
+    cause: 'การสูญเสียธรรมชาติช่วงฝึกกินอาหารเม็ด',
+    reporter: 'คุณสมศรี (QC)',
+    actionTaken: 'ปรับเบอร์อาหารเป็นผงละเอียดพิเศษ ไฮเกรด 9006T'
+  }
+];
+
+// รายการบันทึกเหตุการณ์ของระบบสำหรับ AI Supervisor (System Events & Audit)
+const INITIAL_SYSTEM_EVENTS = [
+  {
+    id: 'evt_1',
+    timestamp: getDateOffset(0) + ' 08:15',
+    source: 'Farm Inventory Agent',
+    type: 'STOCK_ALERT_LOW',
+    severity: 'warning',
+    message: 'อาหารปลาดุกเล็ก เบอร์ 1 เหลือ 6 กระสอบ (ต่ำกว่าเกณฑ์สั่งซื้อขั้นต่ำ 15 กระสอบ)',
+    status: 'action_required'
+  },
+  {
+    id: 'evt_2',
+    timestamp: getDateOffset(0) + ' 08:16',
+    source: 'Farm Inventory Agent',
+    type: 'STOCK_ALERT_LOW',
+    severity: 'warning',
+    message: 'ด่างทับทิมเกรดบ่อปลา เหลือ 3 ขวด (ต่ำกว่าเกณฑ์สั่งซื้อขั้นต่ำ 8 ขวด)',
+    status: 'action_required'
+  },
+  {
+    id: 'evt_3',
+    timestamp: getDateOffset(0) + ' 07:00',
+    source: 'Master Supervisory AI',
+    type: 'AUDIT_INTEGRITY',
+    severity: 'info',
+    message: 'ตรวจสอบความสอดคล้องยอดจอง Booking กับสต็อกปลาในบ่อ: ปกติ ทุกออเดอร์มีปลาพร้อมส่ง',
+    status: 'verified'
+  }
+];
+
+// รายการประวัติการคัดขนาดปลา (Fish Grading Logs)
+const INITIAL_GRADING_LOGS = [
+  {
+    id: 'GRD-20240910-001',
+    date: getDateOffset(-3),
+    sourcePondId: 'pond_2',
+    sourcePondName: 'บ่อดิน 2',
+    fishName: 'ปลานิลจิตรลดา',
+    originalSize: '1.5-2 นิ้ว (ก)',
+    sieveUsed: 'ตาคัดเบอร์ 2.0 ซม. (ก.ส.)',
+    initialQty: 60000,
+    splits: [
+      {
+        targetSize: '2-2.5 นิ้ว (ก.ส)',
+        sieveCode: 'ก.ส.',
+        qty: 48000,
+        targetPondId: 'pond_2',
+        targetPondName: 'บ่อดิน 2 (เลี้ยงต่อ)',
+        newUnitPrice: 1.50
+      },
+      {
+        targetSize: '2.5-3 นิ้ว (ญ)',
+        sieveCode: 'ญ',
+        qty: 11800,
+        targetPondId: 'pond_2',
+        targetPondName: 'บ่อดิน 2 (คัดไซส์ใหญ่)',
+        newUnitPrice: 1.80
+      }
+    ],
+    mortalityQty: 200,
+    operator: 'คุณสมศักดิ์ (ผู้จัดการฟาร์ม)',
+    notes: 'ปลาโตสม่ำเสมอ แข็งแรง กินอาหารดี อัตราสูญเสียต่ำ'
+  },
+  {
+    id: 'GRD-20240905-002',
+    date: getDateOffset(-8),
+    sourcePondId: 'pond_5',
+    sourcePondName: 'บ่อปูนอนุบาล 1',
+    fishName: 'ปลาดุกบิ๊กอุย',
+    originalSize: 'ใบมะขาม (จ)',
+    sieveUsed: 'ตาคัดเบอร์เล็ก 1 นิ้ว (ล)',
+    initialQty: 52000,
+    splits: [
+      {
+        targetSize: '1-1.5 นิ้ว (ล)',
+        sieveCode: 'ล',
+        qty: 50000,
+        targetPondId: 'pond_5',
+        targetPondName: 'บ่อปูนอนุบาล 1',
+        newUnitPrice: 0.80
+      }
+    ],
+    mortalityQty: 2000,
+    operator: 'คุณสมศรี (QC)',
+    notes: 'คัดแยกออกจากอ่างอนุบาลระยะแรก อัตราการรอด 96%'
+  }
+];
+
+// รายการใบรับสินค้าและนำเข้า (Goods Received Notes - GRN)
+const INITIAL_GRN_LOGS = [
+  {
+    id: 'GRN-20240912-001',
+    date: getDateOffset(-2),
+    type: 'fingerling', // fingerling (ลูกปลา), supply (อาหาร/เคมีภัณฑ์)
+    supplier: 'ศูนย์เพาะพันธุ์ลูกปลาดุกลพบุรี',
+    targetDestination: 'บ่อดิน 1 (ปลาดุกบิ๊กอุย)',
+    items: [
+      {
+        name: 'ลูกปลาดุกบิ๊กอุย',
+        size: '1-1.5 นิ้ว (ล)',
+        sieveCode: 'ล',
+        qty: 20000,
+        unit: 'ตัว',
+        unitCost: 0.45,
+        totalCost: 9000
+      }
+    ],
+    totalAmount: 9000,
+    financeStatus: 'submitted', // submitted (ส่งยื่นบัญชีแล้ว), pending
+    receiverName: 'คุณสมศักดิ์ (ผู้จัดการฟาร์ม)',
+    notes: 'ปลาแข็งแรง ลอยถุงปรับอุณหภูมิน้ำ 30 นาทีก่อนปล่อย'
+  },
+  {
+    id: 'GRN-20240911-002',
+    date: getDateOffset(-4),
+    type: 'supply',
+    supplier: 'บจก. ซีพีเอฟ (ประเทศไทย)',
+    targetDestination: 'คลังอาหารปลาหลัก',
+    items: [
+      {
+        name: 'อาหารไฮเกรด 9006T อนุบาลลูกปลา',
+        size: 'กระสอบ 10 กก.',
+        sieveCode: '-',
+        qty: 20,
+        unit: 'กระสอบ',
+        unitCost: 550,
+        totalCost: 11000
+      }
+    ],
+    totalAmount: 11000,
+    financeStatus: 'submitted',
+    receiverName: 'คุณสมศักดิ์ (ผู้จัดการฟาร์ม)',
+    notes: 'ตรวจนับสภาพกระสอบสมบูรณ์ ไม่ชื้น ไม่ฉีกขาด ส่งเรื่องบัญชีแล้ว'
+  }
+];
+

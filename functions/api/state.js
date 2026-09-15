@@ -105,6 +105,12 @@ export async function onRequestPost({ request, env }) {
       claims: payload.claims !== undefined ? payload.claims : (currentState.claims || []),
       drivers: payload.drivers !== undefined ? payload.drivers : (currentState.drivers || []),
       permissions: payload.permissions !== undefined ? payload.permissions : (currentState.permissions || null),
+      ponds: payload.ponds !== undefined ? payload.ponds : (currentState.ponds || []),
+      supplies: payload.supplies !== undefined ? payload.supplies : (currentState.supplies || []),
+      mortalityLogs: payload.mortalityLogs !== undefined ? payload.mortalityLogs : (currentState.mortalityLogs || []),
+      gradingLogs: payload.gradingLogs !== undefined ? payload.gradingLogs : (currentState.gradingLogs || []),
+      grnList: payload.grnList !== undefined ? payload.grnList : (currentState.grnList || []),
+      systemEvents: payload.systemEvents !== undefined ? payload.systemEvents : (currentState.systemEvents || []),
       updatedAt: new Date().toISOString()
     };
 

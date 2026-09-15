@@ -204,6 +204,10 @@ function loadLocalState() {
       state.currentUser = state.users[0];
       state.isLoggedIn = false;
     }
+
+    if (typeof initInventoryState === 'function') {
+      initInventoryState();
+    }
   } catch (err) {
     console.warn('Using default seed data due to storage error:', err);
     state.customers = INITIAL_CUSTOMERS;
@@ -214,6 +218,9 @@ function loadLocalState() {
     state.users = DEFAULT_USERS.map(u => ({ status: 'active', ...u }));
     state.currentUser = state.users[0];
     state.isLoggedIn = false;
+    if (typeof initInventoryState === 'function') {
+      initInventoryState();
+    }
   }
 }
 
@@ -231,6 +238,9 @@ function saveState() {
     }
     if (state.drivers) {
       localStorage.setItem('phuyaiporn_drivers', JSON.stringify(state.drivers));
+    }
+    if (typeof updateInventoryBadges === 'function') {
+      updateInventoryBadges();
     }
   } catch (err) {
     console.error('LocalStorage save error:', err);
@@ -333,6 +343,10 @@ function updateBadges() {
 
   const claimsCountBadge = document.getElementById('badge-claims-count');
   if (claimsCountBadge) claimsCountBadge.textContent = state.claims.length;
+
+  if (typeof updateInventoryBadges === 'function') {
+    updateInventoryBadges();
+  }
 }
 
 // ====================================================================
@@ -635,6 +649,9 @@ function switchTab(tabId) {
     renderPermissionsTable();
     renderDriversList();
     renderUsersTable();
+  }
+  if (tabId === 'inventory') {
+    if (typeof renderInventoryView === 'function') renderInventoryView();
   }
 
   lucide.createIcons();
@@ -1216,6 +1233,11 @@ function confirmCancelOrder() {
   const prevStatus = order.status;
   order.status = 'cancelled';
 
+  // คืนยอดสต็อกที่กันไว้
+  if (typeof releaseStockForOrder === 'function') {
+    releaseStockForOrder(order);
+  }
+
   // Record cancel in editHistory
   if (!order.editHistory) order.editHistory = [];
   order.editHistory.unshift({
@@ -1664,6 +1686,11 @@ function saveNewOrder() {
       else if (cust.orderCount >= 3) cust.vipTier = 'Regular';
     }
 
+    // ปลดล็อคสต็อกเดิมที่เคยกันไว้
+    if (typeof releaseStockForOrder === 'function') {
+      releaseStockForOrder(order);
+    }
+
     // อัปเดตข้อมูลในออเดอร์
     order.customerName = custName;
     order.customerPhone = custPhone;
@@ -1683,6 +1710,13 @@ function saveNewOrder() {
     order.notes = notes;
     order.lastModified = logEntry.timestamp;
     order.lastModifiedBy = state.currentUser.name;
+
+    // กันยอดสต็อกใหม่ตามการแก้ไข
+    if (order.status === 'delivered') {
+      if (typeof deductStockForDeliveredOrder === 'function') deductStockForDeliveredOrder(order);
+    } else if (order.status !== 'cancelled') {
+      if (typeof reserveStockForOrder === 'function') reserveStockForOrder(order);
+    }
 
     saveState();
     closeModal('modal-new-order');
@@ -1752,6 +1786,14 @@ function saveNewOrder() {
   };
 
   state.orders.unshift(newOrder);
+
+  // หักกันยอดสต็อกในฟาร์ม
+  if (newOrder.status === 'delivered') {
+    if (typeof deductStockForDeliveredOrder === 'function') deductStockForDeliveredOrder(newOrder);
+  } else if (newOrder.status !== 'cancelled') {
+    if (typeof reserveStockForOrder === 'function') reserveStockForOrder(newOrder);
+  }
+
   saveState();
   closeModal('modal-new-order');
 
@@ -2383,6 +2425,14 @@ function saveDeliveryUpdate() {
     order.remainingBalance = Math.max(0, order.netTotal - (order.deposit || 0) - collectedAmt);
   } else if (newStatus === 'delivered') {
     order.remainingBalance = Math.max(0, order.remainingBalance - collectedAmt);
+    // ตัดสต็อกจริงเมื่อส่งมอบสำเร็จ
+    if (typeof deductStockForDeliveredOrder === 'function') {
+      deductStockForDeliveredOrder(order);
+    }
+  } else if (newStatus === 'cancelled') {
+    if (typeof releaseStockForOrder === 'function') {
+      releaseStockForOrder(order);
+    }
   }
 
   if (order.remainingBalance <= 0) {
@@ -2484,6 +2534,9 @@ function confirmCompleteBackorder() {
   });
 
   order.status = 'delivered';
+  if (typeof deductStockForDeliveredOrder === 'function') {
+    deductStockForDeliveredOrder(order);
+  }
   order.paymentStatus = 'paid_full';
   order.remainingBalance = Math.max(0, order.remainingBalance - collected);
   order.actualCollected = (order.actualCollected || 0) + collected;

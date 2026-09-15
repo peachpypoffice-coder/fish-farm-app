@@ -92,11 +92,17 @@ const server = http.createServer((req, res) => {
         const current = readDb() || {};
         const updated = {
           ...current,
-          orders: payload.orders || current.orders || [],
-          customers: payload.customers || current.customers || [],
-          claims: payload.claims || current.claims || [],
-          drivers: payload.drivers || current.drivers || [],
-          permissions: payload.permissions || current.permissions || null,
+          orders: payload.orders !== undefined ? payload.orders : (current.orders || []),
+          customers: payload.customers !== undefined ? payload.customers : (current.customers || []),
+          claims: payload.claims !== undefined ? payload.claims : (current.claims || []),
+          drivers: payload.drivers !== undefined ? payload.drivers : (current.drivers || []),
+          permissions: payload.permissions !== undefined ? payload.permissions : (current.permissions || null),
+          ponds: payload.ponds !== undefined ? payload.ponds : (current.ponds || []),
+          supplies: payload.supplies !== undefined ? payload.supplies : (current.supplies || []),
+          mortalityLogs: payload.mortalityLogs !== undefined ? payload.mortalityLogs : (current.mortalityLogs || []),
+          gradingLogs: payload.gradingLogs !== undefined ? payload.gradingLogs : (current.gradingLogs || []),
+          grnList: payload.grnList !== undefined ? payload.grnList : (current.grnList || []),
+          systemEvents: payload.systemEvents !== undefined ? payload.systemEvents : (current.systemEvents || []),
           updatedAt: new Date().toISOString()
         };
         writeDb(updated);

@@ -125,6 +125,14 @@
             <span id="cloud-sync-text">คลาวด์ออนไลน์</span>
           </div>
 
+          <!-- Master AI Supervisor Button -->
+          <button onclick="openSupervisorModal()" class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-700 hover:brightness-110 text-white shadow-sm transition text-xs font-bold" title="ผู้ควบคุมและตรวจทานระบบ AI Supervisor">
+            <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
+            <span class="hidden sm:inline">AI Supervisor</span>
+            <span id="supervisor-health-badge" class="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-md font-bold">100%</span>
+            <span id="supervisor-alert-count" class="hidden bg-rose-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">0</span>
+          </button>
+
           <!-- User Role / Profile Button & Logout -->
           <div class="flex items-center space-x-1 sm:space-x-2">
             <button onclick="openLoginModal()" class="flex items-center space-x-1.5 p-1.5 sm:p-2 rounded-xl hover:bg-sky-50 border border-slate-200 hover:border-sky-300 transition" title="ข้อมูลผู้ใช้งาน">
@@ -165,6 +173,12 @@
         <button id="tab-btn-orders" onclick="switchTab('orders')" class="nav-tab-btn px-4 py-3 rounded-xl font-medium text-sm sm:text-base flex items-center space-x-2 text-slate-600 hover:bg-sky-50 transition">
           <i data-lucide="clipboard-list" class="w-5 h-5"></i>
           <span>รายการจองทั้งหมด</span>
+        </button>
+
+        <button id="tab-btn-inventory" onclick="switchTab('inventory')" class="nav-tab-btn px-4 py-3 rounded-xl font-medium text-sm sm:text-base flex items-center space-x-2 text-slate-600 hover:bg-sky-50 transition">
+          <i data-lucide="boxes" class="w-5 h-5"></i>
+          <span>สต็อกบ่อปลา & คลัง</span>
+          <span id="badge-inventory-alert" class="hidden bg-rose-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">0</span>
         </button>
 
         <button id="tab-btn-claims" onclick="switchTab('claims')" class="nav-tab-btn px-4 py-3 rounded-xl font-medium text-sm sm:text-base flex items-center space-x-2 text-slate-600 hover:bg-sky-50 transition">
@@ -792,6 +806,256 @@
           <p class="flex items-center gap-2"><span class="text-red-500 font-bold">• สิ่งที่จะถูกล้าง:</span> รายการจองพันธุ์ปลาทั้งหมด, สถานะจัดส่ง, และประวัติการแจ้งเคลม</p>
           <p class="flex items-center gap-2"><span class="text-emerald-600 font-bold">• สิ่งที่จะยังคงอยู่:</span> สายพันธุ์ปลา/สินค้าในระบบ, บัญชีผู้ใช้งานระบบ, และรายชื่อคนขับรถ</p>
           <p class="text-slate-400 italic mt-2">* เมื่อกดล้าง ข้อมูลจะถูกส่งไปล้างบน Cloudflare D1 อัตโนมัติ ทำให้ทุกอุปกรณ์ซิงค์พร้อมเริ่มงานจริงทันที</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- TAB: สต็อกบ่อปลา & คลังสินค้า (FARM INVENTORY AGENT) -->
+    <!-- ================================================================= -->
+    <section id="tab-inventory" class="tab-pane hidden space-y-6">
+      
+      <!-- Inventory Header & Action Buttons -->
+      <div class="farm-card p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <span class="text-sky-600">📦</span> จัดการสต็อกบ่อปลาและการคัดขนาด
+          </h2>
+          <p class="text-sm text-slate-500 mt-1">ผังบ่อปลาเรียลไทม์ บันทึกคัดขนาดกระจายไซส์ รับเข้าลูกปลา/อาหารออกใบ GRN และเชื่อมต่อกั๊ก/ตัดสต็อกอัตโนมัติ</p>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <button onclick="openGradeFishModal()" class="btn-large bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white py-2 px-3 sm:px-4 text-xs sm:text-sm font-bold shadow-xs flex items-center gap-1.5">
+            <i data-lucide="scale" class="w-4 h-4"></i>
+            <span>คัดขนาดปลา</span>
+          </button>
+          <button onclick="openInboundGrnModal()" class="btn-large btn-primary-blue py-2 px-3 sm:px-4 text-xs sm:text-sm font-bold shadow-xs flex items-center gap-1.5">
+            <i data-lucide="file-plus" class="w-4 h-4"></i>
+            <span>รับเข้าสินค้า (GRN)</span>
+          </button>
+          <button onclick="openRecordMortalityModal('pond_1')" class="btn-large bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 py-2 px-3 text-xs sm:text-sm font-bold shadow-xs flex items-center gap-1.5">
+            <i data-lucide="skull" class="w-4 h-4"></i>
+            <span>แจ้งปลาตาย</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Grading Due Alert Banner Container -->
+      <div id="grading-due-banner-container" class="hidden"></div>
+
+      <!-- 5 Stats Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+        <div class="bg-white p-4 rounded-2xl border border-sky-100 shadow-xs">
+          <div class="flex items-center justify-between text-xs text-slate-500 font-semibold mb-1">
+            <span>ปลารวมในฟาร์ม</span>
+            <span class="text-base">🐟</span>
+          </div>
+          <div id="stat-inv-total-fish" class="text-lg sm:text-xl font-black text-sky-950">0 ตัว</div>
+          <div class="text-[11px] text-slate-400 mt-0.5">รวมทุกบ่อทุกระยะ</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-emerald-100 shadow-xs">
+          <div class="flex items-center justify-between text-xs text-emerald-700 font-semibold mb-1">
+            <span>ปลาพร้อมขายจริง</span>
+            <span class="text-base">🎣</span>
+          </div>
+          <div id="stat-inv-ready-fish" class="text-lg sm:text-xl font-black text-emerald-600">0 ตัว</div>
+          <div class="text-[11px] text-emerald-600 mt-0.5">หักยอดติดจองแล้ว</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-amber-100 shadow-xs">
+          <div class="flex items-center justify-between text-xs text-amber-700 font-semibold mb-1">
+            <span>ติดจอง (Hold)</span>
+            <span class="text-base">📌</span>
+          </div>
+          <div id="stat-inv-reserved-fish" class="text-lg sm:text-xl font-black text-amber-600">0 ตัว</div>
+          <div class="text-[11px] text-amber-600 mt-0.5">กั๊กไว้ตามคิวจอง</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-amber-200 shadow-xs">
+          <div class="flex items-center justify-between text-xs text-amber-800 font-semibold mb-1">
+            <span>ถึงรอบคัดขนาด</span>
+            <span class="text-base">⚖️</span>
+          </div>
+          <div id="stat-inv-grading-due" class="text-lg sm:text-xl font-black text-amber-600">0 บ่อ</div>
+          <div class="text-[11px] text-amber-700 mt-0.5">เกินกำหนด 7-10 วัน</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-rose-100 shadow-xs col-span-2 sm:col-span-1">
+          <div class="flex items-center justify-between text-xs text-rose-700 font-semibold mb-1">
+            <span>เตือนของหมด (ROP)</span>
+            <span class="text-base">⚠️</span>
+          </div>
+          <div id="stat-inv-low-stock" class="text-lg sm:text-xl font-black text-rose-600">0 รายการ</div>
+          <div class="text-[11px] text-rose-600 mt-0.5">ต่ำกว่าเกณฑ์สั่งซื้อ</div>
+        </div>
+      </div>
+
+      <!-- Sub-tabs Navigation -->
+      <div class="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto scrollbar-none">
+        <button id="inv-subtab-btn-ponds" onclick="switchInventorySubTab('ponds')" class="inv-subtab-btn px-4 py-2 rounded-xl text-sm font-bold bg-sky-600 text-white shadow-xs transition flex items-center gap-2 whitespace-nowrap">
+          <i data-lucide="layout-grid" class="w-4 h-4"></i>
+          <span>ผังบ่อปลา & คัดขนาด</span>
+        </button>
+        <button id="inv-subtab-btn-supplies" onclick="switchInventorySubTab('supplies')" class="inv-subtab-btn px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-sky-50 transition flex items-center gap-2 whitespace-nowrap">
+          <i data-lucide="package" class="w-4 h-4"></i>
+          <span>คลังอาหารและเวชภัณฑ์</span>
+        </button>
+        <button id="inv-subtab-btn-inbound_grn" onclick="switchInventorySubTab('inbound_grn')" class="inv-subtab-btn px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-sky-50 transition flex items-center gap-2 whitespace-nowrap">
+          <i data-lucide="file-check" class="w-4 h-4"></i>
+          <span>รับเข้าสินค้า & ใบรับ GRN</span>
+        </button>
+        <button id="inv-subtab-btn-history" onclick="switchInventorySubTab('history')" class="inv-subtab-btn px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-sky-50 transition flex items-center gap-2 whitespace-nowrap">
+          <i data-lucide="history" class="w-4 h-4"></i>
+          <span>ประวัติบันทึกฟาร์ม</span>
+        </button>
+      </div>
+
+      <!-- Sub-section 1: Ponds Grid -->
+      <div id="inv-section-ponds" class="space-y-4">
+        <div id="ponds-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Sub-section 2: Supplies Table -->
+      <div id="inv-section-supplies" class="hidden space-y-4">
+        <div class="farm-card overflow-hidden">
+          <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+              <i data-lucide="package-check" class="w-5 h-5 text-sky-600"></i>
+              <span>รายการอาหารปลา เวชภัณฑ์ และสารปรับสภาพน้ำ</span>
+            </h3>
+            <span class="text-xs text-slate-500 font-semibold hidden sm:inline">* แจ้งเตือนสั่งซื้อด่วนเมื่อต่ำกว่า Re-order Point (ROP)</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-100 text-xs font-bold text-slate-700 uppercase border-b border-slate-200">
+                  <th class="py-3 px-3.5">หมวดหมู่</th>
+                  <th class="py-3 px-3.5">ชื่อสินค้า / ขนาดบรรจุ</th>
+                  <th class="py-3 px-3.5 text-center">คงเหลือในคลัง</th>
+                  <th class="py-3 px-3.5 text-center">จุดสั่งซื้อ (ROP)</th>
+                  <th class="py-3 px-3.5 text-center">สถานะสต็อก</th>
+                  <th class="py-3 px-3.5 text-right">ราคาต่อหน่วย</th>
+                  <th class="py-3 px-3.5 text-right">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="supplies-table-body" class="divide-y divide-slate-100">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-section 3: Inbound & GRN List -->
+      <div id="inv-section-inbound_grn" class="hidden space-y-4">
+        <div class="farm-card overflow-hidden">
+          <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                <i data-lucide="file-text" class="w-5 h-5 text-sky-600"></i>
+                <span>ประวัติใบรับสินค้าเข้าฟาร์ม (Goods Received Notes - GRN)</span>
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">เชื่อมต่อยื่นยอดต้นทุนไปยังระบบบัญชี (Finance Link) โดยอัตโนมัติ</p>
+            </div>
+            <button onclick="openInboundGrnModal()" class="btn-large btn-primary-blue py-1.5 px-3 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span>รับเข้าสินค้าใหม่ (GRN)</span>
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-100 text-xs font-bold text-slate-700 uppercase border-b border-slate-200">
+                  <th class="py-3 px-3.5">เลขที่ GRN / วันที่</th>
+                  <th class="py-3 px-3.5">ประเภท</th>
+                  <th class="py-3 px-3.5">ซัพพลายเออร์ / รายการ</th>
+                  <th class="py-3 px-3.5">ปลายทางรับเข้า</th>
+                  <th class="py-3 px-3.5 text-right">มูลค่ารวม</th>
+                  <th class="py-3 px-3.5 text-center">สถานะบัญชี</th>
+                  <th class="py-3 px-3.5 text-right">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="grn-table-body" class="divide-y divide-slate-100">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-section 4: History & Logs Section -->
+      <div id="inv-section-history" class="hidden space-y-6">
+        <!-- Grading Logs Table -->
+        <div class="farm-card overflow-hidden">
+          <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                <i data-lucide="scale" class="w-5 h-5 text-amber-600"></i>
+                <span>ประวัติการคัดขนาดและการเติบโต (Fish Grading Logs)</span>
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">บันทึกการกระจายไซส์ บ่อปลายทาง และการปรับราคาอัตโนมัติ</p>
+            </div>
+            <button onclick="openGradeFishModal()" class="btn-large bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 py-1.5 px-3 text-xs font-bold rounded-xl flex items-center gap-1">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span>บันทึกคัดขนาด</span>
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-100 text-xs font-bold text-slate-700 uppercase border-b border-slate-200">
+                  <th class="py-3 px-3.5">รหัส / วันที่</th>
+                  <th class="py-3 px-3.5">บ่อต้นทาง / สายพันธุ์</th>
+                  <th class="py-3 px-3.5">ตาคัดที่ใช้</th>
+                  <th class="py-3 px-3.5 text-center">จำนวนก่อนคัด</th>
+                  <th class="py-3 px-3.5">ผลการคัดแยก (ไซส์ ➔ บ่อปลายทาง)</th>
+                  <th class="py-3 px-3.5 text-center">สูญเสีย</th>
+                  <th class="py-3 px-3.5">ผู้บันทึก</th>
+                </tr>
+              </thead>
+              <tbody id="grading-table-body" class="divide-y divide-slate-100">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Mortality Logs Table -->
+        <div class="farm-card overflow-hidden">
+          <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                <i data-lucide="activity" class="w-5 h-5 text-rose-600"></i>
+                <span>บันทึกประวัติการสูญเสียปลา (Mortality & Loss Logs)</span>
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">ติดตามอัตราการรอดและมาตรการแก้ไขคุณภาพน้ำ</p>
+            </div>
+            <button onclick="openRecordMortalityModal('pond_1')" class="btn-large bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-1.5 px-3 text-xs font-bold rounded-xl flex items-center gap-1">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span>บันทึกเพิ่ม</span>
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-100 text-xs font-bold text-slate-700 uppercase border-b border-slate-200">
+                  <th class="py-3 px-3.5">วันที่</th>
+                  <th class="py-3 px-3.5">บ่อปลา</th>
+                  <th class="py-3 px-3.5 text-center">จำนวนสูญเสีย</th>
+                  <th class="py-3 px-3.5">สาเหตุ</th>
+                  <th class="py-3 px-3.5">การแก้ไข / มาตรการ</th>
+                  <th class="py-3 px-3.5">ผู้บันทึก</th>
+                </tr>
+              </thead>
+              <tbody id="mortality-table-body" class="divide-y divide-slate-100">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1766,14 +2030,725 @@
 
 
 
+  <!-- ==================================================================== -->
+  <!-- 8. MODALS ระบบสต็อกฟาร์มปลา & การคัดขนาด (FARM INVENTORY MODALS) -->
+  <!-- ==================================================================== -->
+
+  <!-- 8.1 MODAL คัดขนาดปลา (FISH GRADING & GROWTH) -->
+  <div id="modal-grade-fish" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-white/20 rounded-xl backdrop-blur-xs">
+            <i data-lucide="scale" class="w-6 h-6 text-amber-100"></i>
+          </div>
+          <div>
+            <h3 class="text-lg sm:text-xl font-bold">บันทึกการคัดขนาดและการเติบโต (Fish Grading Form)</h3>
+            <p class="text-xs text-amber-100">เลือกบ่อต้นทาง กระจายผลการคัดแยกไซส์/บ่อปลายทาง และอัปเดตราคาขายอัตโนมัติ</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-grade-fish')" class="text-amber-100 hover:text-white p-1 rounded-lg hover:bg-white/10 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Form Body -->
+      <form onsubmit="handleSaveGrading(event)" class="flex flex-col flex-1 overflow-hidden">
+        <div class="p-4 sm:p-6 space-y-4 flex-1 overflow-y-auto overscroll-contain">
+          
+          <!-- บ่อต้นทาง & รายละเอียดปัจจุบัน -->
+          <div class="bg-amber-50/60 border border-amber-200 rounded-2xl p-4 space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                  🏞️ เลือกบ่อต้นทางที่ทำการคัดขนาด: <span class="text-rose-500">*</span>
+                </label>
+                <select id="grade-source-pond-select" onchange="updateGradeSourcePondDetails()" class="input-large w-full text-sm font-bold bg-white" required>
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">📅 วันที่คัดขนาด:</label>
+                <input type="date" id="grade-date-input" class="input-large w-full text-sm bg-white" required>
+              </div>
+            </div>
+
+            <!-- กล่องสรุปสถานะปลาในบ่อต้นทาง -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-white p-3 rounded-xl border border-amber-200/80 text-xs">
+              <div>
+                <span class="text-slate-400 block text-[11px]">สายพันธุ์:</span>
+                <span id="grade-source-fish-name" class="font-bold text-slate-800 text-sm">-</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[11px]">ไซส์เดิม (ตาคัด):</span>
+                <span id="grade-source-current-size" class="font-bold text-slate-800 text-sm">-</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[11px]">ปลาทั้งหมด:</span>
+                <span id="grade-source-total-qty" class="font-black text-slate-800 text-sm">0 ตัว</span>
+              </div>
+              <div>
+                <span class="text-amber-600 block text-[11px]">ติดจอง (Hold):</span>
+                <span id="grade-source-reserved-qty" class="font-black text-amber-600 text-sm">0 ตัว</span>
+              </div>
+              <div class="col-span-2 sm:col-span-1">
+                <span class="text-emerald-700 block text-[11px]">พร้อมขายจริง:</span>
+                <span id="grade-source-available-qty" class="font-black text-emerald-700 text-sm">0 ตัว</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ตะแกรงคัดหลักที่ใช้ -->
+          <div class="flex items-center gap-3">
+            <div class="flex-1">
+              <label class="block text-xs font-bold text-slate-700 mb-1">
+                📏 เบอร์ตะแกรงคัด/ตาคัดหลักที่ใช้:
+              </label>
+              <select id="grade-sieve-select" class="input-large w-full text-xs font-semibold">
+                <!-- Populated by JS -->
+              </select>
+            </div>
+          </div>
+
+          <!-- ตารางกระจายผลการคัดแยกไซส์ (Grading Splits Table) -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-bold text-slate-700">
+                ⚖️ ผลการคัดกระจายไซส์ (ระบุขนาด, ตาคัด, จำนวนตัว, บ่อปลายทาง, ราคาขายใหม่):
+              </label>
+              <button type="button" onclick="addGradingSplitRow()" class="btn-large bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 py-1 px-2.5 text-xs font-bold rounded-lg flex items-center gap-1 shadow-2xs">
+                <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                <span>เพิ่มแถวขนาดที่คัดได้ (+)</span>
+              </button>
+            </div>
+
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-100/80 text-slate-600 border-b border-slate-200">
+                  <tr>
+                    <th class="p-2.5 font-bold min-w-[160px]">ขนาดที่คัดได้ (Size)</th>
+                    <th class="p-2.5 font-bold w-24 text-center">ตาคัด</th>
+                    <th class="p-2.5 font-bold w-28 text-right">จำนวน (ตัว)</th>
+                    <th class="p-2.5 font-bold min-w-[160px]">ย้ายเข้าบ่อปลายทาง</th>
+                    <th class="p-2.5 font-bold w-28 text-right">ราคาขาย (฿/ตัว)</th>
+                    <th class="p-2.5 font-bold w-10 text-center"></th>
+                  </tr>
+                </thead>
+                <tbody id="grade-splits-tbody">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ปลาตายระหว่างคัด & บันทึกสาเหตุ -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-rose-50/40 p-3.5 rounded-xl border border-rose-200">
+            <div>
+              <label class="block text-xs font-bold text-rose-700 mb-1">
+                ☠️ ปลาสูญเสีย/ตายระหว่างคัด (ตัว):
+              </label>
+              <input type="number" id="grade-mortality-input" min="0" value="0" oninput="calculateGradingTotals()" class="input-large text-xs py-1.5 px-2.5 w-full font-black text-rose-600 text-right bg-white">
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">หมายเหตุการคัดขนาด:</label>
+              <input type="text" id="grade-notes-input" placeholder="เช่น ปลาสมบูรณ์ดี กินอาหารเก่ง, กระจายเข้าบ่อ A2" class="input-large text-xs py-1.5 px-2.5 w-full bg-white">
+            </div>
+          </div>
+
+          <!-- แถบตรวจสอบความสมดุลของยอดปลา (Balance Audit) -->
+          <div class="bg-slate-800 text-white p-3.5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-4 flex-wrap">
+              <div>
+                <span class="text-slate-400 block text-[11px]">ยอดเดิมในบ่อ:</span>
+                <span id="grade-calc-source-total" class="font-black text-sm text-slate-200">0 ตัว</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[11px]">รวมที่คัดได้ + ตาย:</span>
+                <span id="grade-calc-graded-sum" class="font-black text-sm text-amber-400">0 ตัว</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[11px]">สถานะความสมดุล:</span>
+                <span id="grade-calc-diff" class="font-bold text-emerald-400">ยอดตรงพอดี (0)</span>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-300 italic">
+              * ระบบจะตัดสต็อกบ่อต้นทาง และปรับปรุงสต็อกบ่อปลายทางอัตโนมัติ
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex items-center justify-end gap-2 flex-shrink-0">
+          <button type="button" onclick="closeModal('modal-grade-fish')" class="btn-large bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 px-4 text-xs font-semibold rounded-xl">
+            ยกเลิก
+          </button>
+          <button type="submit" class="btn-large bg-amber-500 hover:bg-amber-600 text-white py-2 px-5 text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5">
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            <span>บันทึกผลการคัด & อัปเดตสต็อก</span>
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- 8.2 MODAL รับสินค้าเข้าฟาร์ม (GOODS RECEIVED NOTE - GRN) -->
+  <div id="modal-inbound-grn" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-emerald-600 to-teal-700 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-white/20 rounded-xl backdrop-blur-xs">
+            <i data-lucide="package-plus" class="w-6 h-6 text-emerald-100"></i>
+          </div>
+          <div>
+            <h3 class="text-lg sm:text-xl font-bold">รับสินค้าเข้าฟาร์ม & ออกใบรับ (GRN)</h3>
+            <p class="text-xs text-emerald-100">บันทึกรับลูกปลาใหม่ หรือวัตถุดิบ/อาหารปลา พร้อมส่งเรื่องไปยังฝ่ายบัญชี</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-inbound-grn')" class="text-emerald-100 hover:text-white p-1 rounded-lg hover:bg-white/10 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Form Body -->
+      <form onsubmit="handleSaveInboundGrn(event)" class="flex flex-col flex-1 overflow-hidden">
+        <div class="p-4 sm:p-6 space-y-4 flex-1 overflow-y-auto overscroll-contain">
+          
+          <input type="hidden" id="inbound-type-hidden" value="fingerling">
+
+          <!-- Type Switcher -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">หมวดหมู่สินค้าที่รับเข้า:</label>
+            <div class="flex gap-2">
+              <button type="button" id="btn-inbound-type-fingerling" onclick="toggleInboundType('fingerling')" class="flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-sky-600 text-white shadow-xs">
+                🐟 ลูกปลาพันธุ์ใหม่ (เข้าบ่อเลี้ยง)
+              </button>
+              <button type="button" id="btn-inbound-type-supply" onclick="toggleInboundType('supply')" class="flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm text-slate-600 hover:bg-sky-50 border border-slate-200">
+                📦 ปัจจัยการผลิต / อาหาร / เคมีภัณฑ์
+              </button>
+            </div>
+          </div>
+
+          <!-- Basic Info -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">📅 วันที่รับสินค้า:</label>
+              <input type="date" id="inbound-date-input" class="input-large w-full text-xs" required>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">🏢 แหล่งที่มา / ซัพพลายเออร์:</label>
+              <input type="text" id="inbound-supplier-input" placeholder="เช่น ฟาร์มเพาะพันธุ์สุพรรณบุรี" class="input-large w-full text-xs font-semibold" required>
+            </div>
+          </div>
+
+          <!-- Section A: ลูกปลาใหม่ -->
+          <div id="inbound-sec-fingerling" class="space-y-3 bg-sky-50/50 p-3.5 rounded-xl border border-sky-200">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-bold text-sky-900 mb-1">พันธุ์ปลา:</label>
+                <select id="inbound-fish-select" class="input-large w-full text-xs font-bold bg-white">
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-sky-900 mb-1">ขนาด/ไซส์เริ่มต้น:</label>
+                <input type="text" id="inbound-size-input" value="1-1.5 นิ้ว (ล)" placeholder="เช่น 1-1.5 นิ้ว (ล)" class="input-large w-full text-xs font-bold bg-white">
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-sky-900 mb-1">เบอร์ตาคัด (Sieve):</label>
+                <input type="text" id="inbound-sieve-input" value="ล" placeholder="เช่น ล, ลสส" class="input-large w-full text-xs bg-white">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-sky-900 mb-1">ปล่อยลงบ่อปลายทาง:</label>
+                <select id="inbound-target-pond-select" class="input-large w-full text-xs font-bold bg-white">
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section B: ปัจจัยการผลิต -->
+          <div id="inbound-sec-supply" class="hidden space-y-3 bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-200">
+            <div>
+              <label class="block text-xs font-bold text-emerald-900 mb-1">เลือกรายการพัสดุ/อาหารปลา:</label>
+              <select id="inbound-supply-select" class="input-large w-full text-xs font-bold bg-white">
+                <!-- Populated by JS -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Quantity & Cost Calculation -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">จำนวนที่รับเข้า:</label>
+              <input type="number" id="inbound-qty-input" min="1" placeholder="จำนวนตัว หรือ กระสอบ" oninput="calculateInboundCost()" class="input-large w-full text-xs font-black text-slate-800 text-right" required>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">ต้นทุนต่อหน่วย (฿):</label>
+              <input type="number" id="inbound-cost-input" step="0.01" min="0" placeholder="0.00" oninput="calculateInboundCost()" class="input-large w-full text-xs font-bold text-slate-800 text-right" required>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">มูลค่ารวมทั้งสิ้น:</label>
+              <div id="inbound-total-cost-display" class="input-large w-full text-sm font-black text-emerald-700 text-right bg-emerald-50/60 border-emerald-300 flex items-center justify-end">
+                ฿0.00
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">หมายเหตุ / ข้อมูลตรวจรับ:</label>
+            <input type="text" id="inbound-notes-input" placeholder="เช่น ลูกปลาแข็งแรงดี ไม่มีแผล หรือ ใบส่งของเลขที่ INV-1234" class="input-large w-full text-xs">
+          </div>
+
+          <div class="text-[11px] text-slate-500 bg-sky-50/50 p-2.5 rounded-xl border border-sky-100 flex items-center gap-2">
+            <i data-lucide="info" class="w-4 h-4 text-sky-600 flex-shrink-0"></i>
+            <span>เมื่อบันทึกแล้ว สต็อกจะเพิ่มเข้าบ่อ/คลังทันที และระบบจะสร้างเอกสาร GRN ส่งให้ฝ่ายบัญชีต้นทุน</span>
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex items-center justify-end gap-2 flex-shrink-0">
+          <button type="button" onclick="closeModal('modal-inbound-grn')" class="btn-large bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 px-4 text-xs font-semibold rounded-xl">
+            ยกเลิก
+          </button>
+          <button type="submit" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-5 text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>บันทึกรับเข้า & ออกใบ GRN</span>
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- 8.3 MODAL แสดงและพิมพ์ใบรับสินค้า GRN SLIP -->
+  <div id="modal-view-grn" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Top Bar -->
+      <div class="bg-slate-800 px-6 py-3 text-white flex items-center justify-between flex-shrink-0 print:hidden">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5 text-sky-400"></i>
+          <span class="font-bold text-sm">ใบตรวจรับสินค้า (Goods Received Note - GRN)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="window.print()" class="btn-large bg-sky-600 hover:bg-sky-500 text-white py-1.5 px-3 text-xs font-bold rounded-lg flex items-center gap-1">
+            <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+            <span>พิมพ์ใบรับสินค้า</span>
+          </button>
+          <button onclick="closeModal('modal-view-grn')" class="text-slate-400 hover:text-white p-1 rounded-lg">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Printable Area -->
+      <div class="p-6 sm:p-8 space-y-6 flex-1 overflow-y-auto overscroll-contain print:p-0">
+        
+        <!-- Farm Header -->
+        <div class="border-b-2 border-slate-800 pb-4 flex items-start justify-between">
+          <div>
+            <h2 class="text-xl font-black text-slate-900">บจก.สุทธิ อินเตอร์ ฟาร์ม (ฟาร์มปลาผู้ใหญ่พร)</h2>
+            <p class="text-xs text-slate-600 mt-0.5">ระบบจัดการสต็อกและคลังสินค้ากลาง (Farm Inventory Management)</p>
+            <p class="text-xs text-slate-500">โทร: 081-888-9999 • ต.บางหลวง อ.บางเลน จ.นครปฐม</p>
+          </div>
+          <div class="text-right">
+            <span class="text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-800 px-2.5 py-1 rounded-md border border-slate-300">
+              ใบรับสินค้า (GRN)
+            </span>
+            <div id="view-grn-id" class="text-base font-black text-sky-900 mt-1.5 font-mono">GRN-20260916-001</div>
+            <div id="view-grn-date" class="text-xs text-slate-500">วันที่: -</div>
+          </div>
+        </div>
+
+        <!-- Meta Grid -->
+        <div class="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div>
+            <span class="text-slate-400 block mb-0.5">ผู้จัดส่ง / ซัพพลายเออร์:</span>
+            <span id="view-grn-supplier" class="font-bold text-slate-800 text-sm">-</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block mb-0.5">ปลายทางจัดเก็บ / บ่อเลี้ยง:</span>
+            <span id="view-grn-destination" class="font-bold text-slate-800 text-sm">-</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block mb-0.5">ผู้ตรวจรับสินค้า:</span>
+            <span id="view-grn-receiver" class="font-semibold text-slate-700">-</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block mb-0.5">สถานะการส่งฝ่ายบัญชี:</span>
+            <span class="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+              <i data-lucide="check-circle" class="w-3 h-3"></i> ส่งเข้าระบบต้นทุนแล้ว
+            </span>
+          </div>
+        </div>
+
+        <!-- Items Table -->
+        <div>
+          <table class="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
+            <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="p-2.5 text-center w-10">ลำดับ</th>
+                <th class="p-2.5">รายการสินค้า</th>
+                <th class="p-2.5 w-24">ขนาด/สเปก</th>
+                <th class="p-2.5 text-right w-24">จำนวน</th>
+                <th class="p-2.5 text-right w-24">ต้นทุน/หน่วย</th>
+                <th class="p-2.5 text-right w-28">มูลค่ารวม</th>
+              </tr>
+            </thead>
+            <tbody id="view-grn-items-tbody">
+              <!-- Populated by JS -->
+            </tbody>
+            <tfoot class="bg-slate-50 border-t-2 border-slate-300 font-bold">
+              <tr>
+                <td colspan="5" class="p-3 text-right text-slate-700">มูลค่ารวมทั้งสิ้น (Total Amount):</td>
+                <td id="view-grn-total-amount" class="p-3 text-right text-sm font-black text-sky-950">฿0.00</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Notes -->
+        <div class="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-200">
+          <span class="font-bold">หมายเหตุการตรวจรับ:</span> <span id="view-grn-notes">-</span>
+        </div>
+
+        <!-- Signatures -->
+        <div class="grid grid-cols-3 gap-4 pt-6 text-center text-xs">
+          <div class="space-y-8">
+            <div class="border-b border-slate-300 pb-8"></div>
+            <div>( ผู้ส่งมอบสินค้า )</div>
+          </div>
+          <div class="space-y-8">
+            <div class="border-b border-slate-300 pb-8"></div>
+            <div>( ผู้ตรวจรับสินค้า - คลังฟาร์ม )</div>
+          </div>
+          <div class="space-y-8">
+            <div class="border-b border-slate-300 pb-8"></div>
+            <div>( ผู้ตรวจสอบ - ฝ่ายบัญชี/การเงิน )</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-end flex-shrink-0 print:hidden">
+        <button onclick="closeModal('modal-view-grn')" class="btn-large bg-slate-200 hover:bg-slate-300 text-slate-700 py-1.5 px-4 text-xs font-semibold rounded-lg">
+          ปิดหน้าต่าง
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 8.4 MODAL แจ้งปลาสูญเสีย/ปลาตาย (FISH MORTALITY REPORT) -->
+  <div id="modal-record-mortality" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-rose-600 to-red-700 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 bg-white/20 rounded-xl">
+            <i data-lucide="skull" class="w-5 h-5 text-rose-100"></i>
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold">บันทึกปลาสูญเสีย / ปลาตาย</h3>
+            <p class="text-xs text-rose-100">ตัดสต็อกปลาในบ่อเลี้ยงและบันทึกประวัติ</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-record-mortality')" class="text-rose-100 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Form -->
+      <form onsubmit="handleSaveMortality(event)" class="p-4 sm:p-6 space-y-4">
+        <input type="hidden" id="mortality-pond-id">
+
+        <div class="bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs space-y-1">
+          <div><span class="text-slate-500">บ่อปลา:</span> <strong id="mortality-pond-name" class="text-slate-800">-</strong></div>
+          <div><span class="text-slate-500">ยอดคงเหลือปัจจุบัน:</span> <strong id="mortality-current-qty" class="text-slate-800">-</strong></div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            จำนวนปลาที่ตาย (ตัว): <span class="text-rose-500">*</span>
+          </label>
+          <input type="number" id="mortality-qty-input" min="1" placeholder="ระบุจำนวนตัว" class="input-large w-full text-sm font-black text-rose-600 text-right" required>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">สาเหตุการตาย/สูญเสีย:</label>
+          <input type="text" id="mortality-cause-input" placeholder="เช่น อากาศร้อน น็อกน้ำ ช้ำจากการจับ" class="input-large w-full text-xs">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">การแก้ไขเบื้องต้น:</label>
+          <input type="text" id="mortality-action-input" placeholder="เช่น สาดเกลือ เปิดเครื่องเติมอากาศ ถ่ายน้ำ 20%" class="input-large w-full text-xs">
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeModal('modal-record-mortality')" class="btn-large bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 px-4 text-xs font-semibold rounded-xl">
+            ยกเลิก
+          </button>
+          <button type="submit" class="btn-large bg-rose-600 hover:bg-rose-700 text-white py-2 px-4 text-xs font-bold rounded-xl shadow-md">
+            ยืนยันตัดสต็อกปลาตาย
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- 8.5 MODAL เบิกใช้ / รับเข้าสินค้าปัจจัยการผลิต (SUPPLY TRANSACTION) -->
+  <div id="modal-supply-transaction" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-sky-700 to-indigo-800 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
+        <h3 id="supply-tx-title" class="text-base sm:text-lg font-bold">บันทึกเบิกใช้ / รับเข้าสินค้า</h3>
+        <button onclick="closeModal('modal-supply-transaction')" class="text-sky-200 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Form -->
+      <form onsubmit="handleSaveSupplyTransaction(event)" class="p-4 sm:p-6 space-y-4">
+        <input type="hidden" id="supply-tx-id">
+        <input type="hidden" id="supply-tx-type">
+
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1">
+          <div><span class="text-slate-500">รายการ:</span> <strong id="supply-tx-name" class="text-slate-800">-</strong></div>
+          <div><span class="text-slate-500">คงเหลือในคลัง:</span> <strong id="supply-tx-current" class="text-slate-800">-</strong></div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            จำนวน: <span class="text-rose-500">*</span>
+          </label>
+          <input type="number" id="supply-tx-qty" min="1" placeholder="ระบุจำนวน" class="input-large w-full text-sm font-black text-slate-800 text-right" required>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">หมายเหตุ / นำไปใช้ที่บ่อใด:</label>
+          <input type="text" id="supply-tx-note" placeholder="เช่น ให้อาหารบ่อดิน A1 และ A2" class="input-large w-full text-xs">
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeModal('modal-supply-transaction')" class="btn-large bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 px-4 text-xs font-semibold rounded-xl">
+            ยกเลิก
+          </button>
+          <button type="submit" id="btn-supply-tx-submit" class="btn-large btn-primary-blue py-2 px-4 text-xs font-bold rounded-xl shadow-md">
+            ยืนยัน
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- 8.6 MODAL แก้ไขข้อมูลบ่อปลา (EDIT POND MODAL) -->
+  <div id="modal-edit-pond" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-slate-700 to-slate-900 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <i data-lucide="edit-3" class="w-5 h-5 text-sky-400"></i>
+          <h3 class="text-base sm:text-lg font-bold">แก้ไขข้อมูลบ่อปลา</h3>
+        </div>
+        <button onclick="closeModal('modal-edit-pond')" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Form -->
+      <form onsubmit="handleSaveEditPond(event)" class="p-4 sm:p-6 space-y-3 flex-1 overflow-y-auto overscroll-contain">
+        <input type="hidden" id="edit-pond-id">
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อบ่อ:</label>
+            <input type="text" id="edit-pond-name" class="input-large w-full text-xs font-bold" required>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">สถานะบ่อ:</label>
+            <select id="edit-pond-status" class="input-large w-full text-xs font-bold">
+              <option value="ready">พร้อมขาย</option>
+              <option value="growing">กำลังอนุบาล</option>
+              <option value="resting">พักบ่อ / ตากบ่อ</option>
+              <option value="empty">บ่อว่าง</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">สายพันธุ์ปลาในบ่อ:</label>
+            <input type="text" id="edit-pond-fish-name" class="input-large w-full text-xs font-semibold">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ขนาด/ไซส์ (นิ้ว):</label>
+            <input type="text" id="edit-pond-fish-size" class="input-large w-full text-xs font-semibold">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ตาคัด:</label>
+            <input type="text" id="edit-pond-sieve" class="input-large w-full text-xs text-center font-bold">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">จำนวนคงเหลือ:</label>
+            <input type="number" id="edit-pond-total-qty" min="0" class="input-large w-full text-xs text-right font-black">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ราคาขาย (฿):</label>
+            <input type="number" id="edit-pond-unit-price" step="0.05" min="0" class="input-large w-full text-xs text-right font-bold text-emerald-700">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">วันที่คัดขนาดล่าสุด:</label>
+          <input type="date" id="edit-pond-last-graded" class="input-large w-full text-xs">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">หมายเหตุ:</label>
+          <textarea id="edit-pond-notes" rows="2" class="input-large w-full text-xs"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeModal('modal-edit-pond')" class="btn-large bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 px-4 text-xs font-semibold rounded-xl">
+            ยกเลิก
+          </button>
+          <button type="submit" class="btn-large btn-primary-blue py-2 px-4 text-xs font-bold rounded-xl shadow-md">
+            บันทึกข้อมูล
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- 8.7 MODAL AI SUPERVISOR (ผู้ควบคุมและตรวจทานระบบกลาง) -->
+  <div id="modal-ai-supervisor" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Header -->
+      <div class="bg-gradient-to-r from-sky-700 via-indigo-800 to-purple-800 px-6 py-4 text-white flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-white/20 rounded-xl backdrop-blur-xs">
+            <i data-lucide="sparkles" class="w-6 h-6 text-amber-300"></i>
+          </div>
+          <div>
+            <h3 class="text-lg sm:text-xl font-bold">AI Supervisor & Farm Copilot</h3>
+            <p class="text-xs text-sky-200">ตรวจสอบความถูกต้องข้ามโมดูล (Booking, Inventory, Logistics, Claims)</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-ai-supervisor')" class="text-sky-200 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto overscroll-contain">
+        
+        <!-- Health Score Bar -->
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">คะแนนความสมบูรณ์ของระบบ (System Health):</span>
+            <span id="ai-modal-score" class="text-lg font-black text-emerald-600">100%</span>
+          </div>
+          <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+            <div id="ai-modal-score-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 100%"></div>
+          </div>
+        </div>
+
+        <!-- Audit Checks -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+            ผลการตรวจสอบความสอดคล้องของข้อมูล (Audit Checks):
+          </label>
+          <div id="ai-checks-container" class="space-y-2">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Active Alerts -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+            ข้อแนะนำและจุดที่ต้องจัดการ (Action Items):
+          </label>
+          <div id="ai-alerts-container" class="space-y-2">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Copilot Q&A -->
+        <div class="bg-sky-50/50 p-4 rounded-2xl border border-sky-200 space-y-3">
+          <label class="block text-xs font-bold text-sky-900 uppercase tracking-wider">
+            💬 ถาม AI Supervisor (พิมพ์คำถาม หรือเลือกหัวข้อด่วน):
+          </label>
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" onclick="handleSupervisorAsk('สรุปภาพรวมวันนี้')" class="px-2.5 py-1 text-xs bg-white hover:bg-sky-100 text-sky-800 border border-sky-300 rounded-lg font-semibold transition">
+              📊 สรุปภาพรวมวันนี้
+            </button>
+            <button type="button" onclick="handleSupervisorAsk('ของใกล้หมด')" class="px-2.5 py-1 text-xs bg-white hover:bg-sky-100 text-sky-800 border border-sky-300 rounded-lg font-semibold transition">
+              🌾 อาหาร/พัสดุใกล้หมด
+            </button>
+            <button type="button" onclick="handleSupervisorAsk('สถานะปลาดุกบิ๊กอุย')" class="px-2.5 py-1 text-xs bg-white hover:bg-sky-100 text-sky-800 border border-sky-300 rounded-lg font-semibold transition">
+              🐟 สถานะปลาดุกบิ๊กอุย
+            </button>
+            <button type="button" onclick="handleSupervisorAsk('สถานะปลานิลจิตรลดา')" class="px-2.5 py-1 text-xs bg-white hover:bg-sky-100 text-sky-800 border border-sky-300 rounded-lg font-semibold transition">
+              🐟 สถานะปลานิลจิตรลดา
+            </button>
+          </div>
+
+          <div class="flex gap-2">
+            <input type="text" id="ai-copilot-input" placeholder="เช่น 'มีปลาดุกพร้อมขายกี่ตัว?', 'ออเดอร์พรุ่งนี้ส่งกี่โมง?'" onkeydown="if(event.key==='Enter') handleSupervisorAsk()" class="input-large text-xs flex-1 bg-white">
+            <button type="button" onclick="handleSupervisorAsk()" class="btn-large bg-sky-600 hover:bg-sky-700 text-white px-4 text-xs font-bold rounded-xl shadow-xs">
+              ถาม AI
+            </button>
+          </div>
+
+          <div id="ai-copilot-answer" class="hidden">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-end flex-shrink-0">
+        <button onclick="closeModal('modal-ai-supervisor')" class="btn-large bg-slate-200 hover:bg-slate-300 text-slate-700 py-1.5 px-4 text-xs font-semibold rounded-lg">
+          ปิดหน้าต่าง
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+
   <!-- SCRIPTS -->
   <script src="js/data.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/ai-supervisor.js"></script>
   <script src="js/app.js"></script>
 
   <!-- Lucide Icons Initialize -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
+      if (typeof updateSupervisorUI === 'function') updateSupervisorUI();
     });
   </script>
 
