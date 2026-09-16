@@ -16,8 +16,8 @@ function initInventoryState() {
     const savedEvents = localStorage.getItem('phuyaiporn_system_events');
 
     let loadedPonds = savedPonds ? JSON.parse(savedPonds) : null;
-    // ตรวจสอบว่ามีผังสต็อก 48 หน่วยตามแปลนจริงหรือไม่ ถ้ายังไม่มีหรือเป็นแบบเก่า 8 บ่อ ให้อัปเกรดเป็น 48 หน่วยทันที
-    if (!loadedPonds || loadedPonds.length < 20 || !loadedPonds.some(p => p.id === 'cage_c1')) {
+    // ตรวจสอบว่ามีผังสต็อก 48 หน่วยตามแปลนจริงหรือไม่ ถ้ายังไม่มีหรือเป็นแบบเก่า ให้อัปเกรดเป็น 48 หน่วยทันที
+    if (!loadedPonds || loadedPonds.length !== 48 || !loadedPonds.some(p => p.id === 'cage_c1')) {
       loadedPonds = typeof INITIAL_PONDS !== 'undefined' ? JSON.parse(JSON.stringify(INITIAL_PONDS)) : [];
       localStorage.setItem('phuyaiporn_ponds', JSON.stringify(loadedPonds));
     }
@@ -383,9 +383,19 @@ function renderVisualFarmMap() {
   const emptyPondsCount = ponds.filter(p => (p.totalQty || 0) === 0 || p.status === 'empty').length;
 
   // แยกโซน 4 โซนตามแปลนจริงของฟาร์ม
+  const getCageNum = (id) => {
+    const m = (id || '').match(/^cage_c(\d+)$/);
+    return m ? parseInt(m[1], 10) : 0;
+  };
   const sterileCages = ponds.filter(p => p.zone === 'sterile_cage'); // M1 - M5 (5 กระชัง)
-  const mainCagesTop = ponds.filter(p => p.id >= 'cage_c1' && p.id <= 'cage_c11'); // C1 - C11 (11 กระชังบน)
-  const mainCagesBottom = ponds.filter(p => p.id >= 'cage_c12' && p.id <= 'cage_c22'); // C12 - C22 (11 กระชังล่าง)
+  const mainCagesTop = ponds.filter(p => {
+    const n = getCageNum(p.id);
+    return n >= 1 && n <= 11;
+  }); // C1 - C11 (11 กระชังบน)
+  const mainCagesBottom = ponds.filter(p => {
+    const n = getCageNum(p.id);
+    return n >= 12 && n <= 22;
+  }); // C12 - C22 (11 กระชังล่าง)
   const smallTanks = ponds.filter(p => p.zone === 'small_tank'); // S1 - S5 (5 อ่างกลมเล็ก)
   const largeTanks = ponds.filter(p => p.zone === 'large_tank'); // B1 - B16 (16 อ่างใหญ่)
 
