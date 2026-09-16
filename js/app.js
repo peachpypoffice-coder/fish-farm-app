@@ -377,12 +377,14 @@ function renderUserBadge() {
   const tabOrders = document.getElementById('tab-btn-orders');
   const tabCustomers = document.getElementById('tab-btn-customers');
   const tabAnalytics = document.getElementById('tab-btn-analytics');
+  const tabInventory = document.getElementById('tab-btn-inventory');
   const permBtn = document.getElementById('tab-btn-permissions');
 
   if (tabCalendar) tabCalendar.style.display = isDriver ? 'none' : '';
   if (tabOrders) tabOrders.style.display = isDriver ? 'none' : '';
   if (tabCustomers) tabCustomers.style.display = isDriver ? 'none' : '';
   if (tabAnalytics) tabAnalytics.style.display = isDriver ? 'none' : '';
+  if (tabInventory) tabInventory.style.display = isDriver ? 'none' : '';
 
   // Show/Hide CEO Permissions Tab Button (เฉพาะ CEO เท่านั้นที่เห็น)
   if (permBtn) {
@@ -395,6 +397,12 @@ function renderUserBadge() {
       }
     }
   }
+
+  // ซ่อนปุ่ม Blueprint และ AI Supervisor สำหรับคนขับรถ
+  const btnTopBlueprint = document.getElementById('btn-top-blueprint');
+  const btnTopSupervisor = document.getElementById('btn-top-supervisor');
+  if (btnTopBlueprint) btnTopBlueprint.style.display = isDriver ? 'none' : '';
+  if (btnTopSupervisor) btnTopSupervisor.style.display = isDriver ? 'none' : '';
 
   // ถ้าคนขับรถกำลังอยู่ในแท็บที่ถูกซ่อน ให้สลับไปที่ daily ทันที
   if (isDriver && !['daily', 'claims'].includes(state.activeTab)) {
@@ -420,7 +428,15 @@ function checkAuthGate() {
   if (!gate) return;
 
   if (state.isLoggedIn) {
-    if (typeof showPortalView === 'function' && !state.currentModule) {
+    if (state.currentUser?.role === 'Driver') {
+      gate.classList.add('hidden');
+      renderUserBadge();
+      setupRoleButtons();
+      if (typeof openModule === 'function') {
+        openModule('booking');
+      }
+      switchTab('daily');
+    } else if (typeof showPortalView === 'function' && !state.currentModule) {
       showPortalView();
     } else {
       gate.classList.add('hidden');
@@ -479,13 +495,20 @@ function handleGateLogin(e) {
 
   showNotification(`เข้าสู่ระบบสำเร็จ: คุณ${user.name} (${user.roleLabel})`, 'success');
 
-  if (typeof showPortalView === 'function') {
+  if (user.role === 'Driver') {
+    const gate = document.getElementById('login-gate');
+    if (gate) gate.classList.add('hidden');
+    renderUserBadge();
+    setupRoleButtons();
+    if (typeof openModule === 'function') {
+      openModule('booking');
+    }
+    switchTab('daily');
+  } else if (typeof showPortalView === 'function') {
     showPortalView();
   } else {
     checkAuthGate();
-    if (user.role === 'Driver') {
-      switchTab('daily');
-    } else if (user.role === 'QC') {
+    if (user.role === 'QC') {
       switchTab('claims');
     } else {
       switchTab(state.activeTab || 'calendar');
@@ -601,7 +624,12 @@ function handleEmailLogin(e) {
     showNotification(`เข้าสู่ระบบเป็น: ${user.name} (${user.roleLabel}) เรียบร้อยแล้ว`, 'success');
 
     if (user.role === 'Driver') {
+      if (typeof openModule === 'function') {
+        openModule('booking');
+      }
       switchTab('daily');
+    } else if (typeof showPortalView === 'function' && !state.currentModule) {
+      showPortalView();
     } else if (user.role === 'QC') {
       switchTab('claims');
     } else {
@@ -623,6 +651,12 @@ function openLoginModal() {
 // TAB NAVIGATION
 // ====================================================================
 function switchTab(tabId) {
+  // Guard: สำหรับคนขับรถ (Driver) ให้เข้าถึงได้เฉพาะ 'daily' (คิวจัดส่งประจำวัน) และ 'claims' (แจ้งเคลมปลาเสียหาย) เท่านั้น
+  if (state.currentUser?.role === 'Driver' && !['daily', 'claims'].includes(tabId)) {
+    showNotification('สิทธิ์คนขับรถ เข้าถึงได้เฉพาะคิวจัดส่งประจำวันและแจ้งเคลมเท่านั้น', 'info');
+    tabId = 'daily';
+  }
+
   // Guard: เฉพาะ CEO เท่านั้นที่เข้าถึงแท็บ permissions ได้
   if (tabId === 'permissions' && state.currentUser.role !== 'CEO') {
     showNotification('สิทธิ์เฉพาะ CEO / เจ้าของฟาร์มเท่านั้น', 'error');
