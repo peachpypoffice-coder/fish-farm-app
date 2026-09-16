@@ -108,49 +108,49 @@
     <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16 sm:h-20 gap-2">
         
-        <!-- Brand Logo & Title (จัดวางแบบ Mobile-First อ่านง่าย ไม่แตกแถว) -->
-        <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer min-w-0" onclick="backToPortal()" title="คลิกเพื่อกลับสู่หน้าเมนูหลัก (Portal Hub)">
-          <img src="logo.png" alt="Sutthi Inter Farm" class="h-10 sm:h-14 w-auto object-contain rounded-xl bg-white p-1 shadow-sm border border-sky-200 flex-shrink-0">
-          <div class="min-w-0">
+        <!-- Brand Logo & Title (ป้องกันการยุบแถว flex-shrink-0 อ่านชัดเจนทุกหน้าจอ ไม่แตกแถว) -->
+        <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer flex-shrink-0" onclick="backToPortal()" title="คลิกเพื่อกลับสู่หน้าเมนูหลัก (Portal Hub)">
+          <img src="logo.png" alt="Sutthi Inter Farm" class="h-10 sm:h-12 w-auto object-contain rounded-xl bg-white p-1 shadow-sm border border-sky-200 flex-shrink-0">
+          <div class="flex flex-col justify-center">
             <div class="flex items-center gap-1.5">
-              <h1 class="text-xs sm:text-lg font-bold text-sky-950 tracking-tight whitespace-nowrap">บจก.สุทธิ อินเตอร์ ฟาร์ม</h1>
-              <span class="bg-amber-100 text-amber-900 text-[10px] sm:text-[11px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full border border-amber-300 whitespace-nowrap flex-shrink-0">ผู้ใหญ่พร</span>
+              <h1 class="text-sm sm:text-base lg:text-lg font-black text-sky-950 tracking-tight whitespace-nowrap">บจก.สุทธิ อินเตอร์ ฟาร์ม</h1>
+              <span class="bg-amber-100 text-amber-900 text-[10px] sm:text-[11px] font-bold px-1.5 py-0.5 rounded-full border border-amber-300 whitespace-nowrap flex-shrink-0">ผู้ใหญ่พร</span>
             </div>
-            <p class="text-xs text-slate-500 hidden sm:block">68 ม.1 ต.มารวิชัย อ.เสนา จ.พระนครศรีอยุธยา • โทร 095-996-5569, 081-928-6697</p>
-            <p class="text-[10px] text-slate-500 sm:hidden whitespace-nowrap truncate">โทร 095-996-5569, 081-928-6697</p>
+            <p class="text-[11px] text-slate-500 hidden xl:block whitespace-nowrap">68 ม.1 ต.มารวิชัย อ.เสนา จ.พระนครศรีอยุธยา • โทร 095-996-5569</p>
+            <p class="text-[10px] text-slate-500 hidden sm:block xl:hidden whitespace-nowrap">อ.เสนา จ.อยุธยา • โทร 095-996-5569</p>
           </div>
         </div>
 
         <!-- Right Side: Portal Hub Button, New Booking Button & User Profile -->
-        <div class="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0">
+        <div class="flex items-center space-x-1.5 sm:space-x-2.5 flex-shrink min-w-0 justify-end">
           
           <!-- Back to Main Menu Portal Button -->
-          <button onclick="backToPortal()" class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold shadow-2xs transition" title="กลับสู่หน้าเมนูหลัก 7 โมดูล (Portal Hub)">
+          <button onclick="backToPortal()" class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold shadow-2xs transition flex-shrink-0" title="กลับสู่หน้าเมนูหลัก 7 โมดูล (Portal Hub)">
             <i data-lucide="layout-grid" class="w-4 h-4 text-sky-600"></i>
-            <span class="hidden sm:inline">หน้าเมนูหลัก</span>
+            <span class="hidden md:inline">หน้าเมนูหลัก</span>
           </button>
 
           <!-- Farm Blueprint Direct Shortcut Button -->
-          <button id="btn-top-blueprint" onclick="openModule('inventory')" class="btn-large bg-sky-700 hover:bg-sky-600 text-white shadow-xs py-2 px-2.5 sm:px-3 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition" title="เปิดแดชบอร์ดผังสต็อกฟาร์ม 48 จุด">
+          <button id="btn-top-blueprint" onclick="openModule('inventory')" class="btn-large bg-sky-700 hover:bg-sky-600 text-white shadow-xs py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition flex-shrink-0" title="เปิดแดชบอร์ดผังสต็อกฟาร์ม 48 จุด">
             <i data-lucide="map" class="w-4 h-4 text-sky-200"></i>
-            <span class="hidden md:inline">ผังสต็อก 48 จุด</span>
+            <span class="hidden lg:inline">ผังสต็อก 48 จุด</span>
           </button>
 
           <!-- Big Yellow Booking Button -->
-          <button id="btn-top-new-order" onclick="openNewOrderModal()" class="btn-large btn-farm-yellow shadow-md hover:brightness-105 py-2 px-2.5 sm:px-4 text-xs sm:text-sm font-bold">
+          <button id="btn-top-new-order" onclick="openNewOrderModal()" class="btn-large btn-farm-yellow shadow-md hover:brightness-105 py-1.5 sm:py-2 px-2.5 sm:px-3.5 text-xs sm:text-sm font-bold flex-shrink-0">
             <i data-lucide="plus-circle" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             <span class="hidden sm:inline">จองพันธุ์ปลาใหม่</span>
             <span class="sm:hidden">จองใหม่</span>
           </button>
 
           <!-- Cloudflare / Server Sync Status Indicator -->
-          <div id="cloud-sync-indicator" class="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200" title="สถานะการเชื่อมต่อ Cloudflare">
+          <div id="cloud-sync-indicator" class="hidden 2xl:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex-shrink-0" title="สถานะการเชื่อมต่อ Cloudflare">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span id="cloud-sync-text">คลาวด์ออนไลน์</span>
           </div>
 
           <!-- Master AI Supervisor Button -->
-          <button id="btn-top-supervisor" onclick="openSupervisorModal()" class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-700 hover:brightness-110 text-white shadow-sm transition text-xs font-bold" title="ผู้ควบคุมและตรวจทานระบบ AI Supervisor">
+          <button id="btn-top-supervisor" onclick="openSupervisorModal()" class="hidden xl:flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-700 hover:brightness-110 text-white shadow-sm transition text-xs font-bold flex-shrink-0" title="ผู้ควบคุมและตรวจทานระบบ AI Supervisor">
             <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
             <span class="hidden sm:inline">AI Supervisor</span>
             <span id="supervisor-health-badge" class="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-md font-bold">100%</span>
@@ -158,14 +158,14 @@
           </button>
 
           <!-- User Role / Profile Button & Logout -->
-          <div class="flex items-center space-x-1 sm:space-x-2">
+          <div class="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
             <button onclick="openLoginModal()" class="flex items-center space-x-1.5 p-1.5 sm:p-2 rounded-xl hover:bg-sky-50 border border-slate-200 hover:border-sky-300 transition" title="ข้อมูลผู้ใช้งาน">
               <span id="current-user-avatar" class="text-lg sm:text-xl">👨‍🌾</span>
-              <div class="text-left hidden md:block">
+              <div class="text-left hidden lg:block">
                 <p id="current-user-name" class="text-sm font-semibold text-slate-800 leading-tight">ผู้ใหญ่พร</p>
                 <span id="current-user-badge" class="badge-tag bg-amber-500 text-white text-[10px] py-0 px-1.5">CEO</span>
               </div>
-              <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 hidden md:block"></i>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 hidden lg:block"></i>
             </button>
 
             <!-- Logout Button -->
@@ -299,7 +299,7 @@
             <div class="text-[11px] text-emerald-200/80 mt-0.5">ในบ่อพร้อมจำหน่าย ➔</div>
           </div>
 
-          <div id="portal-kpi-card-due" class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openModule('inventory')">
+          <div id="portal-kpi-card-due" class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openGradingPondsSubtab()">
             <div class="flex items-center justify-between text-xs text-amber-200 font-semibold mb-1">
               <span>⚖️ ต้องคัดขนาด</span>
               <i data-lucide="scale" class="w-4 h-4 text-amber-300"></i>
@@ -308,7 +308,7 @@
             <div class="text-[11px] text-amber-200/80 mt-0.5">ถึงรอบ 7-10 วัน ➔</div>
           </div>
 
-          <div id="portal-kpi-card-supplies" class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openModule('inventory')">
+          <div id="portal-kpi-card-supplies" class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openSuppliesSubtab()">
             <div class="flex items-center justify-between text-xs text-rose-200 font-semibold mb-1">
               <span>🌾 พัสดุใกล้หมด</span>
               <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-300"></i>

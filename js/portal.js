@@ -228,6 +228,20 @@ function backToPortal() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function openSuppliesSubtab() {
+  openModule('inventory');
+  setTimeout(() => {
+    handleSubtabClick('inventory', 'inventory-supplies', 'supplies');
+  }, 50);
+}
+
+function openGradingPondsSubtab() {
+  openModule('inventory');
+  setTimeout(() => {
+    handleSubtabClick('inventory', 'inventory-ponds', 'ponds');
+  }, 50);
+}
+
 // 2.2 อัปเดตตัวเลขสดบนหน้า Portal Hub (Live KPIs)
 function updatePortalKPIs() {
   const todayStr = getTodayString();
