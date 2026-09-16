@@ -182,6 +182,42 @@ function showPortalView() {
   const moduleSubnav = document.getElementById('module-subnav-bar');
   if (moduleSubnav) moduleSubnav.classList.add('hidden');
 
+  // ควบคุมสิทธิ์สำหรับคนขับรถ (Driver): เห็นเฉพาะโมดูลที่ 1 (จองปลาและคิวจัดส่ง)
+  const isDriver = state.currentUser?.role === 'Driver';
+  const otherModuleCardIds = [
+    'portal-card-inventory',
+    'portal-card-pos',
+    'portal-card-production',
+    'portal-card-finance',
+    'portal-card-marketing',
+    'portal-card-hr'
+  ];
+  otherModuleCardIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden', isDriver);
+  });
+
+  const blueprintShowcase = document.getElementById('portal-blueprint-showcase');
+  if (blueprintShowcase) blueprintShowcase.classList.toggle('hidden', isDriver);
+
+  const btnBlueprint = document.getElementById('portal-btn-blueprint');
+  if (btnBlueprint) btnBlueprint.classList.toggle('hidden', isDriver);
+
+  const btnNewOrder = document.getElementById('portal-btn-new-order');
+  if (btnNewOrder) btnNewOrder.classList.toggle('hidden', isDriver);
+
+  const btnSupervisor = document.getElementById('portal-btn-supervisor');
+  if (btnSupervisor) btnSupervisor.classList.toggle('hidden', isDriver);
+
+  const kpiReady = document.getElementById('portal-kpi-card-ready');
+  if (kpiReady) kpiReady.classList.toggle('hidden', isDriver);
+
+  const kpiDue = document.getElementById('portal-kpi-card-due');
+  if (kpiDue) kpiDue.classList.toggle('hidden', isDriver);
+
+  const kpiSupplies = document.getElementById('portal-kpi-card-supplies');
+  if (kpiSupplies) kpiSupplies.classList.toggle('hidden', isDriver);
+
   updatePortalKPIs();
   renderUserBadge();
   lucide.createIcons();
@@ -272,14 +308,27 @@ function quickLoginAs(roleKey) {
   localStorage.setItem('phuyaiporn_current_user', user.id);
 
   closeModal('modal-login');
-  showPortalView();
-  showNotification(`เข้าสู่ระบบในฐานะ: ${user.name} (${user.roleLabel}) เรียบร้อยแล้ว`, 'success');
+
+  if (user.role === 'Driver') {
+    openModule('booking');
+    switchTab('daily');
+    showNotification(`เข้าสู่ระบบในฐานะ: ${user.name} (คนขับรถ)`, 'success');
+  } else {
+    showPortalView();
+    showNotification(`เข้าสู่ระบบในฐานะ: ${user.name} (${user.roleLabel}) เรียบร้อยแล้ว`, 'success');
+  }
 }
 
 // 3. MODULE NAVIGATION & WORKSPACE SWITCHER
 let currentActiveModuleId = 'booking';
 
 function openModule(moduleId) {
+  const isDriver = state.currentUser?.role === 'Driver';
+  if (isDriver && moduleId !== 'booking') {
+    showNotification('คนขับรถมีสิทธิ์เข้าถึงเฉพาะโมดูลที่ 1 (จองปลาและคิวจัดส่ง) เท่านั้น', 'error');
+    return;
+  }
+
   const mod = FARM_MODULES.find(m => m.id === moduleId);
   if (!mod) return;
 
@@ -327,9 +376,21 @@ function renderModuleSubtabs(mod) {
   const container = document.getElementById('module-subtabs-container');
   if (!container) return;
 
-  container.innerHTML = (mod.subtabs || []).map((st, idx) => `
+  const isDriver = state.currentUser?.role === 'Driver';
+  let allowedSubtabs = mod.subtabs || [];
+
+  // สำหรับคนขับรถ (Driver): ในโมดูลที่ 1 ให้เห็นแค่ "คิวจัดส่งประจำวัน" และ "แจ้งเคลม & ปลาเสียหาย" เท่านั้น
+  if (isDriver) {
+    allowedSubtabs = allowedSubtabs.filter(st => st.id === 'daily' || st.id === 'claims');
+  }
+
+  const currentTab = isDriver 
+    ? (['daily', 'claims'].includes(state.activeTab) ? state.activeTab : 'daily')
+    : (state.activeTab || mod.defaultTab);
+
+  container.innerHTML = allowedSubtabs.map((st, idx) => `
     <button id="mod-subtab-btn-${st.id}" onclick="handleSubtabClick('${mod.id}', '${st.id}', '${st.subtabParam || ''}')" 
-      class="mod-subtab-btn ${idx === 0 ? 'active bg-sky-600 text-white shadow-xs' : 'text-slate-600 hover:bg-sky-50'} px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition">
+      class="mod-subtab-btn ${st.id === currentTab ? 'active bg-sky-600 text-white shadow-xs' : 'text-slate-600 hover:bg-sky-50'} px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition">
       <i data-lucide="${st.icon}" class="w-4 h-4"></i>
       <span>${st.label}</span>
       ${st.badgeId ? `<span id="${st.badgeId}" class="bg-amber-500 text-white text-[11px] font-black px-1.5 py-0.2 rounded-full">0</span>` : ''}
@@ -341,6 +402,11 @@ function renderModuleSubtabs(mod) {
 }
 
 function handleSubtabClick(moduleId, subtabId, subtabParam) {
+  const isDriver = state.currentUser?.role === 'Driver';
+  if (isDriver && !['daily', 'claims'].includes(subtabId)) {
+    subtabId = 'daily';
+  }
+
   document.querySelectorAll('.mod-subtab-btn').forEach(btn => {
     btn.classList.remove('active', 'bg-sky-600', 'text-white', 'shadow-xs');
     btn.classList.add('text-slate-600', 'hover:bg-sky-50');
@@ -377,7 +443,13 @@ function renderModuleQuickActions(mod) {
   const container = document.getElementById('module-quick-actions-container');
   if (!container) return;
 
+  const isDriver = state.currentUser?.role === 'Driver';
+
   if (mod.id === 'booking') {
+    if (isDriver) {
+      container.innerHTML = '';
+      return;
+    }
     container.innerHTML = `
       <button onclick="openNewOrderModal()" class="btn-large btn-farm-yellow py-2 px-3 sm:px-4 text-xs sm:text-sm font-bold shadow-sm flex items-center gap-1.5">
         <i data-lucide="plus-circle" class="w-4 h-4"></i>
@@ -416,8 +488,14 @@ function switchModuleWorkspace(mod) {
   // ซ่อนทุก tab-pane
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
 
+  const isDriver = state.currentUser?.role === 'Driver';
+
   if (mod.id === 'booking') {
-    switchTab('calendar');
+    if (isDriver) {
+      switchTab('daily');
+    } else {
+      switchTab('calendar');
+    }
   } else if (mod.id === 'inventory') {
     const pane = document.getElementById('tab-inventory');
     if (pane) pane.classList.remove('hidden');

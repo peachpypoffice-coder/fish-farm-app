@@ -131,7 +131,7 @@
           </button>
 
           <!-- Farm Blueprint Direct Shortcut Button -->
-          <button onclick="openModule('inventory')" class="btn-large bg-sky-700 hover:bg-sky-600 text-white shadow-xs py-2 px-2.5 sm:px-3 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition" title="เปิดแดชบอร์ดผังสต็อกฟาร์ม 48 จุด">
+          <button id="btn-top-blueprint" onclick="openModule('inventory')" class="btn-large bg-sky-700 hover:bg-sky-600 text-white shadow-xs py-2 px-2.5 sm:px-3 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition" title="เปิดแดชบอร์ดผังสต็อกฟาร์ม 48 จุด">
             <i data-lucide="map" class="w-4 h-4 text-sky-200"></i>
             <span class="hidden md:inline">ผังสต็อก 48 จุด</span>
           </button>
@@ -150,7 +150,7 @@
           </div>
 
           <!-- Master AI Supervisor Button -->
-          <button onclick="openSupervisorModal()" class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-700 hover:brightness-110 text-white shadow-sm transition text-xs font-bold" title="ผู้ควบคุมและตรวจทานระบบ AI Supervisor">
+          <button id="btn-top-supervisor" onclick="openSupervisorModal()" class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-700 hover:brightness-110 text-white shadow-sm transition text-xs font-bold" title="ผู้ควบคุมและตรวจทานระบบ AI Supervisor">
             <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
             <span class="hidden sm:inline">AI Supervisor</span>
             <span id="supervisor-health-badge" class="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-md font-bold">100%</span>
@@ -264,15 +264,15 @@
           </div>
 
           <div class="flex items-center gap-2.5 flex-wrap">
-            <button onclick="openModule('inventory')" class="btn-large bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white py-2.5 px-4 text-xs sm:text-sm font-black rounded-xl shadow-lg transition flex items-center gap-2">
+            <button id="portal-btn-blueprint" onclick="openModule('inventory')" class="btn-large bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white py-2.5 px-4 text-xs sm:text-sm font-black rounded-xl shadow-lg transition flex items-center gap-2">
               <i data-lucide="map" class="w-4 h-4 text-white"></i>
               <span>🗺️ ดูผังสต็อกเสมือนจริง 48 จุด</span>
             </button>
-            <button onclick="openNewOrderModal()" class="btn-large bg-amber-500 hover:bg-amber-400 text-slate-900 py-2.5 px-4 text-xs sm:text-sm font-black rounded-xl shadow-lg transition flex items-center gap-2">
+            <button id="portal-btn-new-order" onclick="openNewOrderModal()" class="btn-large bg-amber-500 hover:bg-amber-400 text-slate-900 py-2.5 px-4 text-xs sm:text-sm font-black rounded-xl shadow-lg transition flex items-center gap-2">
               <i data-lucide="plus-circle" class="w-4 h-4 text-slate-900"></i>
               <span>จองพันธุ์ปลาใหม่</span>
             </button>
-            <button onclick="openSupervisorModal()" class="btn-large bg-white/15 hover:bg-white/25 text-white border border-white/20 py-2.5 px-4 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2">
+            <button id="portal-btn-supervisor" onclick="openSupervisorModal()" class="btn-large bg-white/15 hover:bg-white/25 text-white border border-white/20 py-2.5 px-4 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2">
               <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
               <span>AI Supervisor</span>
             </button>
@@ -290,7 +290,7 @@
             <div class="text-[11px] text-sky-200/80 mt-0.5">คลิกดูตารางจัดส่ง ➔</div>
           </div>
 
-          <div class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openModule('inventory')">
+          <div id="portal-kpi-card-ready" class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openModule('inventory')">
             <div class="flex items-center justify-between text-xs text-emerald-200 font-semibold mb-1">
               <span>🐟 ปลาพร้อมขายจริง</span>
               <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-300"></i>
@@ -299,7 +299,7 @@
             <div class="text-[11px] text-emerald-200/80 mt-0.5">ในบ่อพร้อมจำหน่าย ➔</div>
           </div>
 
-          <div class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openModule('inventory')">
+          <div id="portal-kpi-card-due" class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openModule('inventory')">
             <div class="flex items-center justify-between text-xs text-amber-200 font-semibold mb-1">
               <span>⚖️ ต้องคัดขนาด</span>
               <i data-lucide="scale" class="w-4 h-4 text-amber-300"></i>
@@ -308,7 +308,7 @@
             <div class="text-[11px] text-amber-200/80 mt-0.5">ถึงรอบ 7-10 วัน ➔</div>
           </div>
 
-          <div class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openModule('inventory')">
+          <div id="portal-kpi-card-supplies" class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openModule('inventory')">
             <div class="flex items-center justify-between text-xs text-rose-200 font-semibold mb-1">
               <span>🌾 พัสดุใกล้หมด</span>
               <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-300"></i>
@@ -320,7 +320,7 @@
       </div>
 
       <!-- Farm Stock Blueprint Quick Access Showcase -->
-      <div onclick="openModule('inventory')" class="farm-card p-5 bg-gradient-to-r from-slate-900 via-sky-950 to-blue-950 text-white border-2 border-sky-400/50 shadow-xl cursor-pointer hover:border-sky-300 hover:shadow-2xl transition duration-300 group relative overflow-hidden">
+      <div id="portal-blueprint-showcase" onclick="openModule('inventory')" class="farm-card p-5 bg-gradient-to-r from-slate-900 via-sky-950 to-blue-950 text-white border-2 border-sky-400/50 shadow-xl cursor-pointer hover:border-sky-300 hover:shadow-2xl transition duration-300 group relative overflow-hidden">
         <div class="absolute inset-0 farm-dock-water-bg opacity-20 pointer-events-none"></div>
         <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div class="flex items-center gap-3.5">
@@ -365,7 +365,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         
         <!-- Module 1: จองปลาและคิวจัดส่ง -->
-        <div onclick="openModule('booking')" class="farm-card p-6 bg-white hover:border-sky-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
+        <div id="portal-card-booking" onclick="openModule('booking')" class="farm-card p-6 bg-white hover:border-sky-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
           <div class="absolute top-0 right-0 w-24 h-24 bg-sky-50 rounded-bl-full -z-0 group-hover:scale-110 transition"></div>
           <div class="relative z-10">
             <div class="flex items-start justify-between mb-4">
@@ -397,7 +397,7 @@
         </div>
 
         <!-- Module 2: จัดการสต็อกในฟาร์มและการคัดขนาด -->
-        <div onclick="openModule('inventory')" class="farm-card p-6 bg-white hover:border-amber-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
+        <div id="portal-card-inventory" onclick="openModule('inventory')" class="farm-card p-6 bg-white hover:border-amber-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
           <div class="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-bl-full -z-0 group-hover:scale-110 transition"></div>
           <div class="relative z-10">
             <div class="flex items-start justify-between mb-4">
@@ -435,7 +435,7 @@
         </div>
 
         <!-- Module 3: ระบบขายหน้าร้าน (POS) -->
-        <div onclick="openModule('pos')" class="farm-card p-6 bg-white hover:border-emerald-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
+        <div id="portal-card-pos" onclick="openModule('pos')" class="farm-card p-6 bg-white hover:border-emerald-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
           <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full -z-0 group-hover:scale-110 transition"></div>
           <div class="relative z-10">
             <div class="flex items-start justify-between mb-4">
@@ -467,7 +467,7 @@
         </div>
 
         <!-- Module 4: ฝ่ายผลิตและเพาะพันธุ์ -->
-        <div onclick="openModule('production')" class="farm-card p-6 bg-white hover:border-purple-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
+        <div id="portal-card-production" onclick="openModule('production')" class="farm-card p-6 bg-white hover:border-purple-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
           <div class="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-bl-full -z-0 group-hover:scale-110 transition"></div>
           <div class="relative z-10">
             <div class="flex items-start justify-between mb-4">
@@ -499,7 +499,7 @@
         </div>
 
         <!-- Module 5: ฝ่ายบัญชีและการเงิน -->
-        <div onclick="openModule('finance')" class="farm-card p-6 bg-white hover:border-blue-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
+        <div id="portal-card-finance" onclick="openModule('finance')" class="farm-card p-6 bg-white hover:border-blue-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
           <div class="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -z-0 group-hover:scale-110 transition"></div>
           <div class="relative z-10">
             <div class="flex items-start justify-between mb-4">
@@ -531,7 +531,7 @@
         </div>
 
         <!-- Module 6: ฝ่ายการตลาดและลูกค้าสัมพันธ์ -->
-        <div onclick="openModule('marketing')" class="farm-card p-6 bg-white hover:border-rose-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
+        <div id="portal-card-marketing" onclick="openModule('marketing')" class="farm-card p-6 bg-white hover:border-rose-400 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
           <div class="absolute top-0 right-0 w-24 h-24 bg-rose-50 rounded-bl-full -z-0 group-hover:scale-110 transition"></div>
           <div class="relative z-10">
             <div class="flex items-start justify-between mb-4">
@@ -563,7 +563,7 @@
         </div>
 
         <!-- Module 7: ฝ่ายบุคคลและจัดการสิทธิ์ -->
-        <div onclick="openModule('hr')" class="farm-card p-6 bg-white hover:border-slate-500 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
+        <div id="portal-card-hr" onclick="openModule('hr')" class="farm-card p-6 bg-white hover:border-slate-500 hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between group relative overflow-hidden border-2 border-slate-100 hover:-translate-y-0.5">
           <div class="absolute top-0 right-0 w-24 h-24 bg-slate-100 rounded-bl-full -z-0 group-hover:scale-110 transition"></div>
           <div class="relative z-10">
             <div class="flex items-start justify-between mb-4">
