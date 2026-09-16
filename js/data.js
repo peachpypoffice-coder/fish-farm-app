@@ -22,6 +22,26 @@ const DEFAULT_USERS = [
     avatar: '📋'
   },
   {
+    id: 'usr_sales',
+    name: 'คุณกานดา (เจ้าหน้าที่ฝ่ายขาย/POS)',
+    email: 'sales@phuyaiporn.farm',
+    password: 'sales1234',
+    role: 'Sales',
+    roleLabel: 'เจ้าหน้าที่ฝ่ายขาย / POS',
+    badgeColor: 'bg-teal-600 text-white',
+    avatar: '💼'
+  },
+  {
+    id: 'usr_acc',
+    name: 'คุณเพ็ญศรี (ฝ่ายบัญชีและการเงิน)',
+    email: 'account@phuyaiporn.farm',
+    password: 'acc1234',
+    role: 'Accountant',
+    roleLabel: 'ฝ่ายบัญชีและการเงิน',
+    badgeColor: 'bg-blue-700 text-white',
+    avatar: '💰'
+  },
+  {
     id: 'usr_qc',
     name: 'คุณสมศรี (หัวหน้า QC)',
     email: 'qc@phuyaiporn.farm',

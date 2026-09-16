@@ -39,8 +39,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const orderDateInput = document.getElementById('order-delivery-date');
   if (orderDateInput) orderDateInput.value = todayStr;
 
-  // Initial tab render
-  switchTab(state.activeTab);
+  // Initial render: 3-Level Farm ERP Portal Architecture
+  if (typeof initPortal === 'function') {
+    initPortal();
+  } else {
+    switchTab(state.activeTab);
+  }
   updateBadges();
   lucide.createIcons();
 });
@@ -416,11 +420,19 @@ function checkAuthGate() {
   if (!gate) return;
 
   if (state.isLoggedIn) {
-    gate.classList.add('hidden');
-    renderUserBadge();
-    setupRoleButtons();
+    if (typeof showPortalView === 'function' && !state.currentModule) {
+      showPortalView();
+    } else {
+      gate.classList.add('hidden');
+      renderUserBadge();
+      setupRoleButtons();
+    }
   } else {
-    gate.classList.remove('hidden');
+    if (typeof showLoginView === 'function') {
+      showLoginView();
+    } else {
+      gate.classList.remove('hidden');
+    }
     const errEl = document.getElementById('gate-error-msg');
     if (errEl) errEl.classList.add('hidden');
     const pwdInput = document.getElementById('gate-password');
@@ -465,15 +477,19 @@ function handleGateLogin(e) {
   localStorage.setItem('phuyaiporn_logged_user_id', user.id);
   localStorage.setItem('phuyaiporn_current_user', user.id);
 
-  checkAuthGate();
   showNotification(`เข้าสู่ระบบสำเร็จ: คุณ${user.name} (${user.roleLabel})`, 'success');
 
-  if (user.role === 'Driver') {
-    switchTab('daily');
-  } else if (user.role === 'QC') {
-    switchTab('claims');
+  if (typeof showPortalView === 'function') {
+    showPortalView();
   } else {
-    switchTab(state.activeTab || 'calendar');
+    checkAuthGate();
+    if (user.role === 'Driver') {
+      switchTab('daily');
+    } else if (user.role === 'QC') {
+      switchTab('claims');
+    } else {
+      switchTab(state.activeTab || 'calendar');
+    }
   }
 }
 
@@ -483,10 +499,16 @@ function logoutUser(force = false) {
   }
 
   state.isLoggedIn = false;
+  state.currentModule = null;
   localStorage.removeItem('phuyaiporn_logged_in');
   localStorage.removeItem('phuyaiporn_logged_user_id');
 
-  checkAuthGate();
+  if (typeof showLoginView === 'function') {
+    showLoginView();
+  } else {
+    checkAuthGate();
+  }
+
   if (force) {
     showNotification('บัญชีของคุณถูกระงับการใช้งานหรือออกจากระบบแล้ว', 'error');
   } else {
@@ -635,6 +657,14 @@ function switchTab(tabId) {
     activePane.classList.remove('hidden');
   }
 
+  // Ensure view-module workspace is visible when switching tabs inside a module
+  const viewModule = document.getElementById('view-module');
+  const viewPortal = document.getElementById('view-portal');
+  if (viewModule && viewModule.classList.contains('hidden') && state.isLoggedIn) {
+    viewModule.classList.remove('hidden');
+    if (viewPortal) viewPortal.classList.add('hidden');
+  }
+
   // Re-render corresponding view
   if (tabId === 'calendar') renderMonthlyCalendar();
   if (tabId === 'daily') renderDailyQueue();
@@ -652,6 +682,15 @@ function switchTab(tabId) {
   }
   if (tabId === 'inventory') {
     if (typeof renderInventoryView === 'function') renderInventoryView();
+  }
+  if (tabId === 'pos') {
+    if (typeof renderPosView === 'function') renderPosView();
+  }
+  if (tabId === 'production') {
+    if (typeof renderProductionView === 'function') renderProductionView();
+  }
+  if (tabId === 'finance') {
+    if (typeof renderFinanceView === 'function') renderFinanceView();
   }
 
   lucide.createIcons();
