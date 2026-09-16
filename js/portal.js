@@ -662,7 +662,8 @@ function handlePosCheckout() {
       qty: it.qty,
       unit: it.unit,
       unitPrice: it.unitPrice,
-      totalPrice: t
+      totalPrice: t,
+      pondId: it.type === 'fish' ? it.id : undefined
     };
   });
 

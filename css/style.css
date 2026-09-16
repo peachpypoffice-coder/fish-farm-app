@@ -212,3 +212,72 @@ input, select, textarea {
 .overscroll-contain {
   overscroll-behavior: contain;
 }
+
+/* ====================================================================
+   FARM STOCK BLUEPRINT MAP & DRAG-AND-DROP STYLES (ผังสต็อกเสมือนจริง)
+   ==================================================================== */
+.farm-dock-canvas {
+  background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);
+  border: 2px solid #7dd3fc;
+  box-shadow: inset 0 2px 8px rgba(2, 132, 199, 0.08), 0 10px 25px -5px rgba(2, 132, 199, 0.1);
+  position: relative;
+}
+
+.farm-dock-water-bg {
+  background-image: radial-gradient(#38bdf8 0.75px, transparent 0.75px);
+  background-size: 16px 16px;
+}
+
+.dock-walkway {
+  background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+  border-top: 2px dashed #cbd5e1;
+  border-bottom: 2px dashed #cbd5e1;
+}
+
+.unit-cell {
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.unit-cell:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px -2px rgba(2, 132, 199, 0.2);
+}
+
+.unit-cell.dragging {
+  opacity: 0.45;
+  transform: scale(0.95);
+}
+
+.unit-cell.drag-over {
+  border-color: #f59e0b !important;
+  background-color: #fef3c7 !important;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.45) !important;
+  transform: scale(1.04) !important;
+}
+
+.dock-ramp-arrow {
+  position: relative;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  letter-spacing: 0.025em;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+}
+
+@keyframes pulse-gentle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-gentle {
+  animation: pulse-gentle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
