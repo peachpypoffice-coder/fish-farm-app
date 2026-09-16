@@ -945,12 +945,16 @@ function renderSelectedDayInspector() {
             <button onclick="viewOrderSlip('${order.id}')" title="พิมพ์ใบจอง/ใบส่งของ" class="p-2 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700">
               <i data-lucide="printer" class="w-4 h-4"></i>
             </button>
+            ${order.status !== 'delivered' && canCurrentUser('edit_order') ? `
             <button onclick="openEditOrderModal('${order.id}')" title="แก้ไขการจอง (เปลี่ยนวัน/ข้อมูลสินค้า)" class="p-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700">
               <i data-lucide="edit" class="w-4 h-4"></i>
             </button>
+            ` : ''}
+            ${order.status !== 'delivered' && canCurrentUser('update_delivery') ? `
             <button onclick="openDeliveryUpdateModal('${order.id}')" title="อัปเดตสถานะ" class="p-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700">
               <i data-lucide="truck" class="w-4 h-4"></i>
             </button>
+            ` : ''}
             ${order.status !== 'cancelled' && order.status !== 'delivered' ? `
             <button onclick="openCancelOrderModal('${order.id}')" title="ยกเลิกการจอง" class="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700">
               <i data-lucide="x-circle" class="w-4 h-4"></i>
@@ -1184,6 +1188,9 @@ function renderDailyQueue() {
           </div>
 
           <div class="flex flex-wrap items-center gap-1.5 ml-auto">
+            <!-- ปุ่มสถานะและวิธีชำระเงินหน้างาน (เงินสด / โอน / ค้างจ่าย) -->
+            ${renderPaymentMethodButtonHtml(order)}
+
             ${isPartiallyDelivered && (!state.currentUser || state.currentUser.role !== 'Driver') ? `
             <button onclick="openCompleteBackorderModal('${order.id}')" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1">
               <i data-lucide="check-check" class="w-4 h-4"></i>
@@ -1191,7 +1198,7 @@ function renderDailyQueue() {
             </button>
             ` : ''}
 
-            ${canCurrentUser('update_delivery') ? `
+            ${order.status !== 'delivered' && canCurrentUser('update_delivery') ? `
             <button onclick="openDeliveryUpdateModal('${order.id}')" class="btn-large bg-amber-500 hover:bg-amber-600 text-white py-2 px-3 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1">
               <i data-lucide="truck" class="w-4 h-4"></i>
               <span>อัปเดต</span>
@@ -1205,7 +1212,7 @@ function renderDailyQueue() {
             </button>
             ` : ''}
 
-            ${canCurrentUser('edit_order') ? `
+            ${order.status !== 'delivered' && canCurrentUser('edit_order') ? `
             <button onclick="openEditOrderModal('${order.id}')" title="แก้ไขการจอง" class="btn-large bg-purple-50 hover:bg-purple-100 text-purple-800 py-2 px-2.5 text-xs font-semibold rounded-xl border border-purple-200 flex items-center gap-1">
               <i data-lucide="edit-3" class="w-4 h-4"></i>
               <span>แก้ไข</span>
@@ -1255,6 +1262,142 @@ function getStatusBadgeHtml(status) {
     case 'pending':
     default:
       return `<span class="badge-tag bg-slate-100 text-slate-700 border border-slate-300"><i data-lucide="clock" class="w-3.5 h-3.5"></i> รอดำเนินการ</span>`;
+  }
+}
+
+// ====================================================================
+// 2a. ON-SITE PAYMENT METHOD TOGGLE (ปุ่มรับชำระเงินหน้างาน: เงินสด / โอน / ค้างจ่าย)
+// ====================================================================
+function getOrderPaymentMethod(order) {
+  const m = order.collectedMethod || order.paymentMethod;
+  if (m === 'เงินสด') return 'เงินสด';
+  if (m === 'โอน' || m === 'โอนเงิน') return 'โอน';
+  if (m === 'ค้างจ่าย') return 'ค้างจ่าย';
+  if (order.paymentStatus === 'paid_full') {
+    return (order.paymentMethod === 'เงินสด') ? 'เงินสด' : 'โอน';
+  }
+  if (order.remainingBalance <= 0) {
+    return (order.paymentMethod === 'เงินสด') ? 'เงินสด' : 'โอน';
+  }
+  return 'ค้างจ่าย';
+}
+
+function renderPaymentMethodButtonHtml(order) {
+  const method = getOrderPaymentMethod(order);
+
+  let btnConfig = {
+    label: 'เงินสด',
+    icon: '💵',
+    classes: 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600'
+  };
+
+  if (method === 'โอน') {
+    btnConfig = {
+      label: 'โอน',
+      icon: '📲',
+      classes: 'bg-sky-600 hover:bg-sky-700 text-white border-sky-600'
+    };
+  } else if (method === 'ค้างจ่าย') {
+    btnConfig = {
+      label: 'ค้างจ่าย',
+      icon: '⏳',
+      classes: 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500'
+    };
+  }
+
+  return `
+    <div class="relative inline-block text-left payment-dropdown-container">
+      <button type="button" onclick="togglePaymentDropdown('${order.id}', event)" 
+        title="วิธีชำระเงินหน้างาน (คลิกเพื่อเปลี่ยน: เงินสด / โอน / ค้างจ่าย)" 
+        class="btn-large ${btnConfig.classes} py-2 px-2.5 sm:px-3 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition">
+        <span>${btnConfig.icon}</span>
+        <span>${btnConfig.label}</span>
+        <i data-lucide="chevron-down" class="w-3.5 h-3.5 opacity-80"></i>
+      </button>
+
+      <!-- Dropdown Menu -->
+      <div id="payment-dropdown-${order.id}" class="hidden absolute right-0 bottom-full mb-1.5 w-40 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 overflow-hidden text-slate-700">
+        <div class="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+          วิธีชำระเงินหน้างาน
+        </div>
+        <button type="button" onclick="quickSetPaymentMethod('${order.id}', 'เงินสด', event)" 
+          class="w-full text-left px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 flex items-center justify-between transition ${method === 'เงินสด' ? 'bg-emerald-50' : ''}">
+          <span class="flex items-center gap-2"><span>💵</span><span>เงินสด</span></span>
+          ${method === 'เงินสด' ? '<span class="text-emerald-600 text-xs font-black">✓</span>' : ''}
+        </button>
+        <button type="button" onclick="quickSetPaymentMethod('${order.id}', 'โอน', event)" 
+          class="w-full text-left px-3 py-2 text-xs font-bold text-sky-700 hover:bg-sky-50 flex items-center justify-between transition ${method === 'โอน' ? 'bg-sky-50' : ''}">
+          <span class="flex items-center gap-2"><span>📲</span><span>โอน</span></span>
+          ${method === 'โอน' ? '<span class="text-sky-600 text-xs font-black">✓</span>' : ''}
+        </button>
+        <button type="button" onclick="quickSetPaymentMethod('${order.id}', 'ค้างจ่าย', event)" 
+          class="w-full text-left px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 flex items-center justify-between transition ${method === 'ค้างจ่าย' ? 'bg-amber-50' : ''}">
+          <span class="flex items-center gap-2"><span>⏳</span><span>ค้างจ่าย</span></span>
+          ${method === 'ค้างจ่าย' ? '<span class="text-amber-600 text-xs font-black">✓</span>' : ''}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function togglePaymentDropdown(orderId, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const targetMenu = document.getElementById(`payment-dropdown-${orderId}`);
+  const isHidden = targetMenu?.classList.contains('hidden');
+  
+  // ปิดทุก dropdown ที่เปิดอยู่
+  document.querySelectorAll('[id^="payment-dropdown-"]').forEach(el => el.classList.add('hidden'));
+  
+  if (targetMenu && isHidden) {
+    targetMenu.classList.remove('hidden');
+  }
+}
+
+function quickSetPaymentMethod(orderId, method, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  const order = state.orders.find(o => o.id === orderId);
+  if (!order) return;
+
+  order.collectedMethod = method;
+
+  const originalNet = Number(order.netTotal || 0);
+  const originalDeposit = Number(order.deposit || 0);
+  const originalRemaining = Math.max(0, originalNet - originalDeposit);
+
+  if (method === 'เงินสด' || method === 'โอน') {
+    order.paymentMethod = method === 'โอน' ? 'โอนเงิน' : 'เงินสด';
+    order.actualCollected = originalRemaining;
+    order.remainingBalance = 0;
+    order.paymentStatus = 'paid_full';
+    showNotification(`บันทึกรับเงินหน้างาน (${method === 'โอน' ? 'โอนเงิน' : 'เงินสด'}) ยอด ${formatMoney(originalRemaining)} เรียบร้อยแล้ว`, 'success');
+  } else if (method === 'ค้างจ่าย') {
+    order.paymentStatus = 'unpaid';
+    order.actualCollected = 0;
+    order.remainingBalance = originalRemaining;
+    showNotification(`บันทึกสถานะ: ค้างจ่าย (คงเหลือ ${formatMoney(originalRemaining)}) เรียบร้อยแล้ว`, 'info');
+  }
+
+  saveState();
+
+  // ปิดเมนู dropdown
+  document.querySelectorAll('[id^="payment-dropdown-"]').forEach(el => el.classList.add('hidden'));
+
+  // รีเฟรชหน้าจอคิวจัดส่ง
+  if (state.activeTab === 'daily') {
+    renderDailyQueue();
+  }
+  if (state.activeTab === 'orders') {
+    renderOrdersList();
+  }
+  if (typeof updatePortalKPIs === 'function') {
+    updatePortalKPIs();
   }
 }
 
@@ -2486,7 +2629,7 @@ function saveDeliveryUpdate() {
 
   order.status = newStatus;
   order.actualCollected = collectedAmt;
-  order.collectedMethod = collectedMethod;
+  order.collectedMethod = collectedMethod === 'โอนเงิน' ? 'โอน' : collectedMethod;
   order.notes = notes;
   if (slipImgSrc && slipImgSrc.startsWith('data:image')) {
     order.paymentProof = slipImgSrc;
@@ -3174,7 +3317,7 @@ function renderOrdersList() {
                 <span>ปิดจ็อบ</span>
               </button>
             ` : ''}
-            ${canCurrentUser('update_delivery') ? `
+            ${o.status !== 'delivered' && canCurrentUser('update_delivery') ? `
               <button onclick="openDeliveryUpdateModal('${o.id}')" title="อัปเดตสถานะจัดส่ง / บันทึกรับเงิน" class="btn-large bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] py-1 px-2 rounded-lg flex items-center gap-1 shadow-xs transition">
                 <i data-lucide="truck" class="w-3.5 h-3.5"></i>
                 <span>อัปเดต</span>
@@ -3186,7 +3329,7 @@ function renderOrdersList() {
                 <span>พิมพ์</span>
               </button>
             ` : ''}
-            ${canCurrentUser('edit_order') ? `
+            ${o.status !== 'delivered' && canCurrentUser('edit_order') ? `
               <button onclick="openEditOrderModal('${o.id}')" title="แก้ไขการจอง (เปลี่ยนวัน/ข้อมูลสินค้า)" class="btn-large bg-purple-50 hover:bg-purple-100 text-purple-800 text-[11px] py-1 px-2 rounded-lg border border-purple-200 flex items-center gap-0.5 font-semibold transition">
                 <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                 <span>แก้ไข</span>
@@ -3332,7 +3475,7 @@ function renderOrdersList() {
                   <span>ปิดจ็อบ</span>
                 </button>
               ` : ''}
-              ${canCurrentUser('update_delivery') ? `
+              ${o.status !== 'delivered' && canCurrentUser('update_delivery') ? `
                 <button onclick="openDeliveryUpdateModal('${o.id}')" class="btn-large bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-1.5 px-2.5 rounded-lg flex items-center gap-1 shadow-xs">
                   <i data-lucide="truck" class="w-3.5 h-3.5"></i>
                   <span>อัปเดต</span>
@@ -3344,7 +3487,7 @@ function renderOrdersList() {
                   <span>พิมพ์</span>
                 </button>
               ` : ''}
-              ${canCurrentUser('edit_order') ? `
+              ${o.status !== 'delivered' && canCurrentUser('edit_order') ? `
                 <button onclick="openEditOrderModal('${o.id}')" title="แก้ไขการจอง" class="btn-large bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs py-1.5 px-2.5 rounded-lg border border-purple-200 flex items-center gap-1 font-semibold">
                   <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                   <span>แก้ไข</span>
@@ -3925,6 +4068,13 @@ function setupEventListeners() {
     if (e.key === 'Escape') {
       const openModals = document.querySelectorAll('[id^="modal-"]:not(.hidden)');
       openModals.forEach(m => closeModal(m.id));
+    }
+  });
+
+  // ปิด payment dropdown เมื่อคลิกที่อื่น
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.payment-dropdown-container')) {
+      document.querySelectorAll('[id^="payment-dropdown-"]').forEach(el => el.classList.add('hidden'));
     }
   });
 }

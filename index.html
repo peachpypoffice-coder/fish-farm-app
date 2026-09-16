@@ -108,49 +108,26 @@
     <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16 sm:h-20 gap-2">
         
-        <!-- Brand Logo & Title (ป้องกันการยุบแถว flex-shrink-0 อ่านชัดเจนทุกหน้าจอ ไม่แตกแถว) -->
+        <!-- Brand Logo & Title -->
         <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer flex-shrink-0" onclick="backToPortal()" title="คลิกเพื่อกลับสู่หน้าเมนูหลัก (Portal Hub)">
           <img src="logo.png" alt="Sutthi Inter Farm" class="h-10 sm:h-12 w-auto object-contain rounded-xl bg-white p-1 shadow-sm border border-sky-200 flex-shrink-0">
-          <div class="flex flex-col justify-center">
-            <div class="flex items-center gap-1.5">
-              <h1 class="text-sm sm:text-base lg:text-lg font-black text-sky-950 tracking-tight whitespace-nowrap">บจก.สุทธิ อินเตอร์ ฟาร์ม</h1>
-              <span class="bg-amber-100 text-amber-900 text-[10px] sm:text-[11px] font-bold px-1.5 py-0.5 rounded-full border border-amber-300 whitespace-nowrap flex-shrink-0">ผู้ใหญ่พร</span>
-            </div>
-            <p class="text-[11px] text-slate-500 hidden xl:block whitespace-nowrap">68 ม.1 ต.มารวิชัย อ.เสนา จ.พระนครศรีอยุธยา • โทร 095-996-5569</p>
-            <p class="text-[10px] text-slate-500 hidden sm:block xl:hidden whitespace-nowrap">อ.เสนา จ.อยุธยา • โทร 095-996-5569</p>
+          <div class="flex items-center gap-1.5">
+            <h1 class="text-base sm:text-lg font-black text-sky-950 tracking-tight whitespace-nowrap">บจก.สุทธิ อินเตอร์ ฟาร์ม</h1>
+            <span class="bg-amber-100 text-amber-900 text-[10px] sm:text-[11px] font-bold px-1.5 py-0.5 rounded-full border border-amber-300 whitespace-nowrap flex-shrink-0">ผู้ใหญ่พร</span>
           </div>
         </div>
 
-        <!-- Right Side: Portal Hub Button, New Booking Button & User Profile -->
-        <div class="flex items-center space-x-1.5 sm:space-x-2.5 flex-shrink min-w-0 justify-end">
+        <!-- Right Side: User Profile & System Controls -->
+        <div class="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0 justify-end">
           
-          <!-- Back to Main Menu Portal Button -->
-          <button onclick="backToPortal()" class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold shadow-2xs transition flex-shrink-0" title="กลับสู่หน้าเมนูหลัก 7 โมดูล (Portal Hub)">
-            <i data-lucide="layout-grid" class="w-4 h-4 text-sky-600"></i>
-            <span class="hidden md:inline">หน้าเมนูหลัก</span>
-          </button>
-
-          <!-- Farm Blueprint Direct Shortcut Button -->
-          <button id="btn-top-blueprint" onclick="openModule('inventory')" class="btn-large bg-sky-700 hover:bg-sky-600 text-white shadow-xs py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition flex-shrink-0" title="เปิดแดชบอร์ดผังสต็อกฟาร์ม 48 จุด">
-            <i data-lucide="map" class="w-4 h-4 text-sky-200"></i>
-            <span class="hidden lg:inline">ผังสต็อก 48 จุด</span>
-          </button>
-
-          <!-- Big Yellow Booking Button -->
-          <button id="btn-top-new-order" onclick="openNewOrderModal()" class="btn-large btn-farm-yellow shadow-md hover:brightness-105 py-1.5 sm:py-2 px-2.5 sm:px-3.5 text-xs sm:text-sm font-bold flex-shrink-0">
-            <i data-lucide="plus-circle" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-            <span class="hidden sm:inline">จองพันธุ์ปลาใหม่</span>
-            <span class="sm:hidden">จองใหม่</span>
-          </button>
-
           <!-- Cloudflare / Server Sync Status Indicator -->
-          <div id="cloud-sync-indicator" class="hidden 2xl:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex-shrink-0" title="สถานะการเชื่อมต่อ Cloudflare">
+          <div id="cloud-sync-indicator" class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex-shrink-0" title="สถานะการเชื่อมต่อ Cloudflare">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span id="cloud-sync-text">คลาวด์ออนไลน์</span>
           </div>
 
           <!-- Master AI Supervisor Button -->
-          <button id="btn-top-supervisor" onclick="openSupervisorModal()" class="hidden xl:flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-700 hover:brightness-110 text-white shadow-sm transition text-xs font-bold flex-shrink-0" title="ผู้ควบคุมและตรวจทานระบบ AI Supervisor">
+          <button id="btn-top-supervisor" onclick="openSupervisorModal()" class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-700 hover:brightness-110 text-white shadow-sm transition text-xs font-bold flex-shrink-0" title="ผู้ควบคุมและตรวจทานระบบ AI Supervisor">
             <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
             <span class="hidden sm:inline">AI Supervisor</span>
             <span id="supervisor-health-badge" class="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-md font-bold">100%</span>
@@ -221,6 +198,8 @@
 
     <!-- Hidden compatibility container for legacy tab button IDs so app.js updateBadges() & switchTab() never error -->
     <div id="legacy-tab-buttons" class="hidden">
+      <button id="btn-top-blueprint"></button>
+      <button id="btn-top-new-order"></button>
       <button id="tab-btn-calendar" class="nav-tab-btn"></button>
       <button id="tab-btn-daily" class="nav-tab-btn"><span id="badge-today-count">0</span></button>
       <button id="tab-btn-orders" class="nav-tab-btn"></button>
@@ -258,9 +237,6 @@
               <span id="portal-welcome-name" class="text-amber-300">ผู้ใหญ่พร</span>
               <span>👋</span>
             </h2>
-            <p class="text-xs sm:text-sm text-sky-100/90 mt-1 max-w-2xl leading-relaxed">
-              ยินดีต้อนรับสู่ศูนย์ควบคุมการดำเนินงานฟาร์ม เลือกเข้าสู่แผนกงานด้านล่างเพื่อเริ่มการจัดการ
-            </p>
           </div>
 
           <div class="flex items-center gap-2.5 flex-wrap">
@@ -315,34 +291,6 @@
             </div>
             <div id="portal-kpi-low-supplies" class="text-xl sm:text-2xl font-black text-rose-300">0 รายการ</div>
             <div class="text-[11px] text-rose-200/80 mt-0.5">ต่ำกว่าเกณฑ์ปลอดภัย ➔</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Farm Stock Blueprint Quick Access Showcase -->
-      <div id="portal-blueprint-showcase" onclick="openModule('inventory')" class="farm-card p-5 bg-gradient-to-r from-slate-900 via-sky-950 to-blue-950 text-white border-2 border-sky-400/50 shadow-xl cursor-pointer hover:border-sky-300 hover:shadow-2xl transition duration-300 group relative overflow-hidden">
-        <div class="absolute inset-0 farm-dock-water-bg opacity-20 pointer-events-none"></div>
-        <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div class="flex items-center gap-3.5">
-            <div class="p-3 bg-sky-500/20 text-sky-300 border border-sky-400/40 rounded-2xl group-hover:scale-105 transition">
-              <i data-lucide="map" class="w-7 h-7 text-sky-300"></i>
-            </div>
-            <div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="text-base sm:text-lg font-black text-white group-hover:text-sky-200 transition">🌊 แดชบอร์ดผังสต็อกฟาร์มเสมือนจริง 48 จุดสต็อก (Live Blueprint)</h3>
-                <span class="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow-xs">ตามแปลนจริง 100%</span>
-                <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold px-2 py-0.5 rounded-full">ลากย้ายปลา Drag & Drop</span>
-              </div>
-              <p class="text-xs text-sky-200/80 mt-1">
-                กระชังหมัน 5 ช่อง • กระชังลอยน้ำ 22 ช่อง (พร้อมสะพานทางลงแพ) • อ่างกลมเล็ก 5 อ่าง • อ่างปูนใหญ่ 16 อ่าง (รวม 48 จุดสต็อก)
-              </p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2 self-stretch md:self-auto justify-end">
-            <span class="btn-large bg-sky-600 group-hover:bg-sky-500 text-white py-2 px-4 text-xs font-bold rounded-xl shadow-md transition flex items-center gap-2 whitespace-nowrap">
-              <span>คลิกเปิดดูผังฟาร์มทันที</span>
-              <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition"></i>
-            </span>
           </div>
         </div>
       </div>
