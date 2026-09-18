@@ -5,20 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>บจก.สุทธิ อินเตอร์ ฟาร์ม (ฟาร์มปลาผู้ใหญ่พร) - ระบบบันทึกการจองและคิวจัดส่งพันธุ์ปลา</title>
   
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CSS CDN with plugins -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <!-- Google Fonts: Manrope & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <!-- Material Symbols Outlined -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- SheetJS (xlsx) for Excel Export -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="css/style.css?v=20260916-2">
+  <link rel="stylesheet" href="css/style.css?v=20260918-1">
 
   <script>
     tailwind.config = {
+      darkMode: "class",
       theme: {
         extend: {
           colors: {
+            // Logistics Pro Theme
+            "on-primary": "#ffffff",
+            "surface-variant": "#e4e2e2",
+            "on-secondary-fixed-variant": "#005232",
+            "primary-container": "#002f6c",
+            "on-primary-fixed-variant": "#224583",
+            "background": "#fbf9f8",
+            "primary-fixed-dim": "#aec6ff",
+            "secondary-container": "#75f8b3",
+            "surface-dim": "#dbd9d9",
+            "tertiary-container": "#412e00",
+            "on-secondary-fixed": "#002111",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+            "secondary": "#006d43",
+            "surface-bright": "#fbf9f8",
+            "tertiary": "#271a00",
+            "tertiary-fixed-dim": "#fbbc00",
+            "surface-container": "#efeded",
+            "primary": "#001b44",
+            "on-tertiary-container": "#c39100",
+            "surface-container-high": "#eae8e7",
+            "on-tertiary-fixed": "#261a00",
+            "surface": "#fbf9f8",
+            "inverse-on-surface": "#f2f0f0",
+            "secondary-fixed": "#78fbb6",
+            "on-secondary": "#ffffff",
+            "surface-container-lowest": "#ffffff",
+            "error": "#ba1a1a",
+            "on-tertiary-fixed-variant": "#5c4300",
+            "on-secondary-container": "#007147",
+            "outline-variant": "#c4c6d2",
+            "inverse-primary": "#aec6ff",
+            "outline": "#747781",
+            "surface-container-highest": "#e4e2e2",
+            "surface-container-low": "#f5f3f3",
+            "on-error": "#ffffff",
+            "primary-fixed": "#d8e2ff",
+            "secondary-fixed-dim": "#59de9b",
+            "on-background": "#1b1c1c",
+            "on-surface-variant": "#434750",
+            "inverse-surface": "#303030",
+            "on-tertiary": "#ffffff",
+            "tertiary-fixed": "#ffdfa0",
+            "on-primary-container": "#7999dc",
+            "surface-tint": "#3c5d9c",
+            "on-surface": "#1b1c1c",
+            "on-primary-fixed": "#001a42",
+            // Existing Farm Theme Compatibility
             farm: {
               blue: '#0284c7',
               'blue-dark': '#0369a1',
@@ -28,13 +84,18 @@
               'yellow-light': '#fef3c7',
               bg: '#f8fafc'
             }
+          },
+          fontFamily: {
+            "headline": ["Manrope", "Prompt", "sans-serif"],
+            "body": ["Inter", "Sarabun", "sans-serif"],
+            "label": ["Inter", "Sarabun", "sans-serif"]
           }
         }
       }
     }
   </script>
 </head>
-<body class="bg-[#f0f7ff] min-h-screen text-slate-800 flex flex-col antialiased">
+<body class="bg-background text-on-background flex h-screen overflow-hidden antialiased">
 
   <!-- ================================================================= -->
   <!-- FULLSCREEN LOGIN GATE (บังคับล็อกอินก่อนเข้าถึงข้อมูล) -->
@@ -103,70 +164,158 @@
     </div>
   </div>
 
-  <!-- TOP HEADER / NAVBAR -->
-  <header id="main-top-header" class="bg-white/95 backdrop-blur-sm border-b border-sky-100 sticky top-0 z-30 shadow-xs">
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16 sm:h-20 gap-2">
-        
-        <!-- Brand Logo & Title -->
-        <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer flex-shrink-0" onclick="backToPortal()" title="คลิกเพื่อกลับสู่หน้าเมนูหลัก (Portal Hub)">
-          <img src="logo.png" alt="Sutthi Inter Farm" class="h-10 sm:h-12 w-auto object-contain rounded-xl bg-white p-1 shadow-sm border border-sky-200 flex-shrink-0">
-          <div class="flex items-center gap-1.5">
-            <h1 class="text-base sm:text-lg font-black text-sky-950 tracking-tight whitespace-nowrap">บจก.สุทธิ อินเตอร์ ฟาร์ม</h1>
-            <span class="bg-amber-100 text-amber-900 text-[10px] sm:text-[11px] font-bold px-1.5 py-0.5 rounded-full border border-amber-300 whitespace-nowrap flex-shrink-0">ผู้ใหญ่พร</span>
+  <!-- Mobile Backdrop Overlay for Sidebar Drawer -->
+  <div id="portal-sidebar-backdrop" onclick="closePortalSidebar()" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 hidden md:hidden transition-opacity"></div>
+
+  <!-- ================================================================= -->
+  <!-- SIDENAVBAR (เมนูด้านข้างสีกรมท่าลึก #001b44 ครบ 7 โมดูล) -->
+  <!-- ================================================================= -->
+  <aside id="portal-sidebar" class="w-64 bg-primary text-on-primary flex flex-col shrink-0 transition-transform duration-300 -translate-x-full md:translate-x-0 fixed md:static inset-y-0 left-0 z-50 shadow-2xl md:shadow-none select-none">
+    <!-- Brand Header -->
+    <div class="p-5 border-b border-white/10">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="backToPortal()" title="กลับสู่ศูนย์รวม 7 โมดูล">
+          <div class="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center shadow-inner flex-shrink-0">
+            <span class="material-symbols-outlined text-secondary-fixed text-xl" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-base font-extrabold tracking-tight font-headline text-white leading-tight truncate">Farm Enterprise</h1>
+            <p class="text-[10px] text-primary-fixed-dim font-medium opacity-90 truncate">บจก.สุทธิ อินเตอร์ ฟาร์ม</p>
           </div>
         </div>
-
-        <!-- Right Side: User Profile & System Controls -->
-        <div class="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0 justify-end">
-          
-          <!-- Cloudflare / Server Sync Status Indicator -->
-          <div id="cloud-sync-indicator" class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex-shrink-0" title="สถานะการเชื่อมต่อ Cloudflare">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span id="cloud-sync-text">คลาวด์ออนไลน์</span>
-          </div>
-
-          <!-- Master AI Supervisor Button -->
-          <button id="btn-top-supervisor" onclick="openSupervisorModal()" class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-700 hover:brightness-110 text-white shadow-sm transition text-xs font-bold flex-shrink-0" title="ผู้ควบคุมและตรวจทานระบบ AI Supervisor">
-            <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
-            <span class="hidden sm:inline">AI Supervisor</span>
-            <span id="supervisor-health-badge" class="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-md font-bold">100%</span>
-            <span id="supervisor-alert-count" class="hidden bg-rose-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">0</span>
-          </button>
-
-          <!-- User Role / Profile Button & Logout -->
-          <div class="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
-            <button onclick="openLoginModal()" class="flex items-center space-x-1.5 p-1.5 sm:p-2 rounded-xl hover:bg-sky-50 border border-slate-200 hover:border-sky-300 transition" title="ข้อมูลผู้ใช้งาน">
-              <span id="current-user-avatar" class="text-lg sm:text-xl">👨‍🌾</span>
-              <div class="text-left hidden lg:block">
-                <p id="current-user-name" class="text-sm font-semibold text-slate-800 leading-tight">ผู้ใหญ่พร</p>
-                <span id="current-user-badge" class="badge-tag bg-amber-500 text-white text-[10px] py-0 px-1.5">CEO</span>
-              </div>
-              <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 hidden lg:block"></i>
-            </button>
-
-            <!-- Logout Button -->
-            <button onclick="logoutUser()" class="flex items-center space-x-1 p-2 sm:px-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition text-xs font-semibold" title="ออกจากระบบ">
-              <i data-lucide="log-out" class="w-4 h-4"></i>
-              <span class="hidden sm:inline">ออกจากระบบ</span>
-            </button>
-          </div>
-        </div>
-
+        <button onclick="closePortalSidebar()" class="md:hidden text-white/70 hover:text-white p-1">
+          <span class="material-symbols-outlined text-lg">close</span>
+        </button>
       </div>
     </div>
 
-    <!-- ================================================================= -->
+    <!-- Navigation Menu (Portal + 7 Modules) -->
+    <nav class="flex-1 px-3 py-3 space-y-1.5 overflow-y-auto custom-scrollbar text-xs font-semibold">
+      <div class="px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-primary-fixed-dim/60">ศูนย์รวมงานหลัก</div>
+      
+      <!-- Home Portal Hub -->
+      <a id="nav-item-portal" href="javascript:void(0)" onclick="backToPortal(); closePortalSidebar();" class="portal-nav-link active flex items-center gap-3 px-3 py-2.5 rounded-xl bg-primary-container text-white transition-colors">
+        <span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">hub</span>
+        <span>ศูนย์รวม 7 โมดูล</span>
+      </a>
+
+      <div class="px-3 pt-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-primary-fixed-dim/60">7 โมดูลบริหารงานฟาร์ม</div>
+
+      <!-- Module 1: Booking & Logistics -->
+      <a id="nav-item-mod-booking" href="javascript:void(0)" onclick="openModule('booking'); closePortalSidebar();" class="portal-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-primary-fixed-dim hover:bg-white/5 transition-colors">
+        <span class="material-symbols-outlined text-base">local_shipping</span>
+        <span class="truncate">1. จองปลา & คิวส่ง</span>
+      </a>
+
+      <!-- Module 2: Farm Stock & Blueprint -->
+      <a id="nav-item-mod-inventory" href="javascript:void(0)" onclick="openModule('inventory'); closePortalSidebar();" class="portal-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-primary-fixed-dim hover:bg-white/5 transition-colors">
+        <span class="material-symbols-outlined text-base">inventory_2</span>
+        <span class="truncate">2. สต็อก & ผัง 48 จุด</span>
+      </a>
+
+      <!-- Module 3: POS Walk-in Store -->
+      <a id="nav-item-mod-pos" href="javascript:void(0)" onclick="openModule('pos'); closePortalSidebar();" class="portal-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-primary-fixed-dim hover:bg-white/5 transition-colors">
+        <span class="material-symbols-outlined text-base">point_of_sale</span>
+        <span class="truncate">3. ขายหน้าร้าน (POS)</span>
+      </a>
+
+      <!-- Module 4: Production & Breeding -->
+      <a id="nav-item-mod-production" href="javascript:void(0)" onclick="openModule('production'); closePortalSidebar();" class="portal-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-primary-fixed-dim hover:bg-white/5 transition-colors">
+        <span class="material-symbols-outlined text-base">biotech</span>
+        <span class="truncate">4. เพาะพันธุ์ & ผลิต</span>
+      </a>
+
+      <!-- Module 5: Finance & Accounting -->
+      <a id="nav-item-mod-finance" href="javascript:void(0)" onclick="openModule('finance'); closePortalSidebar();" class="portal-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-primary-fixed-dim hover:bg-white/5 transition-colors">
+        <span class="material-symbols-outlined text-base">payments</span>
+        <span class="truncate">5. บัญชี & การเงิน</span>
+      </a>
+
+      <!-- Module 6: Customers CRM -->
+      <a id="nav-item-mod-marketing" href="javascript:void(0)" onclick="openModule('marketing'); closePortalSidebar();" class="portal-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-primary-fixed-dim hover:bg-white/5 transition-colors">
+        <span class="material-symbols-outlined text-base">groups</span>
+        <span class="truncate">6. ลูกค้า & VIP CRM</span>
+      </a>
+
+      <!-- Module 7: HR & RBAC -->
+      <a id="nav-item-mod-hr" href="javascript:void(0)" onclick="openModule('hr'); closePortalSidebar();" class="portal-nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl text-primary-fixed-dim hover:bg-white/5 transition-colors">
+        <span class="material-symbols-outlined text-base">admin_panel_settings</span>
+        <span class="truncate">7. จัดการสิทธิ์ & HR</span>
+      </a>
+    </nav>
+
+    <!-- Bottom User Profile Card -->
+    <div class="p-3.5 border-t border-white/10 flex items-center justify-between bg-primary/95">
+      <div class="flex items-center gap-2.5 cursor-pointer min-w-0" onclick="openLoginModal()" title="คลิกเพื่อสลับผู้ใช้งาน">
+        <div id="portal-sidebar-avatar" class="w-9 h-9 rounded-full border-2 border-primary-container bg-surface flex items-center justify-center text-lg flex-shrink-0">
+          👨‍🌾
+        </div>
+        <div class="min-w-0">
+          <p id="portal-sidebar-user-name" class="text-xs font-bold text-white truncate">ผู้ใหญ่พร</p>
+          <p id="portal-sidebar-user-role" class="text-[9px] text-primary-fixed-dim uppercase tracking-wider font-semibold truncate">CEO / เจ้าของฟาร์ม</p>
+        </div>
+      </div>
+      <button onclick="logoutUser()" title="ออกจากระบบ" class="text-primary-fixed-dim hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition flex-shrink-0">
+        <span class="material-symbols-outlined text-base">logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================================================================= -->
+  <!-- MAIN WORKSPACE COLUMN (TopNavBar + Scrollable Canvas) -->
+  <!-- ================================================================= -->
+  <main class="flex-1 flex flex-col overflow-hidden min-w-0">
+
+    <!-- TOPBAR / HEADER -->
+    <header class="h-16 bg-surface-container-lowest flex items-center justify-between px-4 sm:px-6 lg:px-8 border-b border-outline-variant/15 shrink-0 z-20">
+      <div class="flex items-center flex-1 min-w-0 mr-3">
+        <!-- Mobile Sidebar Toggle -->
+        <button onclick="togglePortalSidebar()" class="md:hidden mr-2.5 p-2 text-on-surface-variant hover:bg-surface-container rounded-xl flex-shrink-0">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+
+        <!-- Search input -->
+        <div class="relative w-full max-w-sm sm:max-w-md">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+          <input id="portal-search-input" oninput="handlePortalSearch(this.value)" class="w-full pl-9 pr-4 py-2 bg-surface-container-low border-none rounded-full text-xs sm:text-sm focus:ring-2 focus:ring-primary/20 text-on-surface" placeholder="ค้นหาระบบงาน, บ่อเลี้ยง, ลูกค้า, สินค้า..." type="text"/>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        <div class="hidden lg:block text-right">
+          <h2 class="text-sm font-extrabold text-primary font-headline">Farm ERP Portal Hub</h2>
+          <p class="text-[10px] text-on-surface-variant font-medium">ศูนย์รวมระบบงานฟาร์ม 7 แผนก</p>
+        </div>
+
+        <!-- Quick Action: New Order -->
+        <button onclick="openNewOrderModal()" class="bg-primary hover:bg-primary-container text-white px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm transition">
+          <span class="material-symbols-outlined text-sm sm:text-base">add_circle</span>
+          <span class="hidden sm:inline">จองพันธุ์ปลาใหม่</span>
+        </button>
+
+        <!-- AI Supervisor Button -->
+        <button onclick="openSupervisorModal()" class="bg-gradient-to-r from-sky-600 to-indigo-700 hover:brightness-110 text-white px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition relative" title="AI Supervisor">
+          <span class="material-symbols-outlined text-sm text-amber-300">smart_toy</span>
+          <span class="hidden md:inline">AI Supervisor</span>
+          <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-secondary rounded-full animate-ping"></span>
+        </button>
+
+        <!-- User Role / Profile Modal Button -->
+        <button onclick="openLoginModal()" class="flex items-center gap-1.5 p-1.5 rounded-xl hover:bg-surface-container border border-outline-variant/30 transition" title="สลับบทบาท / โปรไฟล์">
+          <span id="current-user-avatar" class="text-base sm:text-lg">👨‍🌾</span>
+          <span id="current-user-name" class="text-xs font-bold text-slate-800 hidden xl:inline">ผู้ใหญ่พร</span>
+        </button>
+      </div>
+    </header>
+
     <!-- MODULE SUBNAV BAR (แสดงเฉพาะเมื่ออยู่ใน Level 3: Module Workspace) -->
-    <!-- ================================================================= -->
-    <div id="module-subnav-bar" class="hidden bg-slate-50 border-t border-b border-slate-200/90 shadow-2xs px-3 sm:px-6 lg:px-8 py-2">
+    <div id="module-subnav-bar" class="hidden bg-slate-50 border-b border-slate-200 shadow-2xs px-4 sm:px-6 py-2 shrink-0">
       <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        
         <!-- Left: Back Button & Module Info Breadcrumb -->
         <div class="flex items-center gap-2.5 min-w-0">
           <button onclick="backToPortal()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold shadow-2xs flex items-center gap-1.5 transition flex-shrink-0 group" title="กลับสู่ศูนย์รวม 7 โมดูล">
             <i data-lucide="arrow-left" class="w-4 h-4 text-slate-500 group-hover:-translate-x-0.5 transition-transform"></i>
-            <span>เมนูหลัก</span>
+            <span>กลับหน้า Portal</span>
           </button>
           <span class="text-slate-300">|</span>
           <div class="flex items-center gap-2 min-w-0">
@@ -192,7 +341,6 @@
             <!-- Populated by renderModuleQuickActions(mod) in portal.js -->
           </div>
         </div>
-
       </div>
     </div>
 
@@ -209,91 +357,154 @@
       <button id="tab-btn-analytics" class="nav-tab-btn"></button>
       <button id="tab-btn-permissions" class="nav-tab-btn"></button>
     </div>
-  </header>
 
-  <!-- MAIN CONTENT CONTAINER -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- ================================================================= -->
+    <!-- SCROLLABLE CANVAS (CONTAINER FOR PORTAL HUB & MODULE WORKSPACES) -->
+    <!-- ================================================================= -->
+    <div id="portal-scroll-canvas" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar bg-background">
 
     <!-- ================================================================= -->
     <!-- LEVEL 2: MAIN MENU PORTAL (ศูนย์รวม 7 โมดูลหลักของฟาร์ม) -->
     <!-- ================================================================= -->
     <section id="view-portal" class="space-y-6">
       
-      <!-- Top Welcome & Live KPIs Banner -->
-      <div class="farm-card p-5 sm:p-7 bg-gradient-to-br from-sky-700 via-sky-800 to-indigo-900 text-white shadow-xl border-none relative overflow-hidden">
-        <!-- Background decorative wave pattern -->
-        <div class="absolute -right-10 -bottom-10 opacity-10 text-white pointer-events-none">
-          <i data-lucide="fish" class="w-80 h-80"></i>
+      <!-- ================================================================= -->
+      <!-- HERO GRID: INTERACTIVE FARM OPERATIONS MAP & SPARKLINE STATS -->
+      <!-- ================================================================= -->
+      <div class="grid grid-cols-12 gap-5 h-auto lg:h-[420px]">
+        <!-- Interactive Map Section (8 cols) -->
+        <div class="col-span-12 lg:col-span-8 bg-surface-container-lowest rounded-2xl overflow-hidden relative shadow-sm border border-outline-variant/15 flex flex-col justify-between min-h-[300px]">
+          <div class="absolute inset-0 z-0 bg-surface-dim">
+            <img class="w-full h-full object-cover opacity-90 saturate-125" src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1200&q=80" alt="Farm Operations & Logistics Map"/>
+          </div>
+          
+          <!-- Map Overlays: Top Header Pill -->
+          <div class="relative z-10 p-4 flex items-center justify-between flex-wrap gap-2">
+            <div class="bg-surface/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/40 shadow-lg flex items-center gap-2">
+              <span class="w-2.5 h-2.5 bg-secondary rounded-full animate-pulse"></span>
+              <span id="portal-hero-orders-count" class="text-xs font-bold text-primary">LIVE: 4 คิวจัดส่งวันนี้ • 48 บ่อสต็อกพร้อมจำหน่าย</span>
+            </div>
+            <button onclick="openModule('inventory')" class="bg-primary/90 hover:bg-primary text-white text-[11px] font-bold px-3 py-1.5 rounded-full shadow-md backdrop-blur-sm flex items-center gap-1 transition">
+              <span class="material-symbols-outlined text-sm">map</span>
+              <span>ดูผังสต็อกเสมือนจริง 48 จุด ➔</span>
+            </button>
+          </div>
+
+          <!-- Dynamic Markers on Map -->
+          <div id="portal-map-markers" class="absolute inset-0 pointer-events-none">
+            <!-- Centered Farm Blueprint Pin -->
+            <div class="absolute top-[45%] left-[32%] -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer" onclick="openModule('inventory')" title="คลิกดูผังบ่อ 48 จุด">
+              <div class="bg-primary border-2 border-white text-white px-3 py-1 rounded-full text-[10px] font-black shadow-xl flex items-center gap-1 hover:scale-110 transition-transform">
+                <span class="material-symbols-outlined text-xs text-amber-300">home</span>
+                <span>ศูนย์ฟาร์มใหญ่ (48 จุด)</span>
+              </div>
+            </div>
+            <!-- Delivery Destination Pin 1 -->
+            <div class="absolute top-[35%] left-[65%] -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer" onclick="openModule('booking')" title="คิวจัดส่งภาคกลาง">
+              <div class="w-8 h-8 bg-secondary border-2 border-white rounded-full flex items-center justify-center shadow-lg hover:scale-125 transition-transform animate-bounce">
+                <span class="material-symbols-outlined text-sm text-white">local_shipping</span>
+              </div>
+            </div>
+            <!-- Delivery Destination Pin 2 -->
+            <div class="absolute top-[65%] left-[55%] -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer" onclick="openModule('booking')" title="คิวจัดส่งปราจีนบุรี">
+              <div class="w-8 h-8 bg-primary-container border-2 border-white rounded-full flex items-center justify-center shadow-lg hover:scale-125 transition-transform">
+                <span class="material-symbols-outlined text-sm text-white">local_shipping</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Farm Pulse Card Overlay -->
+          <div class="relative z-10 p-4">
+            <div class="bg-primary/95 backdrop-blur shadow-2xl p-3.5 rounded-xl border border-white/10 w-full max-w-xs sm:w-64">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-on-primary text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1">
+                  <span class="material-symbols-outlined text-xs text-amber-300">vital_signs</span>
+                  <span>Farm Pulse</span>
+                </h3>
+                <span class="text-[10px] text-secondary-fixed font-bold">Real-time</span>
+              </div>
+              <div class="space-y-2">
+                <div>
+                  <div class="flex justify-between items-center text-[10px] mb-1">
+                    <span class="text-primary-fixed-dim font-medium">ปลาพร้อมขายในบ่อ</span>
+                    <span id="portal-pulse-fish-pct" class="text-xs font-bold text-secondary-fixed">88%</span>
+                  </div>
+                  <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                    <div id="portal-pulse-fish-bar" class="bg-secondary h-full rounded-full" style="width: 88%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between items-center text-[10px] mb-1">
+                    <span class="text-primary-fixed-dim font-medium">คิวจัดส่งตรงเวลา</span>
+                    <span id="portal-pulse-delivery-pct" class="text-xs font-bold text-tertiary-fixed-dim">95%</span>
+                  </div>
+                  <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                    <div id="portal-pulse-delivery-bar" class="bg-tertiary-fixed-dim h-full rounded-full" style="width: 95%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-sky-200 text-xs font-semibold mb-2.5 border border-white/10">
-              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>ระบบบริหารจัดการฟาร์มปลาผู้ใหญ่พรแบบครบวงจร (Enterprise Farm ERP)</span>
+        <!-- 2 Sparkline Stat Cards (4 cols) -->
+        <div class="col-span-12 lg:col-span-4 flex flex-col gap-4">
+          <!-- Stat Card 1: Today Deliveries (Navy Gradient) -->
+          <div onclick="openModule('booking')" class="flex-1 bg-gradient-to-br from-primary to-primary-container p-5 rounded-2xl flex flex-col justify-between text-white relative overflow-hidden group cursor-pointer hover:shadow-lg transition">
+            <div class="absolute -right-4 -top-4 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-colors"></div>
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-primary-fixed-dim opacity-90">คิวจัดส่งวันนี้ (Today Deliveries)</p>
+                <h4 class="text-3xl font-black mt-1"><span id="portal-hero-today-orders">0</span> <span class="text-sm font-medium ml-1">คิว</span></h4>
+                <p id="portal-hero-orders-sub" class="text-[11px] text-primary-fixed-dim mt-0.5">จัดสายรถและเตรียมส่งมอบ</p>
+              </div>
+              <div class="p-2.5 bg-white/10 rounded-xl">
+                <span class="material-symbols-outlined text-secondary-fixed text-2xl">local_shipping</span>
+              </div>
             </div>
-            <h2 class="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
-              <span>สวัสดีครับ,</span>
-              <span id="portal-welcome-name" class="text-amber-300">ผู้ใหญ่พร</span>
-              <span>👋</span>
-            </h2>
+            <div class="mt-4">
+              <div class="text-[10px] text-primary-fixed-dim flex items-center justify-between mb-1.5">
+                <span>อัตราการส่งมอบวันนี้</span>
+                <span class="font-bold text-white">100% On-Track</span>
+              </div>
+              <div class="h-12 flex items-end gap-1.5">
+                <div class="flex-1 bg-secondary-container/40 rounded-t h-[60%]"></div>
+                <div class="flex-1 bg-secondary-container/60 rounded-t h-[80%]"></div>
+                <div class="flex-1 bg-secondary-container/50 rounded-t h-[45%]"></div>
+                <div class="flex-1 bg-secondary-container/70 rounded-t h-[90%]"></div>
+                <div class="flex-1 bg-secondary-container/90 rounded-t h-[100%]"></div>
+                <div class="flex-1 bg-secondary-container rounded-t h-[75%]"></div>
+              </div>
+            </div>
           </div>
 
-          <div class="flex items-center gap-2.5 flex-wrap">
-            <button id="portal-btn-blueprint" onclick="openModule('inventory')" class="btn-large bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white py-2.5 px-4 text-xs sm:text-sm font-black rounded-xl shadow-lg transition flex items-center gap-2">
-              <i data-lucide="map" class="w-4 h-4 text-white"></i>
-              <span>🗺️ ดูผังสต็อกเสมือนจริง 48 จุด</span>
-            </button>
-            <button id="portal-btn-new-order" onclick="openNewOrderModal()" class="btn-large bg-amber-500 hover:bg-amber-400 text-slate-900 py-2.5 px-4 text-xs sm:text-sm font-black rounded-xl shadow-lg transition flex items-center gap-2">
-              <i data-lucide="plus-circle" class="w-4 h-4 text-slate-900"></i>
-              <span>จองพันธุ์ปลาใหม่</span>
-            </button>
-            <button id="portal-btn-supervisor" onclick="openSupervisorModal()" class="btn-large bg-white/15 hover:bg-white/25 text-white border border-white/20 py-2.5 px-4 text-xs sm:text-sm font-bold rounded-xl transition flex items-center gap-2">
-              <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
-              <span>AI Supervisor</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- 4 Live KPI Metric Cards -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-white/15 relative z-10">
-          <div class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openModule('booking')">
-            <div class="flex items-center justify-between text-xs text-sky-200 font-semibold mb-1">
-              <span>🚚 คิวจัดส่งวันนี้</span>
-              <i data-lucide="truck" class="w-4 h-4 text-sky-300"></i>
+          <!-- Stat Card 2: Fish Ready For Sale (Surface Card) -->
+          <div onclick="openModule('inventory')" class="flex-1 bg-surface-container-lowest border border-outline-variant/20 p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden hover:shadow-lg transition cursor-pointer">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">ปลาพร้อมขายจริงในฟาร์ม</p>
+                <h4 class="text-3xl font-black mt-1 text-primary"><span id="portal-hero-ready-fish">0</span> <span class="text-sm font-medium ml-1">ตัว</span></h4>
+                <p class="text-[11px] text-on-surface-variant mt-0.5">ในบ่อพักและกระชังพร้อมตัก</p>
+              </div>
+              <div class="p-2.5 bg-secondary-container/20 rounded-xl">
+                <span class="material-symbols-outlined text-secondary text-2xl">set_meal</span>
+              </div>
             </div>
-            <div id="portal-kpi-today-orders" class="text-xl sm:text-2xl font-black text-white">0 คิว</div>
-            <div class="text-[11px] text-sky-200/80 mt-0.5">คลิกดูตารางจัดส่ง ➔</div>
-          </div>
-
-          <div id="portal-kpi-card-ready" class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openModule('inventory')">
-            <div class="flex items-center justify-between text-xs text-emerald-200 font-semibold mb-1">
-              <span>🐟 ปลาพร้อมขายจริง</span>
-              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-300"></i>
+            <div class="mt-3">
+              <div class="flex items-center gap-1.5 text-secondary font-bold text-xs mb-1">
+                <span class="material-symbols-outlined text-sm">trending_up</span>
+                <span>+4.2% จากค่าเฉลี่ยสต็อก</span>
+              </div>
+              <div class="h-10 w-full">
+                <svg class="w-full h-full" viewbox="0 0 100 30">
+                  <path d="M0 25 Q 15 20, 30 22 T 55 10 T 75 16 T 90 5 T 100 12" fill="none" stroke="#006d43" stroke-width="2.5"></path>
+                </svg>
+              </div>
             </div>
-            <div id="portal-kpi-ready-fish" class="text-xl sm:text-2xl font-black text-emerald-300">0 ตัว</div>
-            <div class="text-[11px] text-emerald-200/80 mt-0.5">ในบ่อพร้อมจำหน่าย ➔</div>
-          </div>
-
-          <div id="portal-kpi-card-due" class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openGradingPondsSubtab()">
-            <div class="flex items-center justify-between text-xs text-amber-200 font-semibold mb-1">
-              <span>⚖️ ต้องคัดขนาด</span>
-              <i data-lucide="scale" class="w-4 h-4 text-amber-300"></i>
-            </div>
-            <div id="portal-kpi-due-ponds" class="text-xl sm:text-2xl font-black text-amber-300">0 บ่อ</div>
-            <div class="text-[11px] text-amber-200/80 mt-0.5">ถึงรอบ 7-10 วัน ➔</div>
-          </div>
-
-          <div id="portal-kpi-card-supplies" class="bg-white/10 hover:bg-white/15 transition backdrop-blur-md rounded-2xl p-3.5 sm:p-4 border border-white/10 cursor-pointer" onclick="openSuppliesSubtab()">
-            <div class="flex items-center justify-between text-xs text-rose-200 font-semibold mb-1">
-              <span>🌾 พัสดุใกล้หมด</span>
-              <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-300"></i>
-            </div>
-            <div id="portal-kpi-low-supplies" class="text-xl sm:text-2xl font-black text-rose-300">0 รายการ</div>
-            <div class="text-[11px] text-rose-200/80 mt-0.5">ต่ำกว่าเกณฑ์ปลอดภัย ➔</div>
           </div>
         </div>
       </div>
+
 
       <!-- Module Section Header -->
       <div class="flex items-center justify-between">
@@ -543,6 +754,47 @@
         </div>
 
       </div>
+
+      <!-- ================================================================= -->
+      <!-- DEPARTMENT OPERATIONS MANIFEST TABLE (ตารางสถานะการปฏิบัติงาน 7 แผนก) -->
+      <!-- ================================================================= -->
+      <section class="bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/20 overflow-hidden flex flex-col mt-8">
+        <div class="p-5 sm:p-6 border-b border-outline-variant/15 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-container-lowest">
+          <div>
+            <h3 class="text-base sm:text-lg font-extrabold text-primary font-headline flex items-center gap-2">
+              <span class="material-symbols-outlined text-secondary text-xl">fact_check</span>
+              <span>ตารางสถานะการปฏิบัติงาน 7 แผนก (Department Operations Manifest)</span>
+            </h3>
+            <p class="text-xs text-on-surface-variant mt-0.5">Real-time farm department tracking and metrics • สรุปสถานะสดทั้งฟาร์ม</p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="openNewOrderModal()" class="bg-primary hover:bg-primary-container text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+              <span class="material-symbols-outlined text-sm">add</span> จองพันธุ์ปลา
+            </button>
+            <button onclick="exportOrdersToExcel()" class="bg-surface-container-low hover:bg-surface-container text-on-surface-variant px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">download</span> ส่งออกรายงาน
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-left">
+            <thead>
+              <tr class="bg-surface-container-low/60 text-[10px] sm:text-[11px] font-extrabold text-on-surface-variant uppercase tracking-wider border-b border-outline-variant/15">
+                <th class="px-6 py-4">แผนก / โมดูล</th>
+                <th class="px-6 py-4">หัวหน้าแผนก (Lead)</th>
+                <th class="px-6 py-4">สถิติสำคัญสด (Key Metric)</th>
+                <th class="px-6 py-4">สถานะระบบ</th>
+                <th class="px-6 py-4">ความคืบหน้า</th>
+                <th class="px-6 py-4 text-right">การจัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="department-manifest-table-body" class="divide-y divide-outline-variant/10 text-xs sm:text-sm">
+              <!-- Populated dynamically by renderDepartmentManifest() in portal.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
 
     </section>
 
@@ -1850,6 +2102,7 @@
     </section>
 
     </div> <!-- /#view-module -->
+    </div> <!-- /#portal-scroll-canvas -->
 
   </main>
 

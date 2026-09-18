@@ -182,6 +182,21 @@ function showPortalView() {
   const moduleSubnav = document.getElementById('module-subnav-bar');
   if (moduleSubnav) moduleSubnav.classList.add('hidden');
 
+  // Highlight 'nav-item-portal' in SideNavBar
+  document.querySelectorAll('.portal-nav-link').forEach(l => {
+    l.classList.remove('bg-primary-container', 'text-white');
+    l.classList.add('text-primary-fixed-dim', 'hover:bg-white/5');
+    const icon = l.querySelector('.material-symbols-outlined');
+    if (icon) icon.style.fontVariationSettings = "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24";
+  });
+  const homeNav = document.getElementById('nav-item-portal');
+  if (homeNav) {
+    homeNav.classList.add('bg-primary-container', 'text-white');
+    homeNav.classList.remove('text-primary-fixed-dim', 'hover:bg-white/5');
+    const icon = homeNav.querySelector('.material-symbols-outlined');
+    if (icon) icon.style.fontVariationSettings = "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24";
+  }
+
   // ควบคุมสิทธิ์สำหรับคนขับรถ (Driver): เห็นเฉพาะโมดูลที่ 1 (จองปลาและคิวจัดส่ง)
   const isDriver = state.currentUser?.role === 'Driver';
   const otherModuleCardIds = [
@@ -193,6 +208,20 @@ function showPortalView() {
     'portal-card-hr'
   ];
   otherModuleCardIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden', isDriver);
+  });
+
+  // Hide other nav links in SideNavBar for driver
+  const otherNavIds = [
+    'nav-item-mod-inventory',
+    'nav-item-mod-pos',
+    'nav-item-mod-production',
+    'nav-item-mod-finance',
+    'nav-item-mod-marketing',
+    'nav-item-mod-hr'
+  ];
+  otherNavIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('hidden', isDriver);
   });
@@ -225,7 +254,12 @@ function showPortalView() {
 
 function backToPortal() {
   showPortalView();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  const canvas = document.getElementById('portal-scroll-canvas');
+  if (canvas) {
+    canvas.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
 
 function openSuppliesSubtab() {
@@ -242,7 +276,7 @@ function openGradingPondsSubtab() {
   }, 50);
 }
 
-// 2.2 อัปเดตตัวเลขสดบนหน้า Portal Hub (Live KPIs)
+// 2.2 อัปเดตตัวเลขสดบนหน้า Portal Hub (Live KPIs & Hero Grid)
 function updatePortalKPIs() {
   const todayStr = getTodayString();
   const todayOrders = (state.orders || []).filter(o => o.deliveryDate === todayStr && o.status !== 'cancelled');
@@ -251,7 +285,49 @@ function updatePortalKPIs() {
   const duePonds = typeof getGradingDuePonds === 'function' ? getGradingDuePonds(7) : [];
   const lowSupplies = (state.supplies || []).filter(s => s.stockQty <= s.minThreshold);
 
-  // Live KPI elements in Portal Banner
+  // Delivered vs pending calculation
+  const deliveredToday = todayOrders.filter(o => o.status === 'delivered').length;
+  const pendingToday = todayOrders.length - deliveredToday;
+
+  // New Hero Grid Live Elements
+  const heroOrdersCount = document.getElementById('portal-hero-orders-count');
+  const heroTodayOrders = document.getElementById('portal-hero-today-orders');
+  const heroOrdersSub = document.getElementById('portal-hero-orders-sub');
+  const heroReadyFish = document.getElementById('portal-hero-ready-fish');
+  const pulseFishPct = document.getElementById('portal-pulse-fish-pct');
+  const pulseFishBar = document.getElementById('portal-pulse-fish-bar');
+  const pulseDeliveryPct = document.getElementById('portal-pulse-delivery-pct');
+  const pulseDeliveryBar = document.getElementById('portal-pulse-delivery-bar');
+
+  if (heroOrdersCount) {
+    heroOrdersCount.textContent = `LIVE: ${todayOrders.length} คิวจัดส่งวันนี้ • 48 บ่อสต็อกพร้อมจำหน่าย`;
+  }
+  if (heroTodayOrders) {
+    heroTodayOrders.textContent = todayOrders.length;
+  }
+  if (heroOrdersSub) {
+    heroOrdersSub.textContent = todayOrders.length > 0 
+      ? `ส่งสำเร็จ ${deliveredToday} • รอจัดส่ง ${pendingToday}` 
+      : 'วันนี้ไม่มีคิวจัดส่ง';
+  }
+  if (heroReadyFish) {
+    heroReadyFish.textContent = totalReadyFish.toLocaleString();
+  }
+
+  // Capacity estimate: 48 ponds total capacity ~300,000 fish
+  const totalCapacity = 300000;
+  const fishPct = Math.min(100, Math.round((totalReadyFish / totalCapacity) * 100)) || 88;
+  if (pulseFishPct) pulseFishPct.textContent = `${fishPct}%`;
+  if (pulseFishBar) pulseFishBar.style.width = `${fishPct}%`;
+
+  const inTransitCount = todayOrders.filter(o => o.status === 'in_transit').length;
+  const deliveryRate = todayOrders.length > 0 
+    ? Math.round(((deliveredToday + inTransitCount) / todayOrders.length) * 100) 
+    : 100;
+  if (pulseDeliveryPct) pulseDeliveryPct.textContent = `${deliveryRate}%`;
+  if (pulseDeliveryBar) pulseDeliveryBar.style.width = `${deliveryRate}%`;
+
+  // Legacy Banner elements compatibility
   const elTodayOrders = document.getElementById('portal-kpi-today-orders');
   const elReadyFish = document.getElementById('portal-kpi-ready-fish');
   const elDuePonds = document.getElementById('portal-kpi-due-ponds');
@@ -278,6 +354,274 @@ function updatePortalKPIs() {
   if (welcomeName && state.currentUser) {
     welcomeName.textContent = state.currentUser.name;
   }
+
+  // Update Sidebar User Profile Card
+  updatePortalSidebarProfile();
+
+  // Render Department Manifest Table
+  renderDepartmentManifest();
+}
+
+// 2.2.1 วาดตารางสถานะการปฏิบัติงาน 7 แผนก (Department Operations Manifest Table)
+function renderDepartmentManifest() {
+  const container = document.getElementById('department-manifest-table-body');
+  if (!container) return;
+
+  const todayStr = getTodayString();
+  const todayOrders = (state.orders || []).filter(o => o.deliveryDate === todayStr && o.status !== 'cancelled');
+  const readyPonds = (state.ponds || []).filter(p => p.status === 'ready');
+  const totalReadyFish = readyPonds.reduce((sum, p) => sum + Math.max(0, (p.totalQty || 0) - (p.reservedQty || 0)), 0);
+  const totalCustomers = (state.customers || []).length;
+  const isDriver = state.currentUser?.role === 'Driver';
+
+  const departments = [
+    {
+      id: 'booking',
+      number: 1,
+      name: 'จองปลาและคิวจัดส่ง',
+      nameEn: 'Booking & Logistics',
+      icon: 'local_shipping',
+      iconColor: 'bg-sky-100 text-sky-800',
+      lead: 'พี่บุญมี / คุณสมศักดิ์',
+      leadRole: 'ทีมจัดสายรถส่งของ',
+      leadAvatar: '🚚',
+      metric: `${todayOrders.length} คิวจัดส่งวันนี้`,
+      metricSub: `ออเดอร์ในระบบทั้งหมด ${(state.orders || []).length} รายการ`,
+      status: 'Active',
+      statusColor: 'bg-secondary-container text-on-secondary-container',
+      statusDot: 'bg-secondary',
+      progress: 88,
+      progressColor: 'bg-secondary'
+    },
+    {
+      id: 'inventory',
+      number: 2,
+      name: 'จัดการสต็อก & ผัง 48 จุด',
+      nameEn: 'Farm Inventory & Grading',
+      icon: 'inventory_2',
+      iconColor: 'bg-amber-100 text-amber-900',
+      lead: 'คุณสมศักดิ์',
+      leadRole: 'ผู้จัดการฟาร์ม',
+      leadAvatar: '📋',
+      metric: `${totalReadyFish.toLocaleString()} ตัวพร้อมขาย`,
+      metricSub: `กระชัง/บ่อพร้อมใช้ ${readyPonds.length} จาก 48 จุด`,
+      status: 'Active',
+      statusColor: 'bg-secondary-container text-on-secondary-container',
+      statusDot: 'bg-secondary',
+      progress: 92,
+      progressColor: 'bg-primary'
+    },
+    {
+      id: 'pos',
+      number: 3,
+      name: 'ระบบขายหน้าร้าน (POS)',
+      nameEn: 'POS & Walk-in Store',
+      icon: 'point_of_sale',
+      iconColor: 'bg-emerald-100 text-emerald-800',
+      lead: 'คุณกานดา',
+      leadRole: 'เจ้าหน้าที่ฝ่ายขาย / POS',
+      leadAvatar: '💼',
+      metric: 'แคชเชียร์ขายสดพร้อมใช้งาน',
+      metricSub: 'ตักปลาชั่งกิโล & ขายอาหารปลา',
+      status: 'Ready',
+      statusColor: 'bg-secondary-container text-on-secondary-container',
+      statusDot: 'bg-secondary',
+      progress: 100,
+      progressColor: 'bg-emerald-600'
+    },
+    {
+      id: 'production',
+      number: 4,
+      name: 'ฝ่ายผลิตและเพาะพันธุ์',
+      nameEn: 'Production & Breeding',
+      icon: 'biotech',
+      iconColor: 'bg-purple-100 text-purple-800',
+      lead: 'ช่างเพาะพันธุ์ & คุณสมศักดิ์',
+      leadRole: 'หัวหน้าฝ่ายเพาะขยายพันธุ์',
+      leadAvatar: '🧬',
+      metric: 'รอบเพาะฟัก & อัตราการรอด',
+      metricSub: 'ทะเบียนพ่อแม่พันธุ์และบ่ออนุบาล',
+      status: 'On-Track',
+      statusColor: 'bg-surface-container-high text-on-surface-variant',
+      statusDot: 'bg-outline',
+      progress: 75,
+      progressColor: 'bg-purple-600'
+    },
+    {
+      id: 'finance',
+      number: 5,
+      name: 'ฝ่ายบัญชีและการเงิน',
+      nameEn: 'Finance & Invoicing',
+      icon: 'payments',
+      iconColor: 'bg-blue-100 text-blue-800',
+      lead: 'คุณเพ็ญศรี',
+      leadRole: 'หัวหน้าฝ่ายบัญชีการเงิน',
+      leadAvatar: '💰',
+      metric: 'ตรวจรับสินค้า (GRN) & เงินมัดจำ',
+      metricSub: 'บัญชีลูกหนี้รอเก็บเงินปลายทาง',
+      status: 'Active',
+      statusColor: 'bg-secondary-container text-on-secondary-container',
+      statusDot: 'bg-secondary',
+      progress: 90,
+      progressColor: 'bg-blue-600'
+    },
+    {
+      id: 'marketing',
+      number: 6,
+      name: 'การตลาด & ลูกค้าสัมพันธ์ (CRM)',
+      nameEn: 'CRM & Lifetime Value',
+      icon: 'groups',
+      iconColor: 'bg-rose-100 text-rose-800',
+      lead: 'ทีมการตลาด & ลูกค้า',
+      leadRole: 'ฝ่ายดูแลสมาชิกระดับ VIP',
+      leadAvatar: '🌟',
+      metric: `${totalCustomers} รายชื่อลูกค้าตลอดชีพ`,
+      metricSub: 'วิเคราะห์ยอดซื้อสะสมและสิทธิประโยชน์',
+      status: 'Active',
+      statusColor: 'bg-secondary-container text-on-secondary-container',
+      statusDot: 'bg-secondary',
+      progress: 84,
+      progressColor: 'bg-rose-500'
+    },
+    {
+      id: 'hr',
+      number: 7,
+      name: 'ฝ่ายบุคคลและจัดการสิทธิ์',
+      nameEn: 'HR & Permissions Matrix',
+      icon: 'admin_panel_settings',
+      iconColor: 'bg-slate-200 text-slate-800',
+      lead: 'ผู้ใหญ่พร',
+      leadRole: 'CEO / เจ้าของฟาร์ม',
+      leadAvatar: '👨‍🌾',
+      metric: 'สิทธิ์ 6 บทบาท • คนขับ 2 สาย',
+      metricSub: 'ระบบความปลอดภัยและการเข้าถึงข้อมูล',
+      status: 'Secured',
+      statusColor: 'bg-secondary-container text-on-secondary-container',
+      statusDot: 'bg-secondary',
+      progress: 100,
+      progressColor: 'bg-slate-800'
+    }
+  ];
+
+  // If driver, filter to only booking
+  const filteredDepts = isDriver ? departments.filter(d => d.id === 'booking') : departments;
+
+  container.innerHTML = filteredDepts.map(dept => `
+    <tr class="manifest-dept-row hover:bg-primary-fixed/20 transition-colors cursor-pointer" onclick="openModule('${dept.id}')">
+      <!-- Department Name & Icon -->
+      <td class="px-6 py-4">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl ${dept.iconColor} flex items-center justify-center flex-shrink-0 shadow-xs">
+            <span class="material-symbols-outlined text-lg">${dept.icon}</span>
+          </div>
+          <div>
+            <div class="font-bold text-primary text-sm leading-tight flex items-center gap-1.5">
+              <span>โมดูล ${dept.number}: ${dept.name}</span>
+            </div>
+            <div class="text-[11px] text-on-surface-variant font-medium">${dept.nameEn}</div>
+          </div>
+        </div>
+      </td>
+
+      <!-- Department Lead -->
+      <td class="px-6 py-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-sm flex-shrink-0 border border-outline-variant/30">
+            ${dept.leadAvatar}
+          </div>
+          <div>
+            <div class="font-semibold text-xs text-on-background">${dept.lead}</div>
+            <div class="text-[10px] text-on-surface-variant">${dept.leadRole}</div>
+          </div>
+        </div>
+      </td>
+
+      <!-- Key Metric -->
+      <td class="px-6 py-4">
+        <div class="font-bold text-xs text-primary">${dept.metric}</div>
+        <div class="text-[10px] text-on-surface-variant">${dept.metricSub}</div>
+      </td>
+
+      <!-- Status -->
+      <td class="px-6 py-4 whitespace-nowrap">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 ${dept.statusColor} rounded-full text-[10px] font-extrabold uppercase tracking-tight">
+          <span class="w-1.5 h-1.5 ${dept.statusDot} rounded-full"></span> ${dept.status}
+        </span>
+      </td>
+
+      <!-- Progress Bar -->
+      <td class="px-6 py-4">
+        <div class="flex items-center gap-3 min-w-[100px]">
+          <div class="flex-1 bg-surface-container h-2 rounded-full overflow-hidden">
+            <div class="${dept.progressColor} h-full rounded-full transition-all duration-500" style="width: ${dept.progress}%"></div>
+          </div>
+          <span class="text-xs font-bold text-primary">${dept.progress}%</span>
+        </div>
+      </td>
+
+      <!-- Direct Action Button -->
+      <td class="px-6 py-4 text-right whitespace-nowrap">
+        <button onclick="event.stopPropagation(); openModule('${dept.id}')" class="bg-surface-container hover:bg-primary hover:text-white text-primary text-xs font-bold px-3 py-1.5 rounded-xl border border-outline-variant/30 transition inline-flex items-center gap-1 group shadow-2xs">
+          <span>เข้าสู่ระบบ</span>
+          <span class="material-symbols-outlined text-xs group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// 2.2.2 ฟังก์ชันควบคุม SideNavBar และ Profile
+function updatePortalSidebarProfile() {
+  const u = state.currentUser;
+  if (!u) return;
+  const avatarEl = document.getElementById('portal-sidebar-avatar');
+  const nameEl = document.getElementById('portal-sidebar-user-name');
+  const roleEl = document.getElementById('portal-sidebar-user-role');
+
+  if (avatarEl) avatarEl.textContent = u.avatar || '👨‍🌾';
+  if (nameEl) nameEl.textContent = u.name || 'ผู้ใหญ่พร';
+  if (roleEl) roleEl.textContent = u.roleLabel || u.role || 'CEO / เจ้าของฟาร์ม';
+}
+
+function togglePortalSidebar() {
+  const sidebar = document.getElementById('portal-sidebar');
+  const backdrop = document.getElementById('portal-sidebar-backdrop');
+  if (!sidebar) return;
+  const isClosed = sidebar.classList.contains('-translate-x-full');
+  if (isClosed) {
+    sidebar.classList.remove('-translate-x-full');
+    if (backdrop) backdrop.classList.remove('hidden');
+  } else {
+    sidebar.classList.add('-translate-x-full');
+    if (backdrop) backdrop.classList.add('hidden');
+  }
+}
+
+function closePortalSidebar() {
+  const sidebar = document.getElementById('portal-sidebar');
+  const backdrop = document.getElementById('portal-sidebar-backdrop');
+  if (sidebar && !sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) {
+    sidebar.classList.add('-translate-x-full');
+  }
+  if (backdrop) backdrop.classList.add('hidden');
+}
+
+function handlePortalSearch(query) {
+  const q = (query || '').toLowerCase().trim();
+  
+  // กรองการ์ด 7 โมดูล
+  const cards = document.querySelectorAll('#view-portal .farm-card');
+  cards.forEach(card => {
+    const text = card.textContent.toLowerCase();
+    card.style.display = text.includes(q) ? '' : 'none';
+  });
+
+  // กรองตาราง Department Operations Manifest
+  const rows = document.querySelectorAll('#department-manifest-table-body tr.manifest-dept-row');
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(q) ? '' : 'none';
+  });
 }
 
 // 2.3 ปุ่ม Quick Login ตามบทบาท (สำหรับทั้ง Login Gate และ Switch Role)
@@ -375,13 +719,37 @@ function openModule(moduleId) {
   if (breadcrumbEl) breadcrumbEl.textContent = `โมดูล ${mod.number}: ${mod.name}`;
   if (iconEl) iconEl.setAttribute('data-lucide', mod.icon);
 
+  // อัปเดตสถานะ Active ใน SideNavBar
+  const allNavLinks = document.querySelectorAll('#portal-sidebar nav a');
+  allNavLinks.forEach(el => {
+    el.classList.remove('bg-primary-container', 'text-white');
+    el.classList.add('text-primary-fixed-dim', 'hover:bg-white/5');
+    const icon = el.querySelector('.material-symbols-outlined');
+    if (icon) icon.style.fontVariationSettings = "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24";
+  });
+  const activeNav = document.getElementById(`nav-item-mod-${moduleId}`);
+  if (activeNav) {
+    activeNav.classList.add('bg-primary-container', 'text-white');
+    activeNav.classList.remove('text-primary-fixed-dim', 'hover:bg-white/5');
+    const icon = activeNav.querySelector('.material-symbols-outlined');
+    if (icon) icon.style.fontVariationSettings = "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24";
+  }
+
+  // ปิดเมนูบนมือถือถ้าเปิดอยู่
+  closePortalSidebar();
+
   // สร้างแถบ Subtabs เฉพาะโมดูลนี้
   renderModuleSubtabs(mod);
 
   // สลับการแสดงผลหน้าเนื้อหาตามโมดูล
   switchModuleWorkspace(mod);
 
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  const canvas = document.getElementById('portal-scroll-canvas');
+  if (canvas) {
+    canvas.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
   lucide.createIcons();
 }
 
