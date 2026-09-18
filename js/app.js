@@ -1305,11 +1305,14 @@ function getOrderPaymentMethod(order) {
   const m = order.collectedMethod || order.paymentMethod;
   if (m === 'เงินสด') return 'เงินสด';
   if (m === 'โอน' || m === 'โอนเงิน') return 'โอน';
+  if (m === 'เงินสด+โอน') return 'เงินสด+โอน';
   if (m === 'ค้างจ่าย') return 'ค้างจ่าย';
   if (order.paymentStatus === 'paid_full') {
+    if (order.paymentMethod === 'เงินสด+โอน') return 'เงินสด+โอน';
     return (order.paymentMethod === 'เงินสด') ? 'เงินสด' : 'โอน';
   }
   if (order.remainingBalance <= 0) {
+    if (order.paymentMethod === 'เงินสด+โอน') return 'เงินสด+โอน';
     return (order.paymentMethod === 'เงินสด') ? 'เงินสด' : 'โอน';
   }
   return 'ค้างจ่าย';
@@ -1317,41 +1320,70 @@ function getOrderPaymentMethod(order) {
 
 function renderPaymentMethodButtonHtml(order) {
   const method = getOrderPaymentMethod(order);
+  
+  // ตรวจสอบสถานะล็อค: เมื่อเลือกแล้วจะไม่สามารถแก้ไขได้อีก (หรือเมื่อส่งมอบสำเร็จ/จ่ายเต็มแล้ว)
+  const isLocked = Boolean(
+    order.paymentLocked || 
+    order.collectedMethod || 
+    (order.status === 'delivered' && (order.paymentStatus === 'paid_full' || order.remainingBalance <= 0))
+  );
 
   let btnConfig = {
     label: 'เงินสด',
     icon: '💵',
-    classes: 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600'
+    classes: 'bg-emerald-600 text-white border-emerald-600'
   };
 
   if (method === 'โอน') {
     btnConfig = {
       label: 'โอน',
       icon: '📲',
-      classes: 'bg-sky-600 hover:bg-sky-700 text-white border-sky-600'
+      classes: 'bg-sky-600 text-white border-sky-600'
+    };
+  } else if (method === 'เงินสด+โอน') {
+    btnConfig = {
+      label: 'เงินสด+โอน',
+      icon: '💵+📲',
+      classes: 'bg-teal-600 text-white border-teal-600'
     };
   } else if (method === 'ค้างจ่าย') {
     btnConfig = {
       label: 'ค้างจ่าย',
       icon: '⏳',
-      classes: 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500'
+      classes: 'bg-amber-500 text-white border-amber-500'
     };
   }
 
+  // เมื่อเลือกแล้ว: ไม่สามารถเปลี่ยนแปลงได้ (แสดงสถานะล็อค)
+  if (isLocked) {
+    return `
+      <div class="relative inline-block text-left">
+        <div title="บันทึกการชำระเงินเรียบร้อยแล้ว (${btnConfig.label}) - ล็อคไม่สามารถแก้ไขได้" 
+          class="btn-large ${btnConfig.classes} py-2 px-2.5 sm:px-3 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-default opacity-95 select-none">
+          <span>${btnConfig.icon}</span>
+          <span>${btnConfig.label}</span>
+          <i data-lucide="lock" class="w-3.5 h-3.5 opacity-80" title="ล็อคแล้วไม่สามารถแก้ไขได้"></i>
+        </div>
+      </div>
+    `;
+  }
+
+  // กรณีที่ยังไม่ได้เลือก: มีเมนูให้เลือก (เมื่อกดเลือกแล้วจะล็อคทันที)
   return `
     <div class="relative inline-block text-left payment-dropdown-container">
       <button type="button" onclick="togglePaymentDropdown('${order.id}', event)" 
-        title="วิธีชำระเงินหน้างาน (คลิกเพื่อเปลี่ยน: เงินสด / โอน / ค้างจ่าย)" 
-        class="btn-large ${btnConfig.classes} py-2 px-2.5 sm:px-3 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition">
+        title="วิธีชำระเงินหน้างาน (คลิกเลือก: เงินสด / โอน / เงินสด+โอน / ค้างจ่าย)" 
+        class="btn-large ${btnConfig.classes} hover:brightness-110 py-2 px-2.5 sm:px-3 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition">
         <span>${btnConfig.icon}</span>
         <span>${btnConfig.label}</span>
         <i data-lucide="chevron-down" class="w-3.5 h-3.5 opacity-80"></i>
       </button>
 
       <!-- Dropdown Menu -->
-      <div id="payment-dropdown-${order.id}" class="hidden absolute right-0 bottom-full mb-1.5 w-40 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 overflow-hidden text-slate-700">
-        <div class="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-          วิธีชำระเงินหน้างาน
+      <div id="payment-dropdown-${order.id}" class="hidden absolute right-0 bottom-full mb-1.5 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 overflow-hidden text-slate-700">
+        <div class="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
+          <span>เลือกวิธีชำระเงิน</span>
+          <span class="text-[9px] text-amber-600 font-semibold">เลือกแล้วจะล็อค</span>
         </div>
         <button type="button" onclick="quickSetPaymentMethod('${order.id}', 'เงินสด', event)" 
           class="w-full text-left px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 flex items-center justify-between transition ${method === 'เงินสด' ? 'bg-emerald-50' : ''}">
@@ -1362,6 +1394,11 @@ function renderPaymentMethodButtonHtml(order) {
           class="w-full text-left px-3 py-2 text-xs font-bold text-sky-700 hover:bg-sky-50 flex items-center justify-between transition ${method === 'โอน' ? 'bg-sky-50' : ''}">
           <span class="flex items-center gap-2"><span>📲</span><span>โอน</span></span>
           ${method === 'โอน' ? '<span class="text-sky-600 text-xs font-black">✓</span>' : ''}
+        </button>
+        <button type="button" onclick="quickSetPaymentMethod('${order.id}', 'เงินสด+โอน', event)" 
+          class="w-full text-left px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50 flex items-center justify-between transition ${method === 'เงินสด+โอน' ? 'bg-teal-50' : ''}">
+          <span class="flex items-center gap-2"><span>💵+📲</span><span>เงินสด+โอน</span></span>
+          ${method === 'เงินสด+โอน' ? '<span class="text-teal-600 text-xs font-black">✓</span>' : ''}
         </button>
         <button type="button" onclick="quickSetPaymentMethod('${order.id}', 'ค้างจ่าย', event)" 
           class="w-full text-left px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 flex items-center justify-between transition ${method === 'ค้างจ่าย' ? 'bg-amber-50' : ''}">
@@ -1398,23 +1435,30 @@ function quickSetPaymentMethod(orderId, method, event) {
   const order = state.orders.find(o => o.id === orderId);
   if (!order) return;
 
+  // ป้องกันการแก้ไขถ้าถูกล็อคแล้ว
+  if (order.paymentLocked) {
+    showNotification('การชำระเงินถูกบันทึกเรียบร้อยแล้ว ไม่สามารถเปลี่ยนแปลงได้', 'warning');
+    return;
+  }
+
   order.collectedMethod = method;
+  order.paymentLocked = true; // ล็อคทันทีเมื่อเลือกแล้ว
 
   const originalNet = Number(order.netTotal || 0);
   const originalDeposit = Number(order.deposit || 0);
   const originalRemaining = Math.max(0, originalNet - originalDeposit);
 
-  if (method === 'เงินสด' || method === 'โอน') {
-    order.paymentMethod = method === 'โอน' ? 'โอนเงิน' : 'เงินสด';
+  if (method === 'เงินสด' || method === 'โอน' || method === 'เงินสด+โอน') {
+    order.paymentMethod = method === 'โอน' ? 'โอนเงิน' : method;
     order.actualCollected = originalRemaining;
     order.remainingBalance = 0;
     order.paymentStatus = 'paid_full';
-    showNotification(`บันทึกรับเงินหน้างาน (${method === 'โอน' ? 'โอนเงิน' : 'เงินสด'}) ยอด ${formatMoney(originalRemaining)} เรียบร้อยแล้ว`, 'success');
+    showNotification(`บันทึกรับชำระเงิน (${method}) ยอด ${formatMoney(originalRemaining)} เรียบร้อยแล้ว (ล็อคข้อมูลแล้ว)`, 'success');
   } else if (method === 'ค้างจ่าย') {
     order.paymentStatus = 'unpaid';
     order.actualCollected = 0;
     order.remainingBalance = originalRemaining;
-    showNotification(`บันทึกสถานะ: ค้างจ่าย (คงเหลือ ${formatMoney(originalRemaining)}) เรียบร้อยแล้ว`, 'info');
+    showNotification(`บันทึกสถานะ: ค้างจ่าย (คงเหลือ ${formatMoney(originalRemaining)}) เรียบร้อยแล้ว (ล็อคข้อมูลแล้ว)`, 'info');
   }
 
   saveState();
