@@ -699,6 +699,14 @@ function switchTab(tabId) {
     if (viewPortal) viewPortal.classList.add('hidden');
   }
 
+  // จัดการการแสดงผลของปุ่มจองพันธุ์ปลาใหม่ในแท็บคิวจัดส่งประจำวัน
+  const btnDailyNewOrder = document.getElementById('btn-daily-new-order');
+  if (btnDailyNewOrder) {
+    if (tabId !== 'daily' || !state.fromCalendarDateSelection || state.currentUser?.role === 'Driver') {
+      btnDailyNewOrder.classList.add('hidden');
+    }
+  }
+
   // Re-render corresponding view
   if (tabId === 'calendar') renderMonthlyCalendar();
   if (tabId === 'daily') renderDailyQueue();
@@ -873,10 +881,29 @@ function renderMonthlyCalendar() {
 
 function selectCalendarDate(dateKey) {
   state.selectedDate = dateKey;
+  state.fromCalendarDateSelection = true;
   const dailyPicker = document.getElementById('daily-date-picker');
   if (dailyPicker) {
     dailyPicker.value = dateKey;
   }
+
+  // แสดงปุ่ม "จองพันธุ์ปลาใหม่" ในแถบวันที่ของคิวจัดส่งประจำวัน
+  const btnNewOrder = document.getElementById('btn-daily-new-order');
+  if (btnNewOrder && state.currentUser?.role !== 'Driver') {
+    btnNewOrder.classList.remove('hidden');
+  }
+
+  // ซิงค์ปุ่ม Subtabs ของโมดูลให้เป็นแท็บคิวจัดส่งประจำวัน
+  document.querySelectorAll('.mod-subtab-btn').forEach(btn => {
+    btn.classList.remove('active', 'bg-sky-600', 'text-white', 'shadow-xs');
+    btn.classList.add('text-slate-600', 'hover:bg-sky-50');
+  });
+  const dailySubBtn = document.getElementById('mod-subtab-btn-daily');
+  if (dailySubBtn) {
+    dailySubBtn.classList.add('active', 'bg-sky-600', 'text-white', 'shadow-xs');
+    dailySubBtn.classList.remove('text-slate-600', 'hover:bg-sky-50');
+  }
+
   switchTab('daily');
 }
 
@@ -974,6 +1001,12 @@ function openNewOrderWithDate(date) {
   openNewOrderModal();
   const input = document.getElementById('order-delivery-date');
   if (input) input.value = date || state.selectedDate;
+}
+
+function openNewOrderWithSelectedDate() {
+  const picker = document.getElementById('daily-date-picker');
+  const targetDate = (picker && picker.value) || state.selectedDate || getTodayString();
+  openNewOrderWithDate(targetDate);
 }
 
 // ====================================================================

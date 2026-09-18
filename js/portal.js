@@ -790,6 +790,14 @@ function handleSubtabClick(moduleId, subtabId, subtabParam) {
   }
 
   if (moduleId === 'booking') {
+    if (subtabId !== 'daily') {
+      state.fromCalendarDateSelection = false;
+      const btnNewOrder = document.getElementById('btn-daily-new-order');
+      if (btnNewOrder) btnNewOrder.classList.add('hidden');
+    } else if (!state.fromCalendarDateSelection) {
+      const btnNewOrder = document.getElementById('btn-daily-new-order');
+      if (btnNewOrder) btnNewOrder.classList.add('hidden');
+    }
     switchTab(subtabId);
   } else if (moduleId === 'inventory') {
     if (typeof switchInventorySubTab === 'function' && subtabParam) {
@@ -817,16 +825,9 @@ function renderModuleQuickActions(mod) {
   const isDriver = state.currentUser?.role === 'Driver';
 
   if (mod.id === 'booking') {
-    if (isDriver) {
-      container.innerHTML = '';
-      return;
-    }
-    container.innerHTML = `
-      <button onclick="openNewOrderModal()" class="btn-large btn-farm-yellow py-2 px-3 sm:px-4 text-xs sm:text-sm font-bold shadow-sm flex items-center gap-1.5">
-        <i data-lucide="plus-circle" class="w-4 h-4"></i>
-        <span>จองพันธุ์ปลาใหม่</span>
-      </button>
-    `;
+    // ย้ายปุ่มจองพันธุ์ปลาใหม่ไปไว้ที่แถบวันที่ในหน้า คิวจัดส่งประจำวัน แล้ว
+    container.innerHTML = '';
+    return;
   } else if (mod.id === 'inventory') {
     container.innerHTML = `
       <div class="flex items-center gap-1.5 flex-wrap">

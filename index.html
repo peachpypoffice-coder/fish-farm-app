@@ -879,6 +879,12 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2.5">
+          <!-- ปุ่มจองพันธุ์ปลาใหม่ (แสดงขึ้นเมื่อกดเลือกวันที่จากปฏิทิน) -->
+          <button id="btn-daily-new-order" onclick="openNewOrderWithSelectedDate()" class="hidden btn-large btn-farm-yellow py-2 px-3.5 sm:px-4 text-xs sm:text-sm font-bold shadow-md flex items-center gap-1.5 transition" title="จองพันธุ์ปลาในวันที่เลือก">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>จองพันธุ์ปลาใหม่</span>
+          </button>
+
           <div class="flex items-center gap-2 bg-white/10 p-1.5 px-3 rounded-xl backdrop-blur-sm border border-white/20">
             <label for="daily-date-picker" class="text-sm font-medium text-white flex items-center gap-1">
               <i data-lucide="calendar" class="w-4 h-4"></i> วันที่:
