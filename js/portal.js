@@ -276,6 +276,233 @@ function openGradingPondsSubtab() {
   }, 50);
 }
 
+// 2.1.1 ปฏิทินคิวจองปลาบนหน้า Portal Hub (Fish Booking Calendar)
+let portalCalYear = new Date().getFullYear();
+let portalCalMonth = new Date().getMonth();
+
+function navigatePortalCalendar(delta) {
+  portalCalMonth += delta;
+  if (portalCalMonth < 0) {
+    portalCalMonth = 11;
+    portalCalYear -= 1;
+  } else if (portalCalMonth > 11) {
+    portalCalMonth = 0;
+    portalCalYear += 1;
+  }
+  renderPortalBookingCalendar();
+}
+
+function resetPortalCalendarToday() {
+  const d = new Date();
+  portalCalYear = d.getFullYear();
+  portalCalMonth = d.getMonth();
+  renderPortalBookingCalendar();
+}
+
+function selectPortalCalendarDate(dateKey) {
+  if (typeof openModule === 'function') {
+    openModule('booking');
+    setTimeout(() => {
+      if (typeof selectCalendarDate === 'function') {
+        selectCalendarDate(dateKey);
+      }
+    }, 60);
+  }
+}
+
+function renderPortalBookingCalendar() {
+  const titleEl = document.getElementById('portal-cal-month-title');
+  const badgeEl = document.getElementById('portal-cal-orders-badge');
+  const grid = document.getElementById('portal-cal-grid');
+  const summaryEl = document.getElementById('portal-cal-month-summary');
+  if (!grid) return;
+
+  if (titleEl && typeof formatThaiMonthYear === 'function') {
+    titleEl.textContent = formatThaiMonthYear(portalCalYear, portalCalMonth);
+  } else if (titleEl) {
+    const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    titleEl.textContent = `${months[portalCalMonth]} ${portalCalYear + 543}`;
+  }
+
+  grid.innerHTML = '';
+
+  const firstDay = new Date(portalCalYear, portalCalMonth, 1).getDay();
+  const daysInMonth = new Date(portalCalYear, portalCalMonth + 1, 0).getDate();
+  const daysInPrevMonth = new Date(portalCalYear, portalCalMonth, 0).getDate();
+  const todayStr = typeof getTodayString === 'function' ? getTodayString() : new Date().toISOString().split('T')[0];
+
+  let monthOrdersCount = 0;
+  let monthDeliveredCount = 0;
+  let monthDeliveryOrders = 0;
+  let monthPickupOrders = 0;
+
+  // วันที่เหลื่อมจากเดือนก่อนหน้า
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const dayNum = daysInPrevMonth - i;
+    const cell = document.createElement('div');
+    cell.className = 'h-11 sm:h-12 p-1 rounded-xl bg-slate-50/50 text-slate-300 flex flex-col justify-start items-center text-[10px] select-none';
+    cell.innerHTML = `<span>${dayNum}</span>`;
+    grid.appendChild(cell);
+  }
+
+  // วันที่ในเดือนปัจจุบัน
+  for (let day = 1; day <= daysInMonth; day++) {
+    const monthStr = String(portalCalMonth + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const dateKey = `${portalCalYear}-${monthStr}-${dayStr}`;
+
+    const dayOrders = (state.orders || []).filter(o => o.deliveryDate === dateKey && o.status !== 'cancelled');
+    const isToday = dateKey === todayStr;
+
+    monthOrdersCount += dayOrders.length;
+    dayOrders.forEach(o => {
+      if (o.status === 'delivered') monthDeliveredCount++;
+      if (o.deliveryType === 'delivery') monthDeliveryOrders++;
+      if (o.deliveryType === 'pickup') monthPickupOrders++;
+    });
+
+    const deliveryCount = dayOrders.filter(o => o.deliveryType === 'delivery').length;
+    const pickupCount = dayOrders.filter(o => o.deliveryType === 'pickup').length;
+    const hasProblem = dayOrders.some(o => o.status === 'problem');
+
+    const cell = document.createElement('div');
+    cell.className = `min-h-[44px] sm:min-h-[48px] p-1 rounded-xl border flex flex-col justify-between cursor-pointer transition-all hover:scale-105 hover:shadow-sm ${
+      isToday 
+        ? 'border-sky-400 bg-sky-50/80 shadow-xs ring-1 ring-sky-300' 
+        : dayOrders.length > 0 
+          ? 'border-slate-200 bg-white hover:border-sky-300' 
+          : 'border-transparent bg-slate-50/50 hover:bg-white hover:border-slate-200'
+    }`;
+    cell.title = `วันที่ ${day}: มีงานจอง ${dayOrders.length} คิว (คลิกเพื่อดูรายละเอียด)`;
+    cell.onclick = () => selectPortalCalendarDate(dateKey);
+
+    let badgesHtml = '';
+    if (dayOrders.length > 0) {
+      badgesHtml = `
+        <div class="flex items-center justify-center gap-0.5 flex-wrap w-full mt-0.5">
+          ${deliveryCount > 0 ? `<span class="px-1 py-0.2 rounded text-[9px] font-bold bg-sky-100 text-sky-800" title="จัดส่ง ${deliveryCount} รายการ">🚚${deliveryCount}</span>` : ''}
+          ${pickupCount > 0 ? `<span class="px-1 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800" title="รับเอง ${pickupCount} รายการ">🏠${pickupCount}</span>` : ''}
+          ${hasProblem ? `<span class="text-[9px] text-red-500 font-bold" title="มีรายงานปัญหา/เคลม">⚠️</span>` : ''}
+        </div>
+      `;
+    }
+
+    cell.innerHTML = `
+      <div class="flex items-center justify-between w-full px-0.5">
+        <span class="text-[11px] sm:text-xs font-black ${
+          isToday ? 'w-5 h-5 rounded-full bg-sky-600 text-white flex items-center justify-center shadow-xs' : 'text-slate-700'
+        }">${day}</span>
+        ${dayOrders.length > 0 ? `<span class="w-1.5 h-1.5 rounded-full ${dayOrders.every(o => o.status === 'delivered') ? 'bg-emerald-500' : 'bg-sky-500'}"></span>` : ''}
+      </div>
+      ${badgesHtml}
+    `;
+    grid.appendChild(cell);
+  }
+
+  // วันที่เหลื่อมของเดือนถัดไป
+  const totalCells = firstDay + daysInMonth;
+  const trailingDays = (7 - (totalCells % 7)) % 7;
+  for (let d = 1; d <= trailingDays; d++) {
+    const cell = document.createElement('div');
+    cell.className = 'h-11 sm:h-12 p-1 rounded-xl bg-slate-50/50 text-slate-300 flex flex-col justify-start items-center text-[10px] select-none';
+    cell.innerHTML = `<span>${d}</span>`;
+    grid.appendChild(cell);
+  }
+
+  if (badgeEl) {
+    badgeEl.textContent = `${monthOrdersCount} คิวจอง`;
+  }
+  if (summaryEl) {
+    summaryEl.textContent = `รวมทั้งเดือน ${monthOrdersCount} คิว (🚚 ${monthDeliveryOrders} | 🏠 ${monthPickupOrders})`;
+  }
+}
+
+// 2.1.2 การ์ดยอดขายฟาร์ม รายวัน/รายเดือน (Sales Revenue State & Calculation)
+let portalSalesMode = 'daily'; // 'daily' or 'monthly'
+
+function setPortalSalesMode(mode) {
+  portalSalesMode = mode;
+  const btnDaily = document.getElementById('portal-btn-sales-daily');
+  const btnMonthly = document.getElementById('portal-btn-sales-monthly');
+  if (btnDaily && btnMonthly) {
+    if (mode === 'daily') {
+      btnDaily.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-white text-emerald-800 shadow-xs transition';
+      btnMonthly.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg text-slate-500 hover:text-slate-800 transition';
+    } else {
+      btnMonthly.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-white text-emerald-800 shadow-xs transition';
+      btnDaily.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg text-slate-500 hover:text-slate-800 transition';
+    }
+  }
+  updatePortalSalesMetrics();
+}
+
+function updatePortalSalesMetrics() {
+  const todayStr = typeof getTodayString === 'function' ? getTodayString() : new Date().toISOString().split('T')[0];
+  const currentMonthStr = todayStr.substring(0, 7); // 'YYYY-MM'
+
+  const orders = (state.orders || []).filter(o => o.status !== 'cancelled');
+
+  // ยอดขายวันนี้
+  const todayOrders = orders.filter(o => o.deliveryDate === todayStr);
+  const todaySales = todayOrders.reduce((sum, o) => sum + Number(o.netTotal || 0), 0);
+
+  // ยอดขายเดือนนี้
+  const monthOrders = orders.filter(o => o.deliveryDate && o.deliveryDate.startsWith(currentMonthStr));
+  const monthSales = monthOrders.reduce((sum, o) => sum + Number(o.netTotal || 0), 0);
+
+  const elAmount = document.getElementById('portal-sales-amount');
+  const elPeriodLabel = document.getElementById('portal-sales-period-label');
+  const elSecLabel = document.getElementById('portal-sales-secondary-label');
+  const elSecValue = document.getElementById('portal-sales-secondary-value');
+  const elTrendText = document.getElementById('portal-sales-trend-text');
+  const elChartContainer = document.getElementById('portal-sales-chart-container');
+
+  if (elAmount) {
+    if (portalSalesMode === 'daily') {
+      elAmount.textContent = '฿' + Math.round(todaySales).toLocaleString('th-TH');
+      if (elPeriodLabel) elPeriodLabel.textContent = 'ยอดขายวันนี้';
+      if (elSecLabel) elSecLabel.textContent = 'ยอดสะสมเดือนนี้';
+      if (elSecValue) elSecValue.textContent = '฿' + Math.round(monthSales).toLocaleString('th-TH');
+      if (elTrendText) elTrendText.textContent = `${todayOrders.length} ออเดอร์ส่งวันนี้`;
+    } else {
+      elAmount.textContent = '฿' + Math.round(monthSales).toLocaleString('th-TH');
+      if (elPeriodLabel) elPeriodLabel.textContent = 'ยอดขายเดือนนี้';
+      if (elSecLabel) elSecLabel.textContent = 'ยอดขายวันนี้';
+      if (elSecValue) elSecValue.textContent = '฿' + Math.round(todaySales).toLocaleString('th-TH');
+      if (elTrendText) elTrendText.textContent = `${monthOrders.length} ออเดอร์ในเดือนนี้`;
+    }
+  }
+
+  // วาดกราฟแท่งแนวโน้มยอดขายย้อนหลัง 7 วัน
+  if (elChartContainer) {
+    const barsData = [];
+    const todayDate = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(todayDate);
+      d.setDate(d.getDate() - i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dStr = `${y}-${m}-${day}`;
+      const daySales = orders.filter(o => o.deliveryDate === dStr).reduce((sum, o) => sum + Number(o.netTotal || 0), 0);
+      const isCurrent = (i === 0);
+      barsData.push({ dateStr: dStr, dayNum: day, sales: daySales, isCurrent });
+    }
+
+    const maxSales = Math.max(...barsData.map(b => b.sales), 1000);
+
+    elChartContainer.innerHTML = barsData.map(b => {
+      const pct = Math.max(16, Math.round((b.sales / maxSales) * 100));
+      return `
+        <div class="flex-1 flex flex-col items-center gap-1 group relative h-full justify-end cursor-pointer" onclick="selectPortalCalendarDate('${b.dateStr}')" title="${b.dateStr}: ฿${Math.round(b.sales).toLocaleString()} (คลิกดูคิวงาน)">
+          <div class="w-full ${b.isCurrent ? 'bg-emerald-600 shadow-xs' : 'bg-emerald-200/90 group-hover:bg-emerald-400'} rounded-t transition-all" style="height: ${pct}%;"></div>
+          <span class="text-[9px] ${b.isCurrent ? 'text-emerald-800 font-black' : 'text-slate-400 font-bold'} leading-none">${b.dayNum}</span>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
 // 2.2 อัปเดตตัวเลขสดบนหน้า Portal Hub (Live KPIs & Hero Grid)
 function updatePortalKPIs() {
   const todayStr = getTodayString();
@@ -357,6 +584,10 @@ function updatePortalKPIs() {
 
   // Update Sidebar User Profile Card
   updatePortalSidebarProfile();
+
+  // Render Fish Booking Calendar and Sales Metrics
+  renderPortalBookingCalendar();
+  updatePortalSalesMetrics();
 
   // Render Department Manifest Table
   renderDepartmentManifest();
