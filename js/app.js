@@ -1413,6 +1413,70 @@ function renderPaymentMethodButtonHtml(order) {
   `;
 }
 
+// ป้ายแสดงสถานะช่องทางชำระเงินสำหรับตารางรายการจองทั้งหมด (ช่อง มัดจำ/คงเหลือ)
+function getOrderPaymentMethodBadgeHtml(order) {
+  const method = getOrderPaymentMethod(order);
+  
+  if (order.status === 'cancelled') {
+    return `
+      <div class="mt-1 flex justify-end">
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+          ยกเลิก
+        </span>
+      </div>
+    `;
+  }
+
+  if (method === 'โอน' || method === 'โอนเงิน') {
+    return `
+      <div class="mt-1 flex justify-end">
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-300 shadow-2xs" title="ชำระด้วย: โอนเงิน">
+          <span>📲</span>
+          <span>โอน</span>
+        </span>
+      </div>
+    `;
+  }
+
+  if (method === 'เงินสด') {
+    return `
+      <div class="mt-1 flex justify-end">
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs" title="ชำระด้วย: เงินสด">
+          <span>💵</span>
+          <span>เงินสด</span>
+        </span>
+      </div>
+    `;
+  }
+
+  if (method === 'เงินสด+โอน') {
+    const splitDetail = (order.cashSplitAmount || order.transferSplitAmount)
+      ? ` title="ชำระด้วย: เงินสด+โอน (เงินสด ${formatMoney(order.cashSplitAmount || 0)} + โอน ${formatMoney(order.transferSplitAmount || 0)})"`
+      : ' title="ชำระด้วย: เงินสด+โอน"';
+    return `
+      <div class="mt-1 flex justify-end">
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-teal-100 text-teal-800 border border-teal-300 shadow-2xs"${splitDetail}>
+          <span>💵+📲</span>
+          <span>เงินสด+โอน</span>
+        </span>
+      </div>
+    `;
+  }
+
+  if (method === 'ค้างจ่าย') {
+    return `
+      <div class="mt-1 flex justify-end">
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs" title="ค้างจ่าย / รอชำระ">
+          <span>⏳</span>
+          <span>ค้างจ่าย</span>
+        </span>
+      </div>
+    `;
+  }
+
+  return '';
+}
+
 function togglePaymentDropdown(orderId, event) {
   if (event) {
     event.stopPropagation();
@@ -3515,6 +3579,7 @@ function renderOrdersList() {
         <td class="py-3 px-2 text-right text-[13px] sm:text-[14px] whitespace-nowrap align-top">
           <div class="text-emerald-700 font-semibold">มัดจำ: ${formatMoney(o.deposit)}</div>
           <div class="font-bold text-amber-800 mt-0.5">คงเหลือ: ${formatMoney(o.remainingBalance)}</div>
+          ${getOrderPaymentMethodBadgeHtml(o)}
         </td>
 
         <!-- 7. สถานะ / ปุ่มจัดการ -->
