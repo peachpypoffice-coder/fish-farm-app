@@ -263,7 +263,7 @@ function switchInventorySubTab(subTab) {
     activeBtn.classList.remove('text-slate-600', 'hover:bg-sky-50');
   }
 
-  const sections = ['ponds', 'supplies', 'inbound_grn', 'history'];
+  const sections = ['ponds', 'supplies', 'inbound_grn', 'history', 'mortality'];
   sections.forEach(sec => {
     const el = document.getElementById(`inv-section-${sec}`);
     if (el) el.classList.toggle('hidden', sec !== subTab);
@@ -279,6 +279,7 @@ function switchInventorySubTab(subTab) {
   if (subTab === 'supplies') renderSuppliesTable();
   if (subTab === 'inbound_grn') renderGrnTable();
   if (subTab === 'history') renderHistorySection();
+  if (subTab === 'mortality') renderFishLossSection();
 
   lucide.createIcons();
 }
@@ -1883,66 +1884,490 @@ function printGrn(grnId) {
 
 // 6. MODALS & USER ACTIONS
 
-// 4.1 Modal บันทึกปลาตาย
-function openRecordMortalityModal(pondId) {
-  const pond = (state.ponds || []).find(p => p.id === pondId);
-  if (!pond) return;
+// 4.1 ระบบจัดการปลาตาย / ปลาหาย (FISH MORTALITY & LOSS TRACKING)
+let currentFishLossPeriod = 'day'; // 'day' | 'month' | 'year' | 'all'
 
+function initFishLossFilters() {
+  const dateInput = document.getElementById('fishloss-filter-date');
+  if (dateInput && !dateInput.value) {
+    dateInput.value = getTodayString();
+  }
+
+  const monthInput = document.getElementById('fishloss-filter-month');
+  if (monthInput && !monthInput.value) {
+    monthInput.value = getTodayString().slice(0, 7);
+  }
+
+  const yearSelect = document.getElementById('fishloss-filter-year');
+  if (yearSelect && yearSelect.options.length <= 1) {
+    const currentYear = new Date().getFullYear();
+    const years = [currentYear, currentYear - 1, currentYear - 2, currentYear + 1];
+    yearSelect.innerHTML = years.map(y => `
+      <option value="${y}" ${y === currentYear ? 'selected' : ''}>พ.ศ. ${y + 543} (${y})</option>
+    `).join('');
+  }
+
+  const pondSelect = document.getElementById('fishloss-filter-pond');
+  if (pondSelect && pondSelect.options.length <= 1) {
+    const ponds = state.ponds || [];
+    pondSelect.innerHTML = '<option value="all">ทุกบ่อ / ทุกสายพันธุ์</option>' + 
+      ponds.map(p => `<option value="${p.id}">${p.name} - ${p.fishName || 'ว่าง'}</option>`).join('');
+  }
+}
+
+function setFishLossPeriod(period) {
+  currentFishLossPeriod = period;
+
+  ['day', 'month', 'year', 'all'].forEach(p => {
+    const btn = document.getElementById(`btn-fishloss-period-${p}`);
+    if (btn) {
+      if (p === period) {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition bg-rose-600 text-white shadow-xs';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:text-slate-900';
+      }
+    }
+  });
+
+  const dayContainer = document.getElementById('fishloss-picker-day-container');
+  const monthContainer = document.getElementById('fishloss-picker-month-container');
+  const yearContainer = document.getElementById('fishloss-picker-year-container');
+
+  if (dayContainer) dayContainer.classList.toggle('hidden', period !== 'day');
+  if (monthContainer) monthContainer.classList.toggle('hidden', period !== 'month');
+  if (yearContainer) yearContainer.classList.toggle('hidden', period !== 'year');
+
+  renderFishLossSection();
+}
+
+function setFishLossFilterToday() {
+  const dateInput = document.getElementById('fishloss-filter-date');
+  if (dateInput) dateInput.value = getTodayString();
+  renderFishLossSection();
+}
+
+function setFishLossFilterThisMonth() {
+  const monthInput = document.getElementById('fishloss-filter-month');
+  if (monthInput) monthInput.value = getTodayString().slice(0, 7);
+  renderFishLossSection();
+}
+
+function renderFishLossSection() {
+  initFishLossFilters();
+
+  const period = currentFishLossPeriod;
+  const dateVal = document.getElementById('fishloss-filter-date')?.value || getTodayString();
+  const monthVal = document.getElementById('fishloss-filter-month')?.value || getTodayString().slice(0, 7);
+  const yearVal = document.getElementById('fishloss-filter-year')?.value || new Date().getFullYear().toString();
+  const pondVal = document.getElementById('fishloss-filter-pond')?.value || 'all';
+  const searchVal = (document.getElementById('fishloss-search-input')?.value || '').trim().toLowerCase();
+
+  const allLogs = state.mortalityLogs || [];
+
+  // Filter logs according to user selection
+  const filteredLogs = allLogs.filter(log => {
+    if (period === 'day' && log.date !== dateVal) return false;
+    if (period === 'month' && !log.date.startsWith(monthVal)) return false;
+    if (period === 'year' && !log.date.startsWith(yearVal)) return false;
+
+    if (pondVal !== 'all' && log.pondId !== pondVal) return false;
+
+    if (searchVal) {
+      const combined = `${log.pondName || ''} ${log.fishName || ''} ${log.deadCause || ''} ${log.lostCause || ''} ${log.cause || ''} ${log.actionTaken || ''} ${log.reporter || ''}`.toLowerCase();
+      if (!combined.includes(searchVal)) return false;
+    }
+
+    return true;
+  });
+
+  // Calculate KPI totals
+  let totalDead = 0;
+  let totalLost = 0;
+  let totalValue = 0;
+
+  filteredLogs.forEach(l => {
+    const dead = l.deadQty !== undefined ? Number(l.deadQty) : (l.lostQty !== undefined ? 0 : Number(l.qty || 0));
+    const lost = l.lostQty !== undefined ? Number(l.lostQty) : 0;
+    const pond = (state.ponds || []).find(p => p.id === l.pondId);
+    const price = l.unitPrice || (pond ? pond.unitPrice : 0) || 0;
+
+    totalDead += dead;
+    totalLost += lost;
+    totalValue += (dead + lost) * price;
+  });
+
+  const totalLoss = totalDead + totalLost;
+
+  // Update KPI cards
+  const elDead = document.getElementById('fishloss-kpi-dead');
+  const elLost = document.getElementById('fishloss-kpi-lost');
+  const elTotal = document.getElementById('fishloss-kpi-total');
+  const elValue = document.getElementById('fishloss-kpi-value');
+
+  if (elDead) elDead.textContent = totalDead.toLocaleString() + ' ตัว';
+  if (elLost) elLost.textContent = totalLost.toLocaleString() + ' ตัว';
+  if (elTotal) elTotal.textContent = totalLoss.toLocaleString() + ' ตัว';
+  if (elValue) elValue.textContent = '฿' + Math.round(totalValue).toLocaleString();
+
+  // Subtitle info
+  let periodText = '';
+  if (period === 'day') periodText = `วันที่ ${formatThaiDate(dateVal)}`;
+  else if (period === 'month') {
+    const parts = monthVal.split('-');
+    const mNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const mIdx = parseInt(parts[1] || '1', 10) - 1;
+    const yr = parseInt(parts[0] || '2026', 10) + 543;
+    periodText = `ประจำเดือน ${mNames[mIdx]} ${yr}`;
+  } else if (period === 'year') {
+    periodText = `ประจำปี พ.ศ. ${parseInt(yearVal, 10) + 543}`;
+  } else {
+    periodText = 'บันทึกประวัติทั้งหมด';
+  }
+
+  const subEl = document.getElementById('fishloss-table-subtitle');
+  if (subEl) subEl.textContent = `แสดงสรุปข้อมูลช่วง: ${periodText} (${filteredLogs.length} รายการ)`;
+
+  const badgeEl = document.getElementById('fishloss-records-badge');
+  if (badgeEl) badgeEl.textContent = `${filteredLogs.length} รายการ`;
+
+  // Render Table Rows
+  const tbody = document.getElementById('fishloss-table-body');
+  if (tbody) {
+    if (filteredLogs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="11" class="text-center py-12 text-slate-400 font-semibold">ไม่พบรายการปลาตาย/หาย ในช่วงเวลาที่เลือก (${periodText})</td></tr>`;
+    } else {
+      tbody.innerHTML = filteredLogs.map(log => {
+        const dead = log.deadQty !== undefined ? Number(log.deadQty) : (log.lostQty !== undefined ? 0 : Number(log.qty || 0));
+        const lost = log.lostQty !== undefined ? Number(log.lostQty) : 0;
+        const total = dead + lost || log.qty || 0;
+        const pond = (state.ponds || []).find(p => p.id === log.pondId);
+        const price = log.unitPrice || (pond ? pond.unitPrice : 0) || 0;
+        const val = total * price;
+
+        const deadCause = log.deadCause || (dead > 0 ? (log.cause || 'ทั่วไป') : '-');
+        const lostCause = log.lostCause || (lost > 0 ? (log.cause || 'ไม่ทราบสาเหตุ') : '-');
+
+        return `
+          <tr class="border-b border-slate-100 hover:bg-slate-50/80 transition">
+            <td class="p-3.5 text-xs text-slate-600 font-semibold whitespace-nowrap">${formatThaiDate(log.date)}</td>
+            <td class="p-3.5">
+              <div class="font-bold text-sm text-slate-800">${log.pondName || '-'}</div>
+              <div class="text-[11px] text-slate-500">${log.fishName || (pond ? pond.fishName : 'ปลา')} ${log.fishSize ? `(${log.fishSize})` : ''}</div>
+            </td>
+            <td class="p-3.5 text-center font-bold text-sm ${dead > 0 ? 'text-rose-600' : 'text-slate-400'}">
+              ${dead > 0 ? dead.toLocaleString() + ' ตัว' : '-'}
+            </td>
+            <td class="p-3.5 text-xs text-slate-700 max-w-xs">
+              ${dead > 0 ? `<span class="inline-block px-2 py-0.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 font-semibold">${deadCause}</span>` : '<span class="text-slate-300">-</span>'}
+            </td>
+            <td class="p-3.5 text-center font-bold text-sm ${lost > 0 ? 'text-amber-600' : 'text-slate-400'}">
+              ${lost > 0 ? lost.toLocaleString() + ' ตัว' : '-'}
+            </td>
+            <td class="p-3.5 text-xs text-slate-700 max-w-xs">
+              ${lost > 0 ? `<span class="inline-block px-2 py-0.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-semibold">${lostCause}</span>` : '<span class="text-slate-300">-</span>'}
+            </td>
+            <td class="p-3.5 text-center font-black text-sm text-slate-800">
+              ${total.toLocaleString()} ตัว
+            </td>
+            <td class="p-3.5 text-right font-bold text-xs text-rose-700 whitespace-nowrap">
+              ฿${Math.round(val).toLocaleString()}
+            </td>
+            <td class="p-3.5 text-xs text-emerald-800 bg-emerald-50/40 rounded-lg max-w-xs font-medium">
+              ${log.actionTaken || '-'}
+            </td>
+            <td class="p-3.5 text-xs text-slate-500 whitespace-nowrap">
+              ${log.reporter || '-'}
+            </td>
+            <td class="p-3 text-center whitespace-nowrap">
+              <button onclick="deleteFishLossLog('${log.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="ลบรายการนี้และคืนยอดปลาเข้าบ่อ">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+
+  // Also sync existing history section mortality table if visible
+  renderMortalityLogs();
+  if (window.lucide) lucide.createIcons();
+}
+
+// 4.2 EXPORT FISH LOSS TO EXCEL (.xlsx)
+function exportFishLossToExcel() {
+  try {
+    if (typeof XLSX === 'undefined') {
+      alert('ไม่พบไลบรารี SheetJS (XLSX) กรุณารีเฟรชหน้าจอ');
+      return;
+    }
+
+    const period = currentFishLossPeriod;
+    const dateVal = document.getElementById('fishloss-filter-date')?.value || getTodayString();
+    const monthVal = document.getElementById('fishloss-filter-month')?.value || getTodayString().slice(0, 7);
+    const yearVal = document.getElementById('fishloss-filter-year')?.value || new Date().getFullYear().toString();
+    const pondVal = document.getElementById('fishloss-filter-pond')?.value || 'all';
+
+    let periodLabel = '';
+    if (period === 'day') periodLabel = `รายวัน (วันที่ ${formatThaiDate(dateVal)})`;
+    else if (period === 'month') {
+      const parts = monthVal.split('-');
+      const mNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+      const mIdx = parseInt(parts[1] || '1', 10) - 1;
+      const yr = parseInt(parts[0] || '2026', 10) + 543;
+      periodLabel = `รายเดือน (${mNames[mIdx]} พ.ศ. ${yr})`;
+    } else if (period === 'year') {
+      periodLabel = `รายปี (พ.ศ. ${parseInt(yearVal, 10) + 543})`;
+    } else {
+      periodLabel = 'ประวัติทั้งหมด';
+    }
+
+    const logs = (state.mortalityLogs || []).filter(log => {
+      if (period === 'day' && log.date !== dateVal) return false;
+      if (period === 'month' && !log.date.startsWith(monthVal)) return false;
+      if (period === 'year' && !log.date.startsWith(yearVal)) return false;
+      if (pondVal !== 'all' && log.pondId !== pondVal) return false;
+      return true;
+    });
+
+    if (logs.length === 0) {
+      showNotification('ไม่มีรายการข้อมูลตามเงื่อนไขที่เลือกเพื่อส่งออก Excel', 'error');
+      return;
+    }
+
+    let sumDead = 0;
+    let sumLost = 0;
+    let sumVal = 0;
+
+    const detailRows = logs.map((l, idx) => {
+      const dead = l.deadQty !== undefined ? Number(l.deadQty) : (l.lostQty !== undefined ? 0 : Number(l.qty || 0));
+      const lost = l.lostQty !== undefined ? Number(l.lostQty) : 0;
+      const pond = (state.ponds || []).find(p => p.id === l.pondId);
+      const price = l.unitPrice || (pond ? pond.unitPrice : 0) || 0;
+      const total = dead + lost;
+      const val = total * price;
+
+      sumDead += dead;
+      sumLost += lost;
+      sumVal += val;
+
+      return {
+        'ลำดับ': idx + 1,
+        'วันที่': l.date,
+        'บ่อเลี้ยง': l.pondName || '-',
+        'สายพันธุ์ปลา': l.fishName || (pond ? pond.fishName : '-'),
+        'จำนวนปลาตาย (ตัว)': dead,
+        'สาเหตุการตาย': l.deadCause || (dead > 0 ? (l.cause || 'ทั่วไป') : '-'),
+        'จำนวนปลาหาย (ตัว)': lost,
+        'สาเหตุการหาย': l.lostCause || (lost > 0 ? (l.cause || 'ไม่ทราบสาเหตุ') : '-'),
+        'รวมสูญเสีย (ตัว)': total,
+        'ราคาประเมิน/ตัว (บาท)': price,
+        'มูลค่าความสูญเสีย (บาท)': val,
+        'การแก้ไข / มาตรการ': l.actionTaken || '-',
+        'ผู้บันทึก': l.reporter || '-'
+      };
+    });
+
+    const summaryRows = [
+      { 'หัวข้อสรุป': 'ชื่อฟาร์ม', 'รายละเอียด': 'บจก.สุทธิ์ อินเตอร์ฟาร์ม (ฟาร์มปลาผู้ใหญ่พร)' },
+      { 'หัวข้อสรุป': 'ช่วงเวลาสรุปข้อมูล', 'รายละเอียด': periodLabel },
+      { 'หัวข้อสรุป': 'วันที่ออกรายงาน', 'รายละเอียด': formatThaiDate(getTodayString()) },
+      { 'หัวข้อสรุป': 'จำนวนรายการบันทึกทั้งหมด', 'รายละเอียด': `${logs.length} รายการ` },
+      { 'หัวข้อสรุป': 'รวมปลาตายทั้งหมด (ตัว)', 'รายละเอียด': sumDead },
+      { 'หัวข้อสรุป': 'รวมปลาหายทั้งหมด (ตัว)', 'รายละเอียด': sumLost },
+      { 'หัวข้อสรุป': 'รวมสูญเสียทั้งหมด (ตัว)', 'รายละเอียด': sumDead + sumLost },
+      { 'หัวข้อสรุป': 'รวมมูลค่าความสูญเสียประเมิน (บาท)', 'รายละเอียด': sumVal },
+      { 'หัวข้อสรุป': 'ผู้ออกรายงาน', 'รายละเอียด': state.currentUser ? `${state.currentUser.name} (${state.currentUser.role})` : 'ระบบจัดการสต็อก' }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.json_to_sheet(detailRows);
+    const ws2 = XLSX.utils.json_to_sheet(summaryRows);
+
+    XLSX.utils.book_append_sheet(wb, ws1, 'รายการปลาตายและหาย');
+    XLSX.utils.book_append_sheet(wb, ws2, 'สรุปภาพรวม');
+
+    XLSX.writeFile(wb, `รายงานปลาตายและหาย_${period}_${getTodayString()}.xlsx`);
+    showNotification('ส่งออกไฟล์ Excel สำเร็จแล้ว', 'success');
+  } catch (err) {
+    console.error('Export fish loss error:', err);
+    alert('เกิดข้อผิดพลาดในการส่งออก Excel: ' + err.message);
+  }
+}
+
+// 4.3 MODAL & ACTIONS FOR FISH LOSS
+function openRecordFishLossModal(pondId = null) {
   const modal = document.getElementById('modal-record-mortality');
   if (!modal) return;
 
-  document.getElementById('mortality-pond-id').value = pond.id;
-  document.getElementById('mortality-pond-name').textContent = `${pond.name} (${pond.fishName} ${pond.fishSize})`;
-  document.getElementById('mortality-current-qty').textContent = Number(pond.totalQty || 0).toLocaleString() + ' ตัว';
-  document.getElementById('mortality-qty-input').value = '';
-  document.getElementById('mortality-cause-input').value = '';
-  document.getElementById('mortality-action-input').value = '';
+  const select = document.getElementById('mortality-pond-select');
+  if (select) {
+    select.innerHTML = (state.ponds || []).map(p => `
+      <option value="${p.id}" ${pondId && p.id === pondId ? 'selected' : ''}>
+        ${p.name} - ${p.fishName || 'ว่าง'} (${Number(p.totalQty || 0).toLocaleString()} ตัว)
+      </option>
+    `).join('');
+  }
 
+  const defaultPondId = pondId || (state.ponds && state.ponds.length > 0 ? state.ponds[0].id : '');
+  if (select && defaultPondId) {
+    select.value = defaultPondId;
+  }
+  onMortalityPondSelectChange();
+
+  const dateInput = document.getElementById('mortality-date-input');
+  if (dateInput) dateInput.value = getTodayString();
+
+  const deadInput = document.getElementById('mortality-dead-qty-input');
+  if (deadInput) deadInput.value = '0';
+
+  const lostInput = document.getElementById('mortality-lost-qty-input');
+  if (lostInput) lostInput.value = '0';
+
+  const deadCauseSel = document.getElementById('mortality-dead-cause-select');
+  if (deadCauseSel) deadCauseSel.value = 'สภาพอากาศร้อนจัด / น็อกน้ำ';
+  const deadCustom = document.getElementById('mortality-dead-cause-custom');
+  if (deadCustom) {
+    deadCustom.value = '';
+    deadCustom.classList.add('hidden');
+  }
+
+  const lostCauseSel = document.getElementById('mortality-lost-cause-select');
+  if (lostCauseSel) lostCauseSel.value = 'ปลาโดดออกจากกระชัง / บ่อเลี้ยง';
+  const lostCustom = document.getElementById('mortality-lost-cause-custom');
+  if (lostCustom) {
+    lostCustom.value = '';
+    lostCustom.classList.add('hidden');
+  }
+
+  const actionInput = document.getElementById('mortality-action-input');
+  if (actionInput) actionInput.value = '';
+
+  calcFishLossModalTotal();
   modal.classList.remove('hidden');
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 }
 
-function handleSaveMortality(e) {
-  if (e) e.preventDefault();
-  const pondId = document.getElementById('mortality-pond-id').value;
-  const qty = Number(document.getElementById('mortality-qty-input').value);
-  const cause = document.getElementById('mortality-cause-input').value.trim();
-  const actionTaken = document.getElementById('mortality-action-input').value.trim();
+function openRecordMortalityModal(pondId) {
+  openRecordFishLossModal(pondId);
+}
 
-  if (!qty || qty <= 0) {
-    showNotification('กรุณาระบุจำนวนปลาที่สูญเสียให้ถูกต้อง', 'error');
+function onMortalityPondSelectChange() {
+  const pondId = document.getElementById('mortality-pond-select')?.value;
+  const pond = (state.ponds || []).find(p => p.id === pondId);
+  if (!pond) return;
+
+  const idInput = document.getElementById('mortality-pond-id');
+  if (idInput) idInput.value = pond.id;
+
+  const nameEl = document.getElementById('mortality-pond-name');
+  if (nameEl) nameEl.textContent = `${pond.name} (${pond.fishName || 'ปลา'} ${pond.fishSize || ''})`;
+
+  const qtyEl = document.getElementById('mortality-current-qty');
+  if (qtyEl) qtyEl.textContent = Number(pond.totalQty || 0).toLocaleString() + ' ตัว';
+}
+
+function onMortalityCauseChange(type) {
+  if (type === 'dead') {
+    const sel = document.getElementById('mortality-dead-cause-select')?.value;
+    const custom = document.getElementById('mortality-dead-cause-custom');
+    if (custom) custom.classList.toggle('hidden', sel !== 'other');
+  } else if (type === 'lost') {
+    const sel = document.getElementById('mortality-lost-cause-select')?.value;
+    const custom = document.getElementById('mortality-lost-cause-custom');
+    if (custom) custom.classList.toggle('hidden', sel !== 'other');
+  }
+}
+
+function calcFishLossModalTotal() {
+  const dead = Number(document.getElementById('mortality-dead-qty-input')?.value || 0);
+  const lost = Number(document.getElementById('mortality-lost-qty-input')?.value || 0);
+  const total = Math.max(0, dead) + Math.max(0, lost);
+  const el = document.getElementById('mortality-modal-total-qty');
+  if (el) el.textContent = total.toLocaleString();
+}
+
+function handleSaveFishLoss(e) {
+  if (e) e.preventDefault();
+  const pondId = document.getElementById('mortality-pond-id')?.value;
+  const dateStr = document.getElementById('mortality-date-input')?.value || getTodayString();
+  const deadQty = Math.max(0, Number(document.getElementById('mortality-dead-qty-input')?.value || 0));
+  const lostQty = Math.max(0, Number(document.getElementById('mortality-lost-qty-input')?.value || 0));
+  const totalLoss = deadQty + lostQty;
+
+  if (totalLoss <= 0) {
+    showNotification('กรุณาระบุจำนวนปลาที่ตายหรือปลาที่หายอย่างน้อย 1 ตัว', 'error');
     return;
   }
 
   const pond = (state.ponds || []).find(p => p.id === pondId);
-  if (!pond) return;
+  if (!pond) {
+    showNotification('ไม่พบบ่อปลาที่เลือก', 'error');
+    return;
+  }
 
-  // ตัดยอดปลาในบ่อ
-  pond.totalQty = Math.max(0, (pond.totalQty || 0) - qty);
-  pond.mortalityQty = (pond.mortalityQty || 0) + qty;
+  // Determine dead cause
+  let deadCause = '-';
+  if (deadQty > 0) {
+    const deadSel = document.getElementById('mortality-dead-cause-select')?.value;
+    if (deadSel === 'other') {
+      deadCause = document.getElementById('mortality-dead-cause-custom')?.value.trim() || 'สาเหตุอื่นๆ';
+    } else {
+      deadCause = deadSel || 'สาเหตุทั่วไป';
+    }
+  }
 
-  // บันทึก log
+  // Determine lost cause
+  let lostCause = '-';
+  if (lostQty > 0) {
+    const lostSel = document.getElementById('mortality-lost-cause-select')?.value;
+    if (lostSel === 'other') {
+      lostCause = document.getElementById('mortality-lost-cause-custom')?.value.trim() || 'สูญหายไม่ทราบสาเหตุ';
+    } else {
+      lostCause = lostSel || 'สูญหายทั่วไป';
+    }
+  }
+
+  const actionTaken = document.getElementById('mortality-action-input')?.value.trim() || 'ตรวจสอบและเฝ้าระวัง';
+  const unitPrice = pond.unitPrice || 0;
+  const lossValue = totalLoss * unitPrice;
+
+  // Deduct from pond stock
+  pond.totalQty = Math.max(0, (pond.totalQty || 0) - totalLoss);
+  pond.mortalityQty = (pond.mortalityQty || 0) + totalLoss;
+
   const newLog = {
     id: 'mort_' + Date.now(),
-    date: getTodayString(),
+    date: dateStr,
     pondId: pond.id,
-    pondName: `${pond.name} (${pond.fishName})`,
-    qty: qty,
-    cause: cause || 'การสูญเสียหน้างาน',
-    reporter: `${state.currentUser.name} (${state.currentUser.role})`,
-    actionTaken: actionTaken || 'ตรวจสอบคุณภาพน้ำ'
+    pondName: pond.name,
+    fishName: pond.fishName || 'ปลา',
+    fishSize: pond.fishSize || '-',
+    deadQty: deadQty,
+    deadCause: deadCause,
+    lostQty: lostQty,
+    lostCause: lostCause,
+    qty: totalLoss,
+    unitPrice: unitPrice,
+    lossValue: lossValue,
+    cause: deadQty > 0 ? deadCause : lostCause,
+    reporter: state.currentUser ? `${state.currentUser.name} (${state.currentUser.role})` : 'พนักงานฟาร์ม',
+    actionTaken: actionTaken,
+    createdAt: new Date().toISOString()
   };
+
+  if (!state.mortalityLogs) state.mortalityLogs = [];
   state.mortalityLogs.unshift(newLog);
 
-  // ส่ง Event ให้ AI Supervisor ตรวจสอบ
+  // Send Event to AI Supervisor
   if (state.systemEvents) {
     state.systemEvents.unshift({
       id: 'evt_' + Date.now(),
       timestamp: getTodayString() + ' ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
       source: 'Farm Inventory Agent',
       type: 'MORTALITY_LOGGED',
-      severity: qty > 300 ? 'warning' : 'info',
-      message: `บันทึกปลาตายใน ${pond.name} จำนวน ${qty.toLocaleString()} ตัว (สาเหตุ: ${cause || 'ทั่วไป'})`,
+      severity: totalLoss > 200 ? 'warning' : 'info',
+      message: `บันทึกปลาตาย/หายใน ${pond.name} รวม ${totalLoss.toLocaleString()} ตัว (ตาย: ${deadQty}, หาย: ${lostQty})`,
       status: 'verified'
     });
   }
@@ -1950,8 +2375,57 @@ function handleSaveMortality(e) {
   saveInventoryState();
   closeModal('modal-record-mortality');
   renderInventoryView();
-  showNotification(`บันทึกการสูญเสียปลา ${qty.toLocaleString()} ตัวเรียบร้อยแล้ว`, 'success');
+  renderFishLossSection();
+  showNotification(`บันทึกปลาตาย ${deadQty.toLocaleString()} ตัว และปลาหาย ${lostQty.toLocaleString()} ตัว เรียบร้อยแล้ว`, 'success');
 }
+
+function handleSaveMortality(e) {
+  handleSaveFishLoss(e);
+}
+
+function deleteFishLossLog(logId) {
+  const logIndex = (state.mortalityLogs || []).findIndex(l => l.id === logId);
+  if (logIndex === -1) return;
+  const log = state.mortalityLogs[logIndex];
+
+  const dead = log.deadQty !== undefined ? Number(log.deadQty) : (log.lostQty !== undefined ? 0 : Number(log.qty || 0));
+  const lost = log.lostQty !== undefined ? Number(log.lostQty) : 0;
+  const total = dead + lost || log.qty || 0;
+
+  if (!confirm(`ยืนยันลบรายการบันทึกนี้ใช่หรือไม่?\n\nบ่อ: ${log.pondName}\nสูญเสียรวม: ${total.toLocaleString()} ตัว (ปลาตาย ${dead}, ปลาหาย ${lost})\n\n* ระบบจะคืนยอดปลา ${total.toLocaleString()} ตัว กลับเข้าสู่บ่อเดิมอัตโนมัติ`)) {
+    return;
+  }
+
+  // Restore pond stock
+  const pond = (state.ponds || []).find(p => p.id === log.pondId);
+  if (pond) {
+    pond.totalQty = (pond.totalQty || 0) + total;
+    if (pond.mortalityQty) {
+      pond.mortalityQty = Math.max(0, pond.mortalityQty - total);
+    }
+  }
+
+  state.mortalityLogs.splice(logIndex, 1);
+  saveInventoryState();
+  renderInventoryView();
+  renderFishLossSection();
+  showNotification('ลบรายการและคืนยอดปลาเข้าบ่อเรียบร้อยแล้ว', 'success');
+}
+
+// Global attachments
+window.setFishLossPeriod = setFishLossPeriod;
+window.setFishLossFilterToday = setFishLossFilterToday;
+window.setFishLossFilterThisMonth = setFishLossFilterThisMonth;
+window.renderFishLossSection = renderFishLossSection;
+window.exportFishLossToExcel = exportFishLossToExcel;
+window.openRecordFishLossModal = openRecordFishLossModal;
+window.openRecordMortalityModal = openRecordMortalityModal;
+window.onMortalityPondSelectChange = onMortalityPondSelectChange;
+window.onMortalityCauseChange = onMortalityCauseChange;
+window.calcFishLossModalTotal = calcFishLossModalTotal;
+window.handleSaveFishLoss = handleSaveFishLoss;
+window.handleSaveMortality = handleSaveFishLoss;
+window.deleteFishLossLog = deleteFishLossLog;
 
 // 4.2 Modal เบิกใช้ / รับเข้าสินค้า
 function openSupplyTransactionModal(supplyId, type) {
