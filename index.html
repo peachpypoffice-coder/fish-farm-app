@@ -282,11 +282,6 @@
       </div>
 
       <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-        <div class="hidden lg:block text-right">
-          <h2 class="text-sm font-extrabold text-primary font-headline">Farm ERP Portal Hub</h2>
-          <p class="text-[10px] text-on-surface-variant font-medium">ศูนย์รวมระบบงานฟาร์ม 7 แผนก</p>
-        </div>
-
         <!-- Quick Action: New Order -->
         <button onclick="openNewOrderModal()" class="bg-primary hover:bg-primary-container text-white px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm transition">
           <span class="material-symbols-outlined text-sm sm:text-base">add_circle</span>
@@ -310,36 +305,21 @@
 
     <!-- MODULE SUBNAV BAR (แสดงเฉพาะเมื่ออยู่ใน Level 3: Module Workspace) -->
     <div id="module-subnav-bar" class="hidden bg-slate-50 border-b border-slate-200 shadow-2xs px-4 sm:px-6 py-2 shrink-0">
-      <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <!-- Left: Back Button & Module Info Breadcrumb -->
-        <div class="flex items-center gap-2.5 min-w-0">
-          <button onclick="backToPortal()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold shadow-2xs flex items-center gap-1.5 transition flex-shrink-0 group" title="กลับสู่ศูนย์รวม 7 โมดูล">
-            <i data-lucide="arrow-left" class="w-4 h-4 text-slate-500 group-hover:-translate-x-0.5 transition-transform"></i>
-            <span>กลับหน้า Portal</span>
+      <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        <!-- Left: Back Button (Arrow only) & Dynamic Subtabs -->
+        <div class="flex items-center gap-2.5 overflow-x-auto scrollbar-none min-w-0">
+          <button onclick="backToPortal()" class="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 shadow-2xs flex items-center justify-center transition flex-shrink-0 group" title="กลับสู่ศูนย์รวม 7 โมดูล">
+            <i data-lucide="arrow-left" class="w-5 h-5 text-slate-600 group-hover:-translate-x-0.5 transition-transform"></i>
           </button>
-          <span class="text-slate-300">|</span>
-          <div class="flex items-center gap-2 min-w-0">
-            <span class="p-1.5 bg-sky-100 text-sky-700 rounded-lg flex-shrink-0">
-              <i id="module-view-icon" data-lucide="truck" class="w-4 h-4"></i>
-            </span>
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <h2 id="module-view-title" class="font-black text-slate-800 text-sm sm:text-base leading-tight truncate">โมดูลที่ 1: จองปลาและคิวจัดส่ง</h2>
-                <span id="module-view-badge" class="badge-tag bg-sky-100 text-sky-800 border border-sky-300 text-[10px] hidden sm:inline-block">Booking & Logistics</span>
-              </div>
-              <div id="module-view-breadcrumb" class="text-[11px] text-slate-400 truncate">ระบบบริหารจัดการเฉพาะโมดูล</div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Right: Dynamic Subtabs & Quick Actions -->
-        <div class="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5 md:pb-0">
           <div id="module-subtabs-container" class="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
             <!-- Populated by renderModuleSubtabs(mod) in portal.js -->
           </div>
-          <div id="module-quick-actions-container" class="flex items-center gap-1.5 flex-shrink-0">
-            <!-- Populated by renderModuleQuickActions(mod) in portal.js -->
-          </div>
+        </div>
+
+        <!-- Right: Dynamic Quick Actions -->
+        <div id="module-quick-actions-container" class="flex items-center gap-1.5 flex-shrink-0">
+          <!-- Populated by renderModuleQuickActions(mod) in portal.js -->
         </div>
       </div>
     </div>

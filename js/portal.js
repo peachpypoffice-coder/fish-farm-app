@@ -708,17 +708,6 @@ function openModule(moduleId) {
   if (modView) modView.classList.remove('hidden');
   if (moduleSubnav) moduleSubnav.classList.remove('hidden');
 
-  // ปรับ Breadcrumb & Header Title ของโมดูล
-  const titleEl = document.getElementById('module-view-title');
-  const badgeEl = document.getElementById('module-view-badge');
-  const breadcrumbEl = document.getElementById('module-view-breadcrumb');
-  const iconEl = document.getElementById('module-view-icon');
-
-  if (titleEl) titleEl.textContent = `โมดูลที่ ${mod.number}: ${mod.name}`;
-  if (badgeEl) badgeEl.textContent = mod.nameEn;
-  if (breadcrumbEl) breadcrumbEl.textContent = `โมดูล ${mod.number}: ${mod.name}`;
-  if (iconEl) iconEl.setAttribute('data-lucide', mod.icon);
-
   // อัปเดตสถานะ Active ใน SideNavBar
   const allNavLinks = document.querySelectorAll('#portal-sidebar nav a');
   allNavLinks.forEach(el => {
