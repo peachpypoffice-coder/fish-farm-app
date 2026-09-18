@@ -438,10 +438,10 @@ function renderVisualFarmMap() {
   const smallTanks = ponds.filter(p => p.zone === 'small_tank'); // S1 - S5 (5 อ่างกลมเล็ก)
   const largeTanks = ponds.filter(p => p.zone === 'large_tank'); // B1 - B16 (16 อ่างใหญ่)
 
-  const showSterile = filter === 'all' || filter === 'sterile_cage';
-  const showMain = filter === 'all' || filter === 'main_cage';
-  const showSmall = filter === 'all' || filter === 'small_tank';
-  const showLarge = filter === 'all' || filter === 'large_tank';
+  const showSterile = filter === 'all' || filter === 'sterile_cage' || filter === 'has_fish' || filter === 'empty';
+  const showMain = filter === 'all' || filter === 'main_cage' || filter === 'has_fish' || filter === 'empty';
+  const showSmall = filter === 'all' || filter === 'small_tank' || filter === 'has_fish' || filter === 'empty';
+  const showLarge = filter === 'all' || filter === 'large_tank' || filter === 'has_fish' || filter === 'empty';
 
   container.innerHTML = `
     <div class="farm-dock-canvas rounded-3xl p-4 sm:p-6 shadow-xl border-2 border-sky-300 relative overflow-hidden bg-gradient-to-br from-slate-900 via-sky-950 to-blue-950 text-white">
@@ -486,113 +486,102 @@ function renderVisualFarmMap() {
         </div>
       </div>
 
-      <!-- Main Layout matching Farm Blueprint Diagram -->
-      <div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-5 mt-5">
+      <!-- Main Layout: Stacked Zones Vertically (แยกแต่ละโซนเรียงถัดลงมาเป็นชั้นๆ ไม่ให้อยู่ในระนาบเดียวกัน) -->
+      <div class="relative z-10 space-y-6 mt-6">
         
-        <!-- ============================================== -->
-        <!-- ZONE 1: โซนกระชังหมัน (5 กระชังเรียงตั้งทางซ้าย M1 - M5) -->
-        <!-- ============================================== -->
-        ${showSterile ? `
-          <div class="${showMain && (showSmall || showLarge) ? 'lg:col-span-2' : 'lg:col-span-12'} bg-slate-900/60 border border-sky-700/40 rounded-2xl p-3 sm:p-4 backdrop-blur-xs flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between pb-2 mb-3 border-b border-sky-600/30">
-                <div class="flex items-center gap-1.5 text-sky-200 font-extrabold text-xs">
-                  <span>🛡️ กระชังหมัน</span>
-                  <span class="text-[10px] bg-sky-800/90 text-sky-200 px-1.5 py-0.2 rounded font-mono">5 ช่อง</span>
-                </div>
-                <span class="text-[10px] text-sky-400">พักฟื้น/หมัน</span>
-              </div>
-              
-              <div class="flex flex-col gap-2.5">
-                ${sterileCages.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
-              </div>
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- ============================================== -->
-        <!-- ZONE 2: โซนกระชังหลัก (22 กระชัง แบ่ง 2 แถวบน-ล่าง + ทางลงแพ) -->
-        <!-- ============================================== -->
+        <!-- โซนที่ 1: โซนกระชังลอยน้ำหลัก (Main Floating Cages) 22 กระชัง -->
         ${showMain ? `
-          <div class="${showSterile && (showSmall || showLarge) ? 'lg:col-span-7' : 'lg:col-span-12'} bg-slate-900/60 border border-sky-700/40 rounded-2xl p-3 sm:p-4 backdrop-blur-xs flex flex-col justify-between">
-            <div>
-              <div class="flex items-center justify-between pb-2 mb-3 border-b border-sky-600/30">
-                <div class="flex items-center gap-2 text-sky-100 font-extrabold text-xs">
-                  <span>🌊 โซนกระชังลอยน้ำหลัก (Main Floating Cages)</span>
-                  <span class="text-[10px] bg-sky-700/80 text-sky-200 px-2 py-0.5 rounded font-mono">22 กระชัง</span>
-                </div>
-                <div class="flex items-center gap-2 text-[11px] text-sky-300">
-                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>แถวบน C1-C11 • แถวล่าง C12-C22</span>
-                </div>
+          <div class="bg-slate-900/75 border border-sky-600/50 rounded-3xl p-4 sm:p-5 backdrop-blur-md shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-sky-600/40 gap-2">
+              <div class="flex items-center gap-2.5 text-sky-100 font-extrabold text-sm sm:text-base">
+                <span class="text-xl">🌊</span>
+                <span>โซนกระชังลอยน้ำหลัก (Main Floating Cages)</span>
+                <span class="text-xs bg-sky-700/90 text-sky-100 px-2.5 py-0.5 rounded-full font-mono font-bold border border-sky-500/40">22 กระชัง</span>
               </div>
+              <div class="flex items-center gap-2 text-xs text-sky-300 font-medium">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>แถวบน C1 - C11 • แถวล่าง C12 - C22 (คลิกลากข้ามกระชังได้ทันที)</span>
+              </div>
+            </div>
 
-              <!-- Floating Pier Container with Horizontal Scroll for narrow screens -->
-              <div class="overflow-x-auto pb-2">
-                <div class="min-w-[760px] space-y-2.5">
-                  <!-- Row 1: C1 - C11 -->
-                  <div class="grid grid-cols-11 gap-2">
-                    ${mainCagesTop.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
-                  </div>
+            <!-- Floating Pier Container with Horizontal Scroll for narrow screens -->
+            <div class="overflow-x-auto pb-2 scrollbar-thin">
+              <div class="min-w-[1100px] space-y-3">
+                <!-- Row 1: C1 - C11 -->
+                <div class="grid grid-cols-11 gap-2.5">
+                  ${mainCagesTop.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
+                </div>
 
-                  <!-- Central Wooden Pier Walkway with Orange Ramp Arrow -->
-                  <div class="dock-walkway py-2 px-4 rounded-xl flex items-center justify-between shadow-inner bg-gradient-to-r from-amber-900/50 via-amber-800/40 to-amber-900/50 border-y-2 border-amber-600/40 my-1">
-                    <div class="flex items-center gap-2 text-amber-200 text-xs font-black tracking-wide">
-                      <i data-lucide="footprints" class="w-4 h-4 text-amber-400"></i>
-                      <span>สะพานไม้ทางเดินกลางแพ (Central Pier Walkway)</span>
-                    </div>
-                    
-                    <div class="dock-ramp-arrow animate-pulse-gentle">
-                      <span>ทางลงแพ ➔</span>
-                    </div>
+                <!-- Central Wooden Pier Walkway with Orange Ramp Arrow -->
+                <div class="dock-walkway py-2.5 px-5 rounded-xl flex items-center justify-between shadow-inner bg-gradient-to-r from-amber-950/70 via-amber-800/60 to-amber-950/70 border-y-2 border-amber-600/50 my-1">
+                  <div class="flex items-center gap-2.5 text-amber-200 text-xs sm:text-sm font-black tracking-wide">
+                    <i data-lucide="footprints" class="w-4 h-4 text-amber-400"></i>
+                    <span>สะพานไม้ทางเดินกลางแพ (Central Pier Walkway)</span>
                   </div>
+                  
+                  <div class="dock-ramp-arrow animate-pulse-gentle bg-amber-500/20 text-amber-300 border border-amber-400/40 px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
+                    <span>ทางลงแพ ➔</span>
+                  </div>
+                </div>
 
-                  <!-- Row 2: C12 - C22 -->
-                  <div class="grid grid-cols-11 gap-2">
-                    ${mainCagesBottom.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
-                  </div>
+                <!-- Row 2: C12 - C22 -->
+                <div class="grid grid-cols-11 gap-2.5">
+                  ${mainCagesBottom.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
                 </div>
               </div>
             </div>
           </div>
         ` : ''}
 
-        <!-- ============================================== -->
-        <!-- ZONE 3 & 4: โซนอ่างกลมเล็ก (5) & โซนอ่างใหญ่ (16) -->
-        <!-- ============================================== -->
-        ${(showSmall || showLarge) ? `
-          <div class="${showSterile && showMain ? 'lg:col-span-3' : 'lg:col-span-12'} space-y-4">
-            <!-- Zone 3: Small Nursery Tanks -->
-            ${showSmall ? `
-              <div class="bg-slate-900/60 border border-teal-600/40 rounded-2xl p-3 sm:p-4 backdrop-blur-xs">
-                <div class="flex items-center justify-between pb-2 mb-3 border-b border-teal-500/30">
-                  <div class="flex items-center gap-1.5 text-teal-200 font-extrabold text-xs">
-                    <span>🔵 โซนอ่างกลมเล็ก (S1 - S5)</span>
-                    <span class="text-[10px] bg-teal-800/90 text-teal-200 px-1.5 py-0.2 rounded font-mono">5 อ่าง</span>
-                  </div>
-                  <span class="text-[10px] text-teal-300">อนุบาลปลาเล็ก</span>
-                </div>
-                <div class="grid grid-cols-5 gap-1.5">
-                  ${smallTanks.map(pond => renderBlueprintUnitCard(pond, filter, true)).join('')}
-                </div>
+        <!-- โซนที่ 2: โซนแพปลาหมัน (Sterile / Broodstock Cages) 5 กระชัง -->
+        ${showSterile ? `
+          <div class="bg-slate-900/75 border border-amber-600/50 rounded-3xl p-4 sm:p-5 backdrop-blur-md shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-amber-600/40 gap-2">
+              <div class="flex items-center gap-2.5 text-amber-100 font-extrabold text-sm sm:text-base">
+                <span class="text-xl">🛡️</span>
+                <span>โซนแพปลาหมัน (Sterile / Broodstock Cages)</span>
+                <span class="text-xs bg-amber-800/90 text-amber-100 px-2.5 py-0.5 rounded-full font-mono font-bold border border-amber-500/40">5 ช่องกระชัง (M1 - M5)</span>
               </div>
-            ` : ''}
+              <span class="text-xs text-amber-300 font-medium">โซนพักฟื้น / บำรุงสายพันธุ์ปลาหมันและพ่อแม่พันธุ์</span>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+              ${sterileCages.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
+            </div>
+          </div>
+        ` : ''}
 
-            <!-- Zone 4: Large Concrete Tanks -->
-            ${showLarge ? `
-              <div class="bg-slate-900/60 border border-sky-700/40 rounded-2xl p-3 sm:p-4 backdrop-blur-xs">
-                <div class="flex items-center justify-between pb-2 mb-3 border-b border-sky-600/30">
-                  <div class="flex items-center gap-1.5 text-sky-200 font-extrabold text-xs">
-                    <span>🧱 โซนอ่างใหญ่ (B1 - B16)</span>
-                    <span class="text-[10px] bg-sky-800/90 text-sky-200 px-1.5 py-0.2 rounded font-mono">16 อ่าง</span>
-                  </div>
-                  <span class="text-[10px] text-sky-400">2 แถว x 8 อ่าง</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2 max-h-[480px] overflow-y-auto pr-1">
-                  ${largeTanks.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
-                </div>
+        <!-- โซนที่ 3: โซนอ่างสูง (Small Nursery Tanks S1 - S5) -->
+        ${showSmall ? `
+          <div class="bg-slate-900/75 border border-teal-600/50 rounded-3xl p-4 sm:p-5 backdrop-blur-md shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-teal-500/40 gap-2">
+              <div class="flex items-center gap-2.5 text-teal-100 font-extrabold text-sm sm:text-base">
+                <span class="text-xl">🔵</span>
+                <span>โซนอ่างสูง / อ่างกลมเล็ก (Small Nursery Tanks S1 - S5)</span>
+                <span class="text-xs bg-teal-800/90 text-teal-100 px-2.5 py-0.5 rounded-full font-mono font-bold border border-teal-500/40">5 อ่างกลม</span>
               </div>
-            ` : ''}
+              <span class="text-xs text-teal-300 font-medium">อนุบาลลูกปลาวัยอ่อน / ควบคุมอุณหภูมิและคุณภาพน้ำ</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+              ${smallTanks.map(pond => renderBlueprintUnitCard(pond, filter, true)).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- โซนที่ 4: โซนอ่างเตี้ย (Large Concrete Tanks B1 - B16) -->
+        ${showLarge ? `
+          <div class="bg-slate-900/75 border border-sky-700/50 rounded-3xl p-4 sm:p-5 backdrop-blur-md shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-sky-600/40 gap-2">
+              <div class="flex items-center gap-2.5 text-sky-100 font-extrabold text-sm sm:text-base">
+                <span class="text-xl">🧱</span>
+                <span>โซนอ่างเตี้ย / อ่างซีเมนต์ใหญ่ (Large Concrete Tanks B1 - B16)</span>
+                <span class="text-xs bg-sky-800/90 text-sky-100 px-2.5 py-0.5 rounded-full font-mono font-bold border border-sky-500/40">16 อ่างซีเมนต์</span>
+              </div>
+              <span class="text-xs text-sky-300 font-medium">จัดเรียง 2 แถว x 8 อ่าง (B1 - B16) สต็อกขนาดกลาง-ใหญ่</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+              ${largeTanks.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
+            </div>
           </div>
         ` : ''}
 
@@ -612,37 +601,35 @@ function renderBlueprintUnitCard(pond, filter = 'all', isRound = false) {
 
   // Apply quick filter highlighting
   if (filter === 'has_fish' && isEmpty) {
-    return `<div class="opacity-25 pointer-events-none rounded-xl border border-slate-700 bg-slate-900/40 p-2 text-center text-[10px] text-slate-500">${pond.name} (ว่าง)</div>`;
+    return `<div class="opacity-25 pointer-events-none rounded-2xl border border-slate-700 bg-slate-900/40 p-3 text-center text-xs text-slate-500">${pond.name} (ว่าง)</div>`;
   }
   if (filter === 'empty' && hasFish) {
-    return `<div class="opacity-25 pointer-events-none rounded-xl border border-slate-700 bg-slate-900/40 p-2 text-center text-[10px] text-slate-500">${pond.name}</div>`;
+    return `<div class="opacity-25 pointer-events-none rounded-2xl border border-slate-700 bg-slate-900/40 p-3 text-center text-xs text-slate-500">${pond.name}</div>`;
   }
 
-  // Formula calculation requested specifically by user (e.g. 5000 *0.65)
-  const formula = hasFish ? `${Number(pond.totalQty || 0).toLocaleString()} *${Number(pond.unitPrice || 0).toFixed(2)}` : '-';
   const totalVal = hasFish ? Math.round((pond.totalQty || 0) * (pond.unitPrice || 0)) : 0;
 
   // Visual appearance
-  let borderClass = 'border-slate-300';
+  let borderClass = 'border-slate-200';
   let bgClass = 'bg-white text-slate-800';
   let statusBadge = '';
 
   if (isEmpty) {
     borderClass = 'border-dashed border-slate-400/60 hover:border-sky-400';
-    bgClass = 'bg-slate-800/40 text-slate-400 hover:bg-slate-800/80';
-    statusBadge = '<span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-700/80 text-slate-300">ว่าง</span>';
+    bgClass = 'bg-slate-800/50 text-slate-400 hover:bg-slate-800/80';
+    statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700/80 text-slate-300">ว่าง</span>';
   } else if (isReady) {
-    borderClass = 'border-emerald-400 hover:border-emerald-500 shadow-sm';
-    bgClass = 'bg-white text-slate-900';
-    statusBadge = '<span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>พร้อมขาย</span>';
+    borderClass = 'border-emerald-400 hover:border-emerald-500 hover:shadow-md';
+    bgClass = 'bg-white text-slate-900 shadow-xs';
+    statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>พร้อมขาย</span>';
   } else if (isGrowing) {
-    borderClass = 'border-sky-300 hover:border-sky-500 shadow-sm';
-    bgClass = 'bg-white text-slate-900';
-    statusBadge = '<span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-sky-100 text-sky-800">อนุบาล</span>';
+    borderClass = 'border-sky-300 hover:border-sky-500 hover:shadow-md';
+    bgClass = 'bg-white text-slate-900 shadow-xs';
+    statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-100 text-sky-800">อนุบาล</span>';
   } else {
-    borderClass = 'border-amber-300 hover:border-amber-500';
-    bgClass = 'bg-amber-50/90 text-slate-900';
-    statusBadge = '<span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800">พักบ่อ</span>';
+    borderClass = 'border-amber-300 hover:border-amber-500 hover:shadow-md';
+    bgClass = 'bg-amber-50/90 text-slate-900 shadow-xs';
+    statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800">พักบ่อ</span>';
   }
 
   const fishIcon = (pond.fishName || '').includes('ดุก') ? '🐡' : ((pond.fishName || '').includes('ทับทิม') ? '🐠' : '🐟');
@@ -655,50 +642,56 @@ function renderBlueprintUnitCard(pond, filter = 'all', isRound = false) {
          ondragleave="handlePondDragLeave(event)"
          ondrop="handlePondDrop(event, '${pond.id}')"
          onclick="handlePondClick('${pond.id}')"
-         class="unit-cell relative rounded-xl border ${borderClass} ${bgClass} p-2 transition-all duration-200 cursor-pointer select-none flex flex-col justify-between shadow-2xs hover:scale-[1.03] group ${isRound ? 'aspect-square justify-center' : 'min-h-[105px]'}"
+         class="unit-cell relative rounded-2xl border ${borderClass} ${bgClass} p-3 transition-all duration-200 cursor-pointer select-none flex flex-col justify-between hover:scale-[1.02] group ${isRound ? 'border-2 border-teal-400/80 rounded-3xl' : ''}"
          title="${pond.name}: คลิกดูข้อมูล/ขาย POS / ลากเพื่อย้ายปลา">
       
-      <!-- Top Code & Status -->
-      <div class="flex items-center justify-between gap-1 mb-1">
-        <div class="flex items-center gap-1 truncate">
-          <span class="font-black text-xs truncate">${pond.name}</span>
-        </div>
+      <!-- Card Header: Pond Code & Status -->
+      <div class="flex items-center justify-between gap-1.5 mb-1.5">
+        <span class="font-black text-xs sm:text-sm text-slate-800 tracking-tight">${pond.name}</span>
         ${statusBadge}
       </div>
 
-      <!-- Fish Details -->
+      <!-- Fish Details Body -->
       ${hasFish ? `
-        <div class="space-y-0.5">
-          <div class="flex items-center gap-1 font-bold text-xs truncate">
-            <span class="text-xs flex-shrink-0">${fishIcon}</span>
-            <span class="truncate">${pond.fishName || 'พันธุ์ปลา'}</span>
+        <div class="space-y-1.5 my-auto">
+          <!-- Fish Species Name with Icon -->
+          <div class="flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-900 leading-tight">
+            <span class="text-sm sm:text-base flex-shrink-0">${fishIcon}</span>
+            <span class="truncate" title="${pond.fishName}">${pond.fishName || 'พันธุ์ปลา'}</span>
           </div>
 
-          <div class="flex items-center justify-between text-[10px] gap-1">
-            <span class="px-1 py-0.2 rounded bg-sky-50 text-sky-700 border border-sky-200 font-bold whitespace-nowrap">
+          <!-- Size & Mesh Sieve Code -->
+          <div class="flex items-center gap-1.5 text-[11px] text-slate-600 flex-wrap">
+            <span class="px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-200 font-bold whitespace-nowrap">
               ${pond.fishSize || '-'}
             </span>
-            ${pond.sieveCode ? `<span class="text-slate-500 font-medium">ตา: <strong class="text-slate-700">${pond.sieveCode}</strong></span>` : ''}
+            ${pond.sieveCode ? `<span class="text-slate-500 font-medium text-[10px]">ตา: <strong class="text-slate-700">${pond.sieveCode}</strong></span>` : ''}
           </div>
 
-          <!-- Formula Display: 5000 *0.65 = 3250 -->
-          <div class="mt-1 bg-amber-50/90 border border-amber-200/90 rounded px-1.5 py-0.5 flex items-center justify-between text-[10px]">
-            <span class="font-mono font-black text-amber-950">${formula}</span>
-            <span class="font-bold text-emerald-700">฿${totalVal.toLocaleString()}</span>
+          <!-- Large Fish Quantity Number -->
+          <div class="pt-0.5 flex items-baseline gap-1">
+            <span class="text-base sm:text-lg font-black text-sky-950">${Number(pond.totalQty || 0).toLocaleString()}</span>
+            <span class="text-xs text-slate-500 font-semibold">ตัว</span>
+          </div>
+
+          <!-- Neat Formula & Estimated Value Bar -->
+          <div class="bg-amber-50/90 border border-amber-200/90 rounded-lg px-2 py-1 flex items-center justify-between text-[11px] mt-1 shadow-2xs">
+            <span class="font-mono text-slate-600 text-[10px] sm:text-[11px]">@฿${Number(pond.unitPrice || 0).toFixed(2)}</span>
+            <span class="font-bold text-emerald-700 font-mono">฿${totalVal.toLocaleString()}</span>
           </div>
         </div>
       ` : `
-        <div class="py-2 text-center text-slate-400 flex flex-col items-center justify-center">
-          <i data-lucide="waves" class="w-4 h-4 mb-0.5 opacity-40"></i>
-          <span class="text-[10px] font-semibold">บ่อว่าง</span>
-          <span class="text-[8px] opacity-70">คลิกลากปลามาวาง</span>
+        <div class="py-4 text-center text-slate-400 flex flex-col items-center justify-center my-auto">
+          <i data-lucide="waves" class="w-6 h-6 mb-1 opacity-40"></i>
+          <span class="text-xs font-bold text-slate-400">บ่อว่าง</span>
+          <span class="text-[10px] text-slate-400">พร้อมปล่อยปลา</span>
         </div>
       `}
 
-      <!-- Footer Micro Bar -->
-      <div class="mt-1 pt-1 border-t border-slate-100/50 flex items-center justify-between text-[9px] text-slate-400">
-        <span class="truncate">${pond.code || ''}</span>
-        ${hasFish ? `<span class="opacity-0 group-hover:opacity-100 transition text-sky-600 font-bold">✋ ลากย้าย</span>` : `<span class="opacity-0 group-hover:opacity-100 transition text-emerald-600 font-bold">📥 วางปลา</span>`}
+      <!-- Footer Micro Action Bar -->
+      <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+        <span class="font-mono text-[9px] text-slate-400">${pond.code || pond.id}</span>
+        ${hasFish ? `<span class="text-sky-600 font-bold flex items-center gap-0.5"><span>ลากย้าย</span> ➔</span>` : `<span class="text-emerald-600 font-bold">ว่าง</span>`}
       </div>
     </div>
   `;
