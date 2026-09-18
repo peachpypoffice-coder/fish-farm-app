@@ -47,7 +47,8 @@ const FARM_MODULES = [
       { id: 'inventory-ponds', label: 'ผังบ่อเลี้ยง & คัดขนาด', icon: 'scale', subtabParam: 'ponds' },
       { id: 'inventory-supplies', label: 'คลังอาหาร & พัสดุ', icon: 'package', subtabParam: 'supplies' },
       { id: 'inventory-grn', label: 'ใบรับสินค้า (GRN)', icon: 'file-check', subtabParam: 'inbound_grn' },
-      { id: 'inventory-history', label: 'ประวัติการคัดและสูญเสีย', icon: 'history', subtabParam: 'history' }
+      { id: 'inventory-history', label: 'ประวัติการคัดและสูญเสีย', icon: 'history', subtabParam: 'history' },
+      { id: 'inventory-mortality', label: 'ปลาตาย/หาย', icon: 'skull', subtabParam: 'mortality' }
     ],
     rolesAllowed: ['CEO', 'Manager', 'Sales', 'QC', 'Accountant']
   },
