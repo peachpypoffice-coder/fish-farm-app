@@ -315,6 +315,26 @@ function renderInventoryView() {
 }
 
 // 3.1 GRADING DUE ALERT BANNER
+function toggleGradingAlertData(hide) {
+  localStorage.setItem('hide_grading_alert_data', hide ? 'true' : 'false');
+  const details = document.getElementById('grading-due-details-section');
+  const icon = document.getElementById('chk-hide-grading-icon');
+  const chk = document.getElementById('chk-hide-grading-alert');
+  if (chk) chk.checked = hide;
+  if (details) {
+    if (hide) {
+      details.classList.add('hidden');
+    } else {
+      details.classList.remove('hidden');
+    }
+  }
+  if (icon) {
+    icon.setAttribute('data-lucide', hide ? 'eye' : 'eye-off');
+    if (window.lucide) lucide.createIcons();
+  }
+}
+window.toggleGradingAlertData = toggleGradingAlertData;
+
 function renderGradingDueBanner() {
   const container = document.getElementById('grading-due-banner-container');
   if (!container) return;
@@ -326,12 +346,14 @@ function renderGradingDueBanner() {
     return;
   }
 
+  const isAlertHidden = localStorage.getItem('hide_grading_alert_data') === 'true';
+
   container.classList.remove('hidden');
   container.innerHTML = `
     <div class="bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-orange-500/10 border-2 border-amber-400 rounded-2xl p-4 shadow-sm animate-in fade-in duration-300">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div class="flex items-start gap-3">
-          <div class="p-2.5 bg-amber-500 text-white rounded-xl shadow-xs flex-shrink-0 mt-0.5">
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 bg-amber-500 text-white rounded-xl shadow-xs flex-shrink-0">
             <i data-lucide="scale" class="w-5 h-5"></i>
           </div>
           <div>
@@ -339,30 +361,46 @@ function renderGradingDueBanner() {
               <h4 class="font-bold text-slate-800 text-sm sm:text-base">แจ้งเตือนรอบคัดขนาดปลา (Grading Due Alert)</h4>
               <span class="bg-amber-500 text-white text-[11px] font-black px-2 py-0.5 rounded-full">${duePonds.length} บ่อเกินกำหนด</span>
             </div>
-            <p class="text-xs text-slate-600 mt-1">
-              พบบ่อปลาที่ไม่ได้คัดขนาดเกิน 7-10 วัน ควรรีบทำการคัดแยกไซส์เพื่อควบคุมการเจริญเติบโตและป้องกันการกินกันเอง:
-            </p>
-            <div class="flex flex-wrap gap-2 mt-2">
-              ${duePonds.map(p => {
-                const days = getDaysSinceGraded(p.lastGradedDate);
-                return `
-                  <button onclick="openGradeFishModal('${p.id}')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100/80 border border-amber-300 text-amber-900 text-xs font-bold transition shadow-2xs">
-                    <span>${p.name} (${p.fishName || 'ปลา'})</span>
-                    <span class="text-rose-600 font-extrabold">• ${days} วัน</span>
-                    <i data-lucide="arrow-right" class="w-3 h-3 text-amber-700"></i>
-                  </button>
-                `;
-              }).join('')}
-            </div>
           </div>
         </div>
-        <button onclick="openGradeFishModal('${duePonds[0].id}')" class="btn-large bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-3 text-xs sm:text-sm rounded-xl shadow-sm whitespace-nowrap self-stretch sm:self-auto flex items-center justify-center gap-1.5">
-          <i data-lucide="scale" class="w-4 h-4"></i>
-          <span>บันทึกการคัดขนาดด่วน</span>
-        </button>
+
+        <!-- Action & Hide Data Toggle Controls -->
+        <div class="flex items-center gap-2 self-stretch sm:self-auto justify-end flex-wrap">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none bg-white hover:bg-amber-50/80 border border-amber-300 text-amber-950 px-3 py-2 rounded-xl shadow-2xs transition">
+            <input type="checkbox" id="chk-hide-grading-alert" ${isAlertHidden ? 'checked' : ''} onchange="toggleGradingAlertData(this.checked)" class="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-amber-400 cursor-pointer">
+            <span class="text-xs font-bold flex items-center gap-1.5">
+              <i id="chk-hide-grading-icon" data-lucide="${isAlertHidden ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5 text-amber-700"></i>
+              <span>ซ่อนข้อมูล</span>
+            </span>
+          </label>
+          <button onclick="openGradeFishModal('${duePonds[0].id}')" class="btn-large bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-3 text-xs sm:text-sm rounded-xl shadow-sm whitespace-nowrap flex items-center justify-center gap-1.5">
+            <i data-lucide="scale" class="w-4 h-4"></i>
+            <span>บันทึกการคัดขนาดด่วน</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Collapsible Data Details -->
+      <div id="grading-due-details-section" class="${isAlertHidden ? 'hidden' : ''} mt-3 pt-3 border-t border-amber-300/60">
+        <p class="text-xs text-slate-600 mb-2">
+          พบบ่อปลาที่ไม่ได้คัดขนาดเกิน 7-10 วัน ควรรีบทำการคัดแยกไซส์เพื่อควบคุมการเจริญเติบโตและป้องกันการกินกันเอง:
+        </p>
+        <div class="flex flex-wrap gap-2">
+          ${duePonds.map(p => {
+            const days = getDaysSinceGraded(p.lastGradedDate);
+            return `
+              <button onclick="openGradeFishModal('${p.id}')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100/80 border border-amber-300 text-amber-900 text-xs font-bold transition shadow-2xs">
+                <span>${p.name} (${p.fishName || 'ปลา'})</span>
+                <span class="text-rose-600 font-extrabold">• ${days} วัน</span>
+                <i data-lucide="arrow-right" class="w-3 h-3 text-amber-700"></i>
+              </button>
+            `;
+          }).join('')}
+        </div>
       </div>
     </div>
   `;
+  if (window.lucide) lucide.createIcons();
 }
 
 // 3.1.1 RENDER VISUAL FARM BLUEPRINT (ผังสต็อกเสมือนจริง 48 หน่วย)
@@ -1351,11 +1389,10 @@ function openGradeFishModal(pondId = null) {
     `).join('');
   }
 
-  const sieveSelect = document.getElementById('grade-sieve-select');
-  if (sieveSelect && typeof STANDARD_SIEVE_GRADES !== 'undefined') {
-    sieveSelect.innerHTML = STANDARD_SIEVE_GRADES.map(s => `
-      <option value="${s.name}">${s.name} - ${s.sizeRange} (${s.desc})</option>
-    `).join('');
+  const sieveInput = document.getElementById('grade-sieve-input') || document.getElementById('grade-sieve-select');
+  if (sieveInput) {
+    const pond = (state.ponds || []).find(p => p.id === pondId);
+    sieveInput.value = pond && pond.sieveCode ? pond.sieveCode : '';
   }
 
   document.getElementById('grade-date-input').value = getTodayString();
@@ -1510,7 +1547,7 @@ function handleSaveGrading(e) {
   if (!sourcePond) return;
 
   const gradingDate = document.getElementById('grade-date-input').value || getTodayString();
-  const sieveUsed = document.getElementById('grade-sieve-select').value;
+  const sieveUsed = (document.getElementById('grade-sieve-input')?.value || document.getElementById('grade-sieve-select')?.value || '').trim();
   const mortalityQty = Number(document.getElementById('grade-mortality-input').value) || 0;
   const notes = document.getElementById('grade-notes-input').value.trim();
 

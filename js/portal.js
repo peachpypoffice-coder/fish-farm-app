@@ -1060,20 +1060,9 @@ function renderModuleQuickActions(mod) {
     container.innerHTML = '';
     return;
   } else if (mod.id === 'inventory') {
-    container.innerHTML = `
-      <div class="flex items-center gap-1.5 flex-wrap">
-        <button onclick="openGradeFishModal()" class="btn-large bg-amber-500 hover:bg-amber-600 text-white py-2 px-3 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5">
-          <i data-lucide="scale" class="w-4 h-4"></i>
-          <span class="hidden sm:inline">คัดขนาดปลา</span>
-          <span class="sm:hidden">คัดขนาด</span>
-        </button>
-        <button onclick="openInboundGrnModal()" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5">
-          <i data-lucide="package-plus" class="w-4 h-4"></i>
-          <span class="hidden sm:inline">รับเข้าสินค้า (GRN)</span>
-          <span class="sm:hidden">รับเข้า GRN</span>
-        </button>
-      </div>
-    `;
+    // ตัดปุ่มด่วนด้านบนออกตามที่ผู้ใช้ร้องขอ เนื่องจากมีปุ่มจัดการสต็อกและคัดขนาดในแถบหัวตารางอยู่แล้ว
+    container.innerHTML = '';
+    return;
   } else if (mod.id === 'pos') {
     container.innerHTML = `
       <button onclick="openPosNewBill()" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 text-xs sm:text-sm font-bold rounded-xl shadow-xs flex items-center gap-1.5">
