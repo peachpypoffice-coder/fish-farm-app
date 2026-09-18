@@ -307,4 +307,35 @@ input, select, textarea {
   background: #747781;
 }
 
+/* ====================================================================
+   DAILY DISPATCH QUEUE: ขยายขนาดฟอนต์ในการ์ดออเดอร์เพิ่มขึ้น 2px
+   ==================================================================== */
+.daily-order-card {
+  font-size: 15px;
+}
+.daily-order-card .text-\[10px\] {
+  font-size: 12px !important;
+  line-height: 1.25rem !important;
+}
+.daily-order-card .text-\[11px\] {
+  font-size: 13px !important;
+  line-height: 1.25rem !important;
+}
+.daily-order-card .text-xs {
+  font-size: 14px !important;
+  line-height: 1.25rem !important;
+}
+.daily-order-card .text-sm {
+  font-size: 16px !important;
+  line-height: 1.5rem !important;
+}
+.daily-order-card .text-base {
+  font-size: 18px !important;
+  line-height: 1.75rem !important;
+}
+.daily-order-card .text-lg {
+  font-size: 20px !important;
+  line-height: 1.75rem !important;
+}
+
 

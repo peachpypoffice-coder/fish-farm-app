@@ -1092,7 +1092,7 @@ function renderDailyQueue() {
     const isPartiallyDelivered = order.status === 'partially_delivered';
 
     html += `
-      <div class="farm-card p-4 sm:p-5 border-l-4 ${order.status === 'cancelled' ? 'border-l-rose-400 opacity-60' : order.status === 'problem' ? 'border-l-red-500' : isPickup ? 'border-l-amber-500' : 'border-l-sky-500'} space-y-3.5">
+      <div class="farm-card daily-order-card p-4 sm:p-5 border-l-4 ${order.status === 'cancelled' ? 'border-l-rose-400 opacity-60' : order.status === 'problem' ? 'border-l-red-500' : isPickup ? 'border-l-amber-500' : 'border-l-sky-500'} space-y-3.5">
         
         <!-- Header of Order -->
         <div class="flex items-start justify-between gap-2 pb-3 border-b border-slate-100">
