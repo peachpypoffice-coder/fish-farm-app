@@ -2502,11 +2502,45 @@
             </div>
             <div>
               <label class="block text-xs text-slate-600 mb-1">ช่องทางชำระ:</label>
-              <select id="update-collected-method" class="input-large w-full bg-white">
+              <select id="update-collected-method" onchange="onUpdateCollectedMethodChange(this.value)" class="input-large w-full bg-white font-semibold">
                 <option value="เงินสด">💵 เงินสด</option>
                 <option value="โอนเงิน">📱 สแกน QR / โอนเงิน</option>
+                <option value="เงินสด+โอน">💵+📲 เงินสด+โอน</option>
                 <option value="ค้างจ่าย">⚠️ ค้างจ่าย</option>
               </select>
+            </div>
+          </div>
+
+          <!-- ช่องใส่จำนวนเงิน 2 ช่อง (เมื่อเลือก เงินสด+โอน) -->
+          <div id="update-split-payment-container" class="hidden bg-emerald-50/80 border border-emerald-300 rounded-xl p-3.5 space-y-2.5 transition-all">
+            <div class="flex items-center justify-between text-xs font-bold text-emerald-950">
+              <span class="flex items-center gap-1.5">
+                <span>💵+📲</span>
+                <span>ระบุยอดเงินแยก 2 ช่องทาง:</span>
+              </span>
+              <span id="update-split-total-badge" class="text-[11px] bg-emerald-200 text-emerald-950 font-black px-2.5 py-0.5 rounded-full">
+                รวม: ฿0.00
+              </span>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-xs font-bold text-emerald-900 mb-1">
+                  1. ช่องเงินสด (บาท):
+                </label>
+                <input type="number" id="update-cash-split-amount" oninput="onSplitAmountInputChange('cash')" placeholder="0.00" min="0" step="any" class="input-large w-full font-bold text-emerald-700 bg-white border-emerald-300 focus:ring-emerald-500">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-sky-900 mb-1">
+                  2. ช่องโอน (บาท):
+                </label>
+                <input type="number" id="update-transfer-split-amount" oninput="onSplitAmountInputChange('transfer')" placeholder="0.00" min="0" step="any" class="input-large w-full font-bold text-sky-700 bg-white border-sky-300 focus:ring-sky-500">
+              </div>
+            </div>
+
+            <div class="text-[11px] text-slate-600 flex items-center justify-between pt-1 border-t border-emerald-200/60">
+              <span>ยอดคงเหลือที่ต้องเก็บ: <strong id="update-split-target-text" class="text-slate-900 font-bold">฿0.00</strong></span>
+              <span id="update-split-status-hint" class="font-bold text-emerald-700"></span>
             </div>
           </div>
 

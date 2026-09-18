@@ -1356,9 +1356,12 @@ function renderPaymentMethodButtonHtml(order) {
 
   // เมื่อเลือกแล้ว: ไม่สามารถเปลี่ยนแปลงได้ (แสดงสถานะล็อค)
   if (isLocked) {
+    const splitDetail = (method === 'เงินสด+โอน' && (order.cashSplitAmount || order.transferSplitAmount))
+      ? ` (เงินสด ${formatMoney(order.cashSplitAmount || 0)} + โอน ${formatMoney(order.transferSplitAmount || 0)})`
+      : '';
     return `
       <div class="relative inline-block text-left">
-        <div title="บันทึกการชำระเงินเรียบร้อยแล้ว (${btnConfig.label}) - ล็อคไม่สามารถแก้ไขได้" 
+        <div title="บันทึกการชำระเงินเรียบร้อยแล้ว: ${btnConfig.label}${splitDetail} - ล็อคไม่สามารถแก้ไขได้" 
           class="btn-large ${btnConfig.classes} py-2 px-2.5 sm:px-3 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-default opacity-95 select-none">
           <span>${btnConfig.icon}</span>
           <span>${btnConfig.label}</span>
@@ -2489,6 +2492,95 @@ function selectBackorderPayOption(mode) {
   }
 }
 
+// --------------------------------------------------------------------
+// ระบบรับชำระเงินแยก 2 ช่องทาง: เงินสด + โอน (Split Payment)
+// --------------------------------------------------------------------
+function onUpdateCollectedMethodChange(method, orderRef = null) {
+  const container = document.getElementById('update-split-payment-container');
+  const collectedAmtInput = document.getElementById('update-collected-amount');
+  const cashInput = document.getElementById('update-cash-split-amount');
+  const transferInput = document.getElementById('update-transfer-split-amount');
+  const targetText = document.getElementById('update-split-target-text');
+
+  const order = orderRef || state.orders.find(o => o.id === currentUpdateOrderId);
+  const targetDue = order ? Number(order.remainingBalance || 0) : 0;
+
+  if (targetText) targetText.textContent = formatMoney(targetDue);
+
+  if (method === 'เงินสด+โอน') {
+    if (container) container.classList.remove('hidden');
+    if (collectedAmtInput) collectedAmtInput.readOnly = true;
+
+    // ถ้าเคยมีบันทึกยอดแยกไว้ ให้ดึงค่ามาใส่
+    if (order && (order.cashSplitAmount !== undefined || order.transferSplitAmount !== undefined)) {
+      if (cashInput) cashInput.value = order.cashSplitAmount || 0;
+      if (transferInput) transferInput.value = order.transferSplitAmount || 0;
+    } else {
+      if (cashInput && !cashInput.value) cashInput.value = '';
+      if (transferInput && !transferInput.value) transferInput.value = '';
+    }
+    onSplitAmountInputChange();
+  } else {
+    if (container) container.classList.add('hidden');
+    if (collectedAmtInput) collectedAmtInput.readOnly = false;
+    if (method === 'ค้างจ่าย') {
+      if (collectedAmtInput) collectedAmtInput.value = 0;
+    } else {
+      if (collectedAmtInput && (!collectedAmtInput.value || collectedAmtInput.value === '0')) {
+        collectedAmtInput.value = targetDue;
+      }
+    }
+  }
+}
+
+function onSplitAmountInputChange(changedField = null) {
+  const cashInput = document.getElementById('update-cash-split-amount');
+  const transferInput = document.getElementById('update-transfer-split-amount');
+  const collectedAmtInput = document.getElementById('update-collected-amount');
+  const badge = document.getElementById('update-split-total-badge');
+  const hint = document.getElementById('update-split-status-hint');
+
+  const order = state.orders.find(o => o.id === currentUpdateOrderId);
+  const targetDue = order ? Number(order.remainingBalance || 0) : 0;
+
+  let cash = parseFloat(cashInput?.value || 0);
+  let transfer = parseFloat(transferInput?.value || 0);
+
+  // อำนวยความสะดวก: ถ้าเพิ่งกรอกช่องแรกและอีกช่องยังว่าง คำนวณยอดที่เหลือให้อัตโนมัติ
+  if (changedField === 'cash' && targetDue > 0 && transferInput && transferInput.value === '') {
+    if (cash <= targetDue) {
+      transfer = Math.max(0, targetDue - cash);
+      transferInput.value = transfer;
+    }
+  } else if (changedField === 'transfer' && targetDue > 0 && cashInput && cashInput.value === '') {
+    if (transfer <= targetDue) {
+      cash = Math.max(0, targetDue - transfer);
+      cashInput.value = cash;
+    }
+  }
+
+  const total = cash + transfer;
+  if (collectedAmtInput) collectedAmtInput.value = total;
+  if (badge) badge.textContent = `รวม: ${formatMoney(total)}`;
+
+  if (hint) {
+    if (targetDue > 0) {
+      if (Math.abs(total - targetDue) < 0.01) {
+        hint.textContent = '✓ ครบตามยอดที่ต้องเก็บ';
+        hint.className = 'font-bold text-emerald-700';
+      } else if (total < targetDue) {
+        hint.textContent = `⚠️ ยังขาดอีก ${formatMoney(targetDue - total)}`;
+        hint.className = 'font-bold text-amber-700';
+      } else {
+        hint.textContent = `(เกินยอด ${formatMoney(total - targetDue)})`;
+        hint.className = 'font-bold text-sky-700';
+      }
+    } else {
+      hint.textContent = '';
+    }
+  }
+}
+
 function openDeliveryUpdateModal(orderId) {
   const order = state.orders.find(o => o.id === orderId);
   if (!order) return;
@@ -2501,7 +2593,27 @@ function openDeliveryUpdateModal(orderId) {
 
   document.getElementById('update-status-select').value = order.status;
   document.getElementById('update-collected-amount').value = order.remainingBalance;
-  document.getElementById('update-collected-method').value = order.paymentMethod === 'เงินสด' ? 'เงินสด' : 'โอนเงิน';
+
+  // กำหนดค่าวิธีชำระเงิน
+  const currentMethod = order.collectedMethod || order.paymentMethod;
+  const methodSelect = document.getElementById('update-collected-method');
+  if (methodSelect) {
+    if (currentMethod === 'เงินสด+โอน') {
+      methodSelect.value = 'เงินสด+โอน';
+    } else if (currentMethod === 'เงินสด') {
+      methodSelect.value = 'เงินสด';
+    } else if (currentMethod === 'โอน' || currentMethod === 'โอนเงิน') {
+      methodSelect.value = 'โอนเงิน';
+    } else if (currentMethod === 'ค้างจ่าย') {
+      methodSelect.value = 'ค้างจ่าย';
+    } else {
+      methodSelect.value = 'โอนเงิน';
+    }
+  }
+
+  // เรียกเปิด/ปิดช่องกรอกแยกตามวิธีที่เลือก
+  onUpdateCollectedMethodChange(methodSelect ? methodSelect.value : 'โอนเงิน', order);
+
   document.getElementById('update-notes-input').value = order.notes || '';
 
   // ตรวจสอบสิทธิ์: คนขับรถส่งของ (Driver) จะไม่เห็นและไม่สามารถแก้ไขส่วนค้างส่งได้
@@ -2705,19 +2817,45 @@ function saveDeliveryUpdate() {
   }
 
   order.status = newStatus;
-  order.actualCollected = collectedAmt;
-  order.collectedMethod = collectedMethod === 'โอนเงิน' ? 'โอน' : collectedMethod;
   order.notes = notes;
   if (slipImgSrc && slipImgSrc.startsWith('data:image')) {
     order.paymentProof = slipImgSrc;
   }
 
+  let finalCollected = collectedAmt;
+  if (collectedMethod === 'เงินสด+โอน') {
+    const cash = parseFloat(document.getElementById('update-cash-split-amount')?.value || 0);
+    const transfer = parseFloat(document.getElementById('update-transfer-split-amount')?.value || 0);
+    order.cashSplitAmount = cash;
+    order.transferSplitAmount = transfer;
+    finalCollected = cash + transfer;
+    order.actualCollected = finalCollected;
+    order.collectedMethod = 'เงินสด+โอน';
+    order.paymentMethod = 'เงินสด+โอน';
+    order.paymentLocked = true;
+  } else if (collectedMethod === 'โอนเงิน') {
+    order.actualCollected = collectedAmt;
+    order.collectedMethod = 'โอน';
+    order.paymentMethod = 'โอนเงิน';
+    order.paymentLocked = true;
+  } else if (collectedMethod === 'เงินสด') {
+    order.actualCollected = collectedAmt;
+    order.collectedMethod = 'เงินสด';
+    order.paymentMethod = 'เงินสด';
+    order.paymentLocked = true;
+  } else if (collectedMethod === 'ค้างจ่าย') {
+    finalCollected = 0;
+    order.actualCollected = 0;
+    order.collectedMethod = 'ค้างจ่าย';
+    order.paymentLocked = true;
+  }
+
   if (newStatus === 'partially_delivered') {
     order.backorderPayOption = currentBackorderPayMode;
     // ยอดคงเหลือยกไปเก็บรอบส่งมอบส่วนที่ค้าง
-    order.remainingBalance = Math.max(0, order.netTotal - (order.deposit || 0) - collectedAmt);
+    order.remainingBalance = Math.max(0, order.netTotal - (order.deposit || 0) - finalCollected);
   } else if (newStatus === 'delivered') {
-    order.remainingBalance = Math.max(0, order.remainingBalance - collectedAmt);
+    order.remainingBalance = Math.max(0, order.remainingBalance - finalCollected);
     // ตัดสต็อกจริงเมื่อส่งมอบสำเร็จ
     if (typeof deductStockForDeliveredOrder === 'function') {
       deductStockForDeliveredOrder(order);
@@ -2731,7 +2869,7 @@ function saveDeliveryUpdate() {
   if (order.remainingBalance <= 0) {
     order.remainingBalance = 0;
     order.paymentStatus = 'paid_full';
-  } else if ((order.deposit || 0) > 0 || collectedAmt > 0) {
+  } else if ((order.deposit || 0) > 0 || finalCollected > 0) {
     order.paymentStatus = 'deposit_paid';
   } else {
     order.paymentStatus = 'unpaid';
