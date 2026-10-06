@@ -778,7 +778,7 @@ function renderMonthlyCalendar() {
   for (let i = firstDay - 1; i >= 0; i--) {
     const dayNum = daysInPrevMonth - i;
     const cell = document.createElement('div');
-    cell.className = 'calendar-day-cell p-2 text-slate-300 bg-slate-50/60 select-none';
+    cell.className = 'calendar-day-cell p-2 text-slate-500 bg-[#0a182b]/60 select-none border-t border-slate-800';
     cell.innerHTML = `<span class="text-xs font-semibold">${dayNum}</span>`;
     grid.appendChild(cell);
   }
@@ -802,18 +802,18 @@ function renderMonthlyCalendar() {
     });
 
     const cell = document.createElement('div');
-    cell.className = `calendar-day-cell p-2 flex flex-col justify-between cursor-pointer border-t border-slate-100 ${
-      isSelected ? 'ring-2 ring-sky-500 bg-sky-50/50' : ''
-    } ${isToday ? 'bg-amber-50/40' : ''}`;
+    cell.className = `calendar-day-cell p-2 flex flex-col justify-between cursor-pointer border-t border-slate-800 bg-[#0c1f38] transition-colors ${
+      isSelected ? 'ring-2 ring-sky-400 bg-sky-500/20 shadow-md' : ''
+    } ${isToday && !isSelected ? 'bg-sky-500/10' : ''}`;
     cell.onclick = () => selectCalendarDate(dateKey);
 
     // Header of cell
     let headerHtml = `
       <div class="flex items-center justify-between">
         <span class="text-xs sm:text-sm font-bold ${
-          isToday ? 'bg-amber-500 text-white w-6 h-6 rounded-full flex items-center justify-center' : 'text-slate-700'
+          isToday ? 'bg-sky-500 text-white w-6 h-6 rounded-full flex items-center justify-center font-black shadow-xs' : 'text-white'
         }">${day}</span>
-        ${dayOrders.length > 0 ? `<span class="text-[10px] bg-slate-100 text-slate-700 font-bold px-1.5 rounded-full">${dayOrders.length}</span>` : ''}
+        ${dayOrders.length > 0 ? `<span class="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-bold px-1.5 rounded-full">${dayOrders.length}</span>` : ''}
       </div>
     `;
 
@@ -826,27 +826,27 @@ function renderMonthlyCalendar() {
 
       if (deliveryCount > 0) {
         badgesHtml += `
-          <div class="bg-sky-100 text-sky-800 text-[11px] font-semibold px-1.5 py-0.5 rounded truncate flex items-center gap-1">
+          <div class="bg-sky-500/25 text-sky-200 border border-sky-400/30 text-[11px] font-semibold px-1.5 py-0.5 rounded truncate flex items-center gap-1 shadow-xs">
             <span>🚚</span> <span>ส่ง ${deliveryCount} เจ้า</span>
           </div>
         `;
       }
       if (pickupCount > 0) {
         badgesHtml += `
-          <div class="bg-amber-100 text-amber-800 text-[11px] font-semibold px-1.5 py-0.5 rounded truncate flex items-center gap-1">
+          <div class="bg-amber-500/25 text-amber-200 border border-amber-400/30 text-[11px] font-semibold px-1.5 py-0.5 rounded truncate flex items-center gap-1 shadow-xs">
             <span>🏠</span> <span>รับเอง ${pickupCount} เจ้า</span>
           </div>
         `;
       }
       if (hasProblem) {
         badgesHtml += `
-          <div class="bg-red-100 text-red-700 text-[10px] font-bold px-1 rounded flex items-center gap-0.5">
+          <div class="bg-red-500/25 text-red-200 border border-red-400/30 text-[10px] font-bold px-1 rounded flex items-center gap-0.5 shadow-xs">
             <span>⚠️</span> <span>มีเคลม</span>
           </div>
         `;
       }
     } else {
-      badgesHtml += `<div class="text-[11px] text-slate-300 italic hidden sm:block">คิวว่าง</div>`;
+      badgesHtml += `<div class="text-[11px] text-slate-500/60 italic hidden sm:block">คิวว่าง</div>`;
     }
     badgesHtml += '</div>';
 
@@ -859,7 +859,7 @@ function renderMonthlyCalendar() {
   const trailingDays = (7 - (totalCells % 7)) % 7;
   for (let d = 1; d <= trailingDays; d++) {
     const cell = document.createElement('div');
-    cell.className = 'calendar-day-cell p-2 text-slate-300 bg-slate-50/60 select-none';
+    cell.className = 'calendar-day-cell p-2 text-slate-500 bg-[#0a182b]/60 select-none border-t border-slate-800';
     cell.innerHTML = `<span class="text-xs font-semibold">${d}</span>`;
     grid.appendChild(cell);
   }

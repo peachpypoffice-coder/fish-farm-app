@@ -114,7 +114,7 @@ body {
   transition: background-color 0.15s ease;
 }
 .calendar-day-cell:hover {
-  background-color: #f8fafc;
+  background-color: #132a4a;
 }
 @media (max-width: 640px) {
   .calendar-day-cell {
