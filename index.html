@@ -353,36 +353,37 @@
       <!-- ================================================================= -->
       <div class="grid grid-cols-12 gap-5 h-auto lg:h-[430px]">
         <!-- Fish Booking Calendar Section (8 cols) -->
-        <div class="col-span-12 lg:col-span-8 bg-surface-container-lowest rounded-2xl p-4 sm:p-5 border border-outline-variant/15 shadow-sm flex flex-col justify-between min-h-[380px] relative">
-          
+        <div class="col-span-12 lg:col-span-8 bg-gradient-to-br from-primary to-primary-container rounded-2xl p-4 sm:p-5 border border-slate-700/60 shadow-lg flex flex-col justify-between min-h-[380px] relative text-white overflow-hidden">
+          <div class="absolute -right-10 -top-10 w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
+
           <!-- Calendar Header: Title, Controls, Quick Jump -->
-          <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-100 shrink-0">
+          <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-700/60 shrink-0 relative z-10">
             <div class="flex items-center gap-2.5">
-              <div class="w-9 h-9 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center font-bold">
-                <span class="material-symbols-outlined text-xl text-sky-700">calendar_month</span>
+              <div class="w-9 h-9 rounded-xl bg-white/10 text-sky-300 flex items-center justify-center font-bold">
+                <span class="material-symbols-outlined text-xl text-sky-300">calendar_month</span>
               </div>
               <div>
                 <div class="flex items-center gap-2">
-                  <h3 class="font-extrabold text-sm sm:text-base text-slate-800" id="portal-cal-month-title">ปฏิทินการจองพันธุ์ปลา</h3>
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200" id="portal-cal-orders-badge">0 คิวจอง</span>
+                  <h3 class="font-extrabold text-sm sm:text-base text-white" id="portal-cal-month-title">ปฏิทินการจองพันธุ์ปลา</h3>
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30" id="portal-cal-orders-badge">0 คิวจอง</span>
                 </div>
-                <p class="text-[11px] text-slate-500">ตารางคิวงานจองปลาและวันส่งมอบประจำเดือน</p>
+                <p class="text-[11px] text-slate-300">ตารางคิวงานจองปลาและวันส่งมอบประจำเดือน</p>
               </div>
             </div>
 
             <div class="flex items-center gap-1.5 sm:gap-2">
-              <div class="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
-                <button onclick="navigatePortalCalendar(-1)" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-slate-700 transition" title="เดือนก่อนหน้า">
+              <div class="flex items-center bg-slate-800 p-0.5 rounded-xl border border-slate-700">
+                <button onclick="navigatePortalCalendar(-1)" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition" title="เดือนก่อนหน้า">
                   <span class="material-symbols-outlined text-sm">chevron_left</span>
                 </button>
-                <button onclick="resetPortalCalendarToday()" class="px-2 py-1 text-[11px] font-bold rounded-lg hover:bg-white text-slate-700 transition" title="กลับไปเดือนปัจจุบัน">
+                <button onclick="resetPortalCalendarToday()" class="px-2 py-1 text-[11px] font-bold rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition" title="กลับไปเดือนปัจจุบัน">
                   วันนี้
                 </button>
-                <button onclick="navigatePortalCalendar(1)" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-slate-700 transition" title="เดือนถัดไป">
+                <button onclick="navigatePortalCalendar(1)" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-300 hover:text-white transition" title="เดือนถัดไป">
                   <span class="material-symbols-outlined text-sm">chevron_right</span>
                 </button>
               </div>
-              <button onclick="openModule('booking')" class="hidden sm:flex items-center gap-1 bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl shadow-xs transition" title="เปิดหน้าคิวงานเต็มจอ">
+              <button onclick="openModule('booking')" class="hidden sm:flex items-center gap-1 bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl shadow-xs transition" title="เปิดหน้าคิวงานเต็มจอ">
                 <span>ดูคิวงานเต็มจอ</span>
                 <span class="material-symbols-outlined text-xs">arrow_forward</span>
               </button>
@@ -390,29 +391,29 @@
           </div>
 
           <!-- Weekday Headers (7 cols) -->
-          <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-500 py-1.5 border-b border-slate-100 shrink-0">
-            <span class="text-rose-500">อา.</span>
+          <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-300 py-1.5 border-b border-slate-700/60 shrink-0 relative z-10">
+            <span class="text-rose-400">อา.</span>
             <span>จ.</span>
             <span>อ.</span>
             <span>พ.</span>
             <span>พฤ.</span>
             <span>ศ.</span>
-            <span class="text-sky-600">ส.</span>
+            <span class="text-sky-400">ส.</span>
           </div>
 
           <!-- Calendar Days Grid -->
-          <div id="portal-cal-grid" class="grid grid-cols-7 gap-1 flex-1 py-1.5 content-start overflow-y-auto">
+          <div id="portal-cal-grid" class="grid grid-cols-7 gap-1 flex-1 py-1.5 content-start overflow-y-auto relative z-10">
             <!-- Dynamically generated by renderPortalBookingCalendar() in portal.js -->
           </div>
 
           <!-- Calendar Footer: Legend & Summary -->
-          <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-500 shrink-0 flex-wrap gap-2">
+          <div class="flex items-center justify-between pt-2 border-t border-slate-700/60 text-[11px] text-slate-300 shrink-0 flex-wrap gap-2 relative z-10">
             <div class="flex items-center gap-3 text-[11px]">
-              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-500"></span> 🚚 จัดส่ง</span>
-              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> 🏠 รับเอง</span>
-              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> วันนี้</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span> 🚚 จัดส่ง</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> 🏠 รับเอง</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> วันนี้</span>
             </div>
-            <div id="portal-cal-month-summary" class="font-bold text-slate-700">
+            <div id="portal-cal-month-summary" class="font-bold text-slate-200">
               รวมคิวงานทั้งเดือน 0 รายการ
             </div>
           </div>
@@ -428,7 +429,7 @@
         <!-- 2 Stat Cards (4 cols) -->
         <div class="col-span-12 lg:col-span-4 flex flex-col gap-4">
           <!-- Stat Card 1: Today Deliveries (Navy Gradient) -->
-          <div onclick="openModule('booking')" class="flex-1 bg-gradient-to-br from-primary to-primary-container p-5 rounded-2xl flex flex-col justify-between text-white relative overflow-hidden group cursor-pointer hover:shadow-lg transition">
+          <div onclick="openModule('booking')" class="flex-1 bg-gradient-to-br from-primary to-primary-container border border-slate-700/60 p-5 rounded-2xl flex flex-col justify-between text-white relative overflow-hidden group cursor-pointer hover:shadow-lg transition">
             <div class="absolute -right-4 -top-4 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-colors"></div>
             <div class="flex justify-between items-start">
               <div>
@@ -457,45 +458,46 @@
           </div>
 
           <!-- Stat Card 2: Farm Sales Revenue (Daily / Monthly) -->
-          <div class="flex-1 bg-surface-container-lowest border border-outline-variant/20 p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden hover:shadow-lg transition">
+          <div class="flex-1 bg-gradient-to-br from-primary to-primary-container border border-slate-700/60 p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden text-white hover:shadow-lg transition group">
+            <div class="absolute -right-4 -top-4 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover:bg-white/10 transition-colors pointer-events-none"></div>
             <!-- Header with Title and Daily/Monthly Toggle -->
-            <div class="flex justify-between items-start gap-2">
+            <div class="flex justify-between items-start gap-2 relative z-10">
               <div>
-                <p class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-sm text-emerald-600">payments</span>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-primary-fixed-dim opacity-90 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm text-emerald-400">payments</span>
                   <span>ยอดขายฟาร์ม</span>
                 </p>
                 <div class="flex items-baseline gap-1.5 mt-1">
-                  <h4 class="text-2xl sm:text-3xl font-black text-emerald-800" id="portal-sales-amount">฿0</h4>
-                  <span class="text-xs font-semibold text-slate-500" id="portal-sales-period-label">ยอดขายวันนี้</span>
+                  <h4 class="text-2xl sm:text-3xl font-black text-emerald-400" id="portal-sales-amount">฿0</h4>
+                  <span class="text-xs font-semibold text-slate-300" id="portal-sales-period-label">ยอดขายวันนี้</span>
                 </div>
               </div>
 
               <!-- Daily / Monthly Toggle Switch -->
-              <div class="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 shrink-0">
-                <button id="portal-btn-sales-daily" onclick="setPortalSalesMode('daily')" class="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-white text-emerald-800 shadow-xs transition">
+              <div class="flex items-center bg-slate-800 p-0.5 rounded-xl border border-slate-700 shrink-0">
+                <button id="portal-btn-sales-daily" onclick="setPortalSalesMode('daily')" class="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-emerald-500/25 text-emerald-300 border border-emerald-400/30 shadow-xs transition">
                   รายวัน
                 </button>
-                <button id="portal-btn-sales-monthly" onclick="setPortalSalesMode('monthly')" class="px-2.5 py-1 text-[10px] font-extrabold rounded-lg text-slate-500 hover:text-slate-800 transition">
+                <button id="portal-btn-sales-monthly" onclick="setPortalSalesMode('monthly')" class="px-2.5 py-1 text-[10px] font-extrabold rounded-lg text-slate-400 hover:text-slate-200 transition">
                   รายเดือน
                 </button>
               </div>
             </div>
 
             <!-- Secondary Context Line -->
-            <div class="my-2 flex items-center justify-between text-[11px] text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
-              <span id="portal-sales-secondary-label" class="text-slate-500 font-medium">ยอดสะสมเดือนนี้</span>
-              <span id="portal-sales-secondary-value" class="font-extrabold text-slate-800">฿0</span>
+            <div class="my-2 flex items-center justify-between text-[11px] text-slate-300 bg-slate-800/70 px-3 py-1.5 rounded-xl border border-slate-700/60 relative z-10">
+              <span id="portal-sales-secondary-label" class="text-slate-300 font-medium">ยอดสะสมเดือนนี้</span>
+              <span id="portal-sales-secondary-value" class="font-extrabold text-white">฿0</span>
             </div>
 
             <!-- Bottom Trend & Sparkline Chart -->
-            <div>
+            <div class="relative z-10">
               <div class="flex items-center justify-between text-xs mb-1">
-                <div class="flex items-center gap-1 font-bold text-emerald-700 text-[11px]" id="portal-sales-trend-badge">
+                <div class="flex items-center gap-1 font-bold text-emerald-400 text-[11px]" id="portal-sales-trend-badge">
                   <span class="material-symbols-outlined text-sm">trending_up</span>
                   <span id="portal-sales-trend-text">ยอดขายปกติ</span>
                 </div>
-                <button onclick="openModule('finance')" class="text-[10px] text-sky-600 hover:text-sky-800 font-bold flex items-center gap-0.5" title="ดูฝ่ายการเงินและบัญชี">
+                <button onclick="openModule('finance')" class="text-[10px] text-sky-400 hover:text-sky-300 font-bold flex items-center gap-0.5 transition" title="ดูฝ่ายการเงินและบัญชี">
                   <span>ฝ่ายการเงิน</span>
                   <span class="material-symbols-outlined text-xs">chevron_right</span>
                 </button>

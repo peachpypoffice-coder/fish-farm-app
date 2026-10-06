@@ -341,7 +341,7 @@ function renderPortalBookingCalendar() {
   for (let i = firstDay - 1; i >= 0; i--) {
     const dayNum = daysInPrevMonth - i;
     const cell = document.createElement('div');
-    cell.className = 'h-11 sm:h-12 p-1 rounded-xl bg-slate-50/50 text-slate-300 flex flex-col justify-start items-center text-[10px] select-none';
+    cell.className = 'h-11 sm:h-12 p-1 rounded-xl bg-slate-800/30 text-slate-500/70 flex flex-col justify-start items-center text-[10px] select-none';
     cell.innerHTML = `<span>${dayNum}</span>`;
     grid.appendChild(cell);
   }
@@ -367,12 +367,12 @@ function renderPortalBookingCalendar() {
     const hasProblem = dayOrders.some(o => o.status === 'problem');
 
     const cell = document.createElement('div');
-    cell.className = `min-h-[44px] sm:min-h-[48px] p-1 rounded-xl border flex flex-col justify-between cursor-pointer transition-all hover:scale-105 hover:shadow-sm ${
+    cell.className = `min-h-[44px] sm:min-h-[48px] p-1 rounded-xl border flex flex-col justify-between cursor-pointer transition-all hover:scale-105 hover:shadow-md ${
       isToday 
-        ? 'border-sky-400 bg-sky-50/80 shadow-xs ring-1 ring-sky-300' 
+        ? 'border-sky-400 bg-sky-500/25 shadow-sm ring-1 ring-sky-400/50' 
         : dayOrders.length > 0 
-          ? 'border-slate-200 bg-white hover:border-sky-300' 
-          : 'border-transparent bg-slate-50/50 hover:bg-white hover:border-slate-200'
+          ? 'border-slate-700/80 bg-slate-800/80 hover:border-sky-400 hover:bg-slate-800' 
+          : 'border-transparent bg-slate-800/40 hover:bg-slate-800/70 hover:border-slate-700/60'
     }`;
     cell.title = `วันที่ ${day}: มีงานจอง ${dayOrders.length} คิว (คลิกเพื่อดูรายละเอียด)`;
     cell.onclick = () => selectPortalCalendarDate(dateKey);
@@ -381,9 +381,9 @@ function renderPortalBookingCalendar() {
     if (dayOrders.length > 0) {
       badgesHtml = `
         <div class="flex items-center justify-center gap-0.5 flex-wrap w-full mt-0.5">
-          ${deliveryCount > 0 ? `<span class="px-1 py-0.2 rounded text-[9px] font-bold bg-sky-100 text-sky-800" title="จัดส่ง ${deliveryCount} รายการ">🚚${deliveryCount}</span>` : ''}
-          ${pickupCount > 0 ? `<span class="px-1 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800" title="รับเอง ${pickupCount} รายการ">🏠${pickupCount}</span>` : ''}
-          ${hasProblem ? `<span class="text-[9px] text-red-500 font-bold" title="มีรายงานปัญหา/เคลม">⚠️</span>` : ''}
+          ${deliveryCount > 0 ? `<span class="px-1 py-0.2 rounded text-[9px] font-bold bg-sky-500/30 text-sky-200 border border-sky-400/30" title="จัดส่ง ${deliveryCount} รายการ">🚚${deliveryCount}</span>` : ''}
+          ${pickupCount > 0 ? `<span class="px-1 py-0.2 rounded text-[9px] font-bold bg-amber-500/30 text-amber-200 border border-amber-400/30" title="รับเอง ${pickupCount} รายการ">🏠${pickupCount}</span>` : ''}
+          ${hasProblem ? `<span class="text-[9px] text-red-400 font-bold" title="มีรายงานปัญหา/เคลม">⚠️</span>` : ''}
         </div>
       `;
     }
@@ -391,9 +391,9 @@ function renderPortalBookingCalendar() {
     cell.innerHTML = `
       <div class="flex items-center justify-between w-full px-0.5">
         <span class="text-[11px] sm:text-xs font-black ${
-          isToday ? 'w-5 h-5 rounded-full bg-sky-600 text-white flex items-center justify-center shadow-xs' : 'text-slate-700'
+          isToday ? 'w-5 h-5 rounded-full bg-sky-500 text-white flex items-center justify-center shadow-xs' : 'text-slate-200'
         }">${day}</span>
-        ${dayOrders.length > 0 ? `<span class="w-1.5 h-1.5 rounded-full ${dayOrders.every(o => o.status === 'delivered') ? 'bg-emerald-500' : 'bg-sky-500'}"></span>` : ''}
+        ${dayOrders.length > 0 ? `<span class="w-1.5 h-1.5 rounded-full ${dayOrders.every(o => o.status === 'delivered') ? 'bg-emerald-400' : 'bg-sky-400'}"></span>` : ''}
       </div>
       ${badgesHtml}
     `;
@@ -405,7 +405,7 @@ function renderPortalBookingCalendar() {
   const trailingDays = (7 - (totalCells % 7)) % 7;
   for (let d = 1; d <= trailingDays; d++) {
     const cell = document.createElement('div');
-    cell.className = 'h-11 sm:h-12 p-1 rounded-xl bg-slate-50/50 text-slate-300 flex flex-col justify-start items-center text-[10px] select-none';
+    cell.className = 'h-11 sm:h-12 p-1 rounded-xl bg-slate-800/30 text-slate-500/70 flex flex-col justify-start items-center text-[10px] select-none';
     cell.innerHTML = `<span>${d}</span>`;
     grid.appendChild(cell);
   }
@@ -427,11 +427,11 @@ function setPortalSalesMode(mode) {
   const btnMonthly = document.getElementById('portal-btn-sales-monthly');
   if (btnDaily && btnMonthly) {
     if (mode === 'daily') {
-      btnDaily.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-white text-emerald-800 shadow-xs transition';
-      btnMonthly.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg text-slate-500 hover:text-slate-800 transition';
+      btnDaily.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-emerald-500/25 text-emerald-300 border border-emerald-400/30 shadow-xs transition';
+      btnMonthly.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg text-slate-400 hover:text-slate-200 transition';
     } else {
-      btnMonthly.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-white text-emerald-800 shadow-xs transition';
-      btnDaily.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg text-slate-500 hover:text-slate-800 transition';
+      btnMonthly.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-emerald-500/25 text-emerald-300 border border-emerald-400/30 shadow-xs transition';
+      btnDaily.className = 'px-2.5 py-1 text-[10px] font-extrabold rounded-lg text-slate-400 hover:text-slate-200 transition';
     }
   }
   updatePortalSalesMetrics();
@@ -496,8 +496,8 @@ function updatePortalSalesMetrics() {
       const pct = Math.max(16, Math.round((b.sales / maxSales) * 100));
       return `
         <div class="flex-1 flex flex-col items-center gap-1 group relative h-full justify-end cursor-pointer" onclick="selectPortalCalendarDate('${b.dateStr}')" title="${b.dateStr}: ฿${Math.round(b.sales).toLocaleString()} (คลิกดูคิวงาน)">
-          <div class="w-full ${b.isCurrent ? 'bg-emerald-600 shadow-xs' : 'bg-emerald-200/90 group-hover:bg-emerald-400'} rounded-t transition-all" style="height: ${pct}%;"></div>
-          <span class="text-[9px] ${b.isCurrent ? 'text-emerald-800 font-black' : 'text-slate-400 font-bold'} leading-none">${b.dayNum}</span>
+          <div class="w-full ${b.isCurrent ? 'bg-emerald-400 shadow-xs' : 'bg-emerald-500/35 group-hover:bg-emerald-400/70'} rounded-t transition-all" style="height: ${pct}%;"></div>
+          <span class="text-[9px] ${b.isCurrent ? 'text-emerald-300 font-black' : 'text-slate-400 font-bold'} leading-none">${b.dayNum}</span>
         </div>
       `;
     }).join('');
