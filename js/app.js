@@ -3444,6 +3444,42 @@ function toggleOrderDateSort() {
   renderOrdersList();
 }
 
+// แปลงค่าวันที่ของออร์เดอร์ให้เป็น 'YYYY-MM-DD' (เวลาท้องถิ่น) เพื่อใช้เทียบช่วงวันที่
+function toOrderDateKey(value) {
+  if (!value) return '';
+  const str = String(value);
+  const m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  const d = new Date(str);
+  if (isNaN(d)) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// ปุ่มลัดเลือกช่วงวันที่: วันนี้ / 7 วันล่าสุด / เดือนนี้ / ล้าง
+function setOrderDateRangePreset(preset) {
+  const fromEl = document.getElementById('filter-order-date-from');
+  const toEl = document.getElementById('filter-order-date-to');
+  if (!fromEl || !toEl) return;
+  const today = new Date();
+  const key = d => toOrderDateKey(d);
+  if (preset === 'today') {
+    fromEl.value = key(today);
+    toEl.value = key(today);
+  } else if (preset === '7days') {
+    const start = new Date(today);
+    start.setDate(start.getDate() - 6);
+    fromEl.value = key(start);
+    toEl.value = key(today);
+  } else if (preset === 'month') {
+    fromEl.value = key(new Date(today.getFullYear(), today.getMonth(), 1));
+    toEl.value = key(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+  } else {
+    fromEl.value = '';
+    toEl.value = '';
+  }
+  renderOrdersList();
+}
+
 function renderOrdersList() {
   const tbody = document.getElementById('orders-table-body');
   if (!tbody) return;
@@ -3451,6 +3487,11 @@ function renderOrdersList() {
   const search = (document.getElementById('filter-order-search')?.value || '').toLowerCase();
   const status = document.getElementById('filter-order-status')?.value || 'all';
   const type = document.getElementById('filter-order-type')?.value || 'all';
+  const dateBasis = document.getElementById('filter-order-date-basis')?.value || 'delivery';
+  let dateFrom = document.getElementById('filter-order-date-from')?.value || '';
+  let dateTo = document.getElementById('filter-order-date-to')?.value || '';
+  // ถ้าเลือกวันที่สลับกัน (เริ่ม > สิ้นสุด) ให้สลับให้อัตโนมัติ
+  if (dateFrom && dateTo && dateFrom > dateTo) [dateFrom, dateTo] = [dateTo, dateFrom];
 
   let filtered = state.orders.filter(o => {
     const matchSearch = o.customerName.toLowerCase().includes(search) ||
@@ -3459,8 +3500,30 @@ function renderOrdersList() {
                         (o.deliveryAddress && o.deliveryAddress.toLowerCase().includes(search));
     const matchStatus = status === 'all' || o.status === status;
     const matchType = type === 'all' || o.deliveryType === type;
-    return matchSearch && matchStatus && matchType;
+    let matchDate = true;
+    if (dateFrom || dateTo) {
+      const dKey = toOrderDateKey(dateBasis === 'created' ? o.createdAt : o.deliveryDate);
+      matchDate = !!dKey && (!dateFrom || dKey >= dateFrom) && (!dateTo || dKey <= dateTo);
+    }
+    return matchSearch && matchStatus && matchType && matchDate;
   });
+
+  // แสดงสรุปช่วงวันที่ที่เลือก (วันที่แบบ พ.ศ.)
+  const summaryEl = document.getElementById('filter-order-date-summary');
+  if (summaryEl) {
+    if (dateFrom || dateTo) {
+      const fmt = k => new Date(k + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+      const basisLabel = dateBasis === 'created' ? 'วันที่สั่งจอง' : 'วันที่ส่ง/นัดรับ';
+      const rangeLabel = dateFrom && dateTo
+        ? (dateFrom === dateTo ? fmt(dateFrom) : `${fmt(dateFrom)} - ${fmt(dateTo)}`)
+        : dateFrom ? `ตั้งแต่ ${fmt(dateFrom)} เป็นต้นไป` : `จนถึง ${fmt(dateTo)}`;
+      summaryEl.textContent = `📅 แสดงออร์เดอร์ตาม${basisLabel}: ${rangeLabel} — พบ ${filtered.length} รายการ`;
+      summaryEl.classList.remove('hidden');
+    } else {
+      summaryEl.textContent = '';
+      summaryEl.classList.add('hidden');
+    }
+  }
 
   // เรียงลำดับตามวันที่ส่ง
   filtered.sort((a, b) => {

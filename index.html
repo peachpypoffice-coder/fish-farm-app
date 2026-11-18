@@ -1028,6 +1028,34 @@
             </select>
           </div>
         </div>
+
+        <!-- Date range filter (เลือกดูออร์เดอร์ตามช่วงวันที่) -->
+        <div class="flex flex-col lg:flex-row lg:items-end gap-3 pt-3 border-t border-slate-100">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+            <div>
+              <label for="filter-order-date-basis" class="block text-xs font-semibold text-slate-500 mb-1">📅 กรองตาม</label>
+              <select id="filter-order-date-basis" onchange="renderOrdersList()" class="input-large w-full bg-white">
+                <option value="delivery">วันที่ส่ง/นัดรับ</option>
+                <option value="created">วันที่สั่งจอง</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-order-date-from" class="block text-xs font-semibold text-slate-500 mb-1">ตั้งแต่วันที่</label>
+              <input type="date" id="filter-order-date-from" onchange="renderOrdersList()" class="input-large w-full bg-white">
+            </div>
+            <div>
+              <label for="filter-order-date-to" class="block text-xs font-semibold text-slate-500 mb-1">ถึงวันที่</label>
+              <input type="date" id="filter-order-date-to" onchange="renderOrdersList()" class="input-large w-full bg-white">
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" onclick="setOrderDateRangePreset('today')" class="px-3 py-2 rounded-xl text-sm font-medium bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-100">วันนี้</button>
+            <button type="button" onclick="setOrderDateRangePreset('7days')" class="px-3 py-2 rounded-xl text-sm font-medium bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-100">7 วันล่าสุด</button>
+            <button type="button" onclick="setOrderDateRangePreset('month')" class="px-3 py-2 rounded-xl text-sm font-medium bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-100">เดือนนี้</button>
+            <button type="button" onclick="setOrderDateRangePreset('clear')" class="px-3 py-2 rounded-xl text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200">ล้างวันที่</button>
+          </div>
+        </div>
+        <p id="filter-order-date-summary" class="text-xs text-sky-700 font-medium hidden"></p>
       </div>
 
       <!-- Orders Table Container (Desktop: Table / Mobile: Cards) -->
