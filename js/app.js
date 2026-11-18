@@ -826,27 +826,27 @@ function renderMonthlyCalendar() {
 
       if (deliveryCount > 0) {
         badgesHtml += `
-          <div class="bg-sky-500/25 text-sky-200 border border-sky-400/30 text-[11px] font-semibold px-1.5 py-0.5 rounded truncate flex items-center gap-1 shadow-xs">
-            <span>🚚</span> <span>ส่ง ${deliveryCount} เจ้า</span>
+          <div class="bg-sky-500/25 text-sky-200 border border-sky-400/30 text-[9px] sm:text-[11px] font-semibold px-1 sm:px-1.5 py-0.5 rounded truncate flex items-center gap-0.5 sm:gap-1 shadow-xs" title="จัดส่ง ${deliveryCount} เจ้า">
+            <span>🚚</span><span class="hidden sm:inline">ส่ง </span><span>${deliveryCount}</span><span class="hidden sm:inline"> เจ้า</span>
           </div>
         `;
       }
       if (pickupCount > 0) {
         badgesHtml += `
-          <div class="bg-amber-500/25 text-amber-200 border border-amber-400/30 text-[11px] font-semibold px-1.5 py-0.5 rounded truncate flex items-center gap-1 shadow-xs">
-            <span>🏠</span> <span>รับเอง ${pickupCount} เจ้า</span>
+          <div class="bg-amber-500/25 text-amber-200 border border-amber-400/30 text-[9px] sm:text-[11px] font-semibold px-1 sm:px-1.5 py-0.5 rounded truncate flex items-center gap-0.5 sm:gap-1 shadow-xs" title="รับเอง ${pickupCount} เจ้า">
+            <span>🏠</span><span class="hidden sm:inline">รับเอง </span><span>${pickupCount}</span><span class="hidden sm:inline"> เจ้า</span>
           </div>
         `;
       }
       if (hasProblem) {
         badgesHtml += `
-          <div class="bg-red-500/25 text-red-200 border border-red-400/30 text-[10px] font-bold px-1 rounded flex items-center gap-0.5 shadow-xs">
-            <span>⚠️</span> <span>มีเคลม</span>
+          <div class="bg-red-500/25 text-red-200 border border-red-400/30 text-[9px] sm:text-[10px] font-bold px-1 rounded flex items-center gap-0.5 shadow-xs" title="มีรายงานเคลม/ปัญหา">
+            <span>⚠️</span><span class="hidden sm:inline">มีเคลม</span>
           </div>
         `;
       }
     } else {
-      badgesHtml += `<div class="text-[11px] text-slate-500/60 italic hidden sm:block">คิวว่าง</div>`;
+      badgesHtml += `<div class="text-[10px] sm:text-[11px] text-slate-500/60 italic hidden sm:block">คิวว่าง</div>`;
     }
     badgesHtml += '</div>';
 
