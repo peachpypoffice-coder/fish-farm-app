@@ -4557,6 +4557,78 @@
   </div>
 
 
+  <!-- MODAL สรุปยอดขายหน้าร้าน POS (รูปแบบสลิป 80mm พร้อมสั่งพิมพ์) -->
+  <div id="modal-pos-sales-summary" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[94vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150 border border-slate-200">
+      
+      <!-- Top Filter Bar (วันที่ & ประเภทบิล) -->
+      <div class="bg-white px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-2 flex-shrink-0">
+        <div class="flex items-center gap-2 flex-1">
+          <div class="relative">
+            <input type="date" id="pos-summary-modal-date" onchange="renderPosSalesSummaryReceipt()" class="input-large text-xs py-1.5 px-2.5 bg-white font-bold border-slate-300 rounded-lg">
+          </div>
+          <select id="pos-summary-modal-scope" onchange="renderPosSalesSummaryReceipt()" class="input-large text-xs py-1.5 px-2.5 bg-white font-semibold border-slate-300 rounded-lg flex-1">
+            <option value="all">ทั้งหมด (หน้าร้าน + จัดส่ง)</option>
+            <option value="walkin">เฉพาะบิลขายหน้าร้าน (POS)</option>
+            <option value="delivery">เฉพาะออเดอร์จัดส่ง</option>
+          </select>
+        </div>
+        <button type="button" onclick="closeModal('modal-pos-sales-summary')" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Receipt Preview Container (Thermal Slip 80mm Style) -->
+      <div class="p-4 sm:p-6 bg-slate-100/80 overflow-y-auto flex-1 flex justify-center">
+        <div id="pos-sales-summary-slip-area" class="bg-white text-slate-900 w-full max-w-[320px] p-5 shadow-md border border-slate-200 rounded-sm text-sm leading-relaxed">
+          <!-- Populated dynamically by renderPosSalesSummaryReceipt() -->
+        </div>
+      </div>
+
+      <!-- Bottom Checkboxes & Action Buttons -->
+      <div class="bg-white px-4 py-3 border-t border-slate-200 space-y-3 flex-shrink-0">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-semibold text-slate-700">
+          <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" id="pos-sum-opt-received" onchange="renderPosSalesSummaryReceipt()" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+            <span>ยอดรับ</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" id="pos-sum-opt-compact" checked onchange="renderPosSalesSummaryReceipt()" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+            <span>แบบย่อ</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" id="pos-sum-opt-payments" onchange="renderPosSalesSummaryReceipt()" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+            <span>แจกแจงการชำระ</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" id="pos-sum-opt-items" onchange="renderPosSalesSummaryReceipt()" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+            <span>สินค้า</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" id="pos-sum-opt-storename" checked onchange="renderPosSalesSummaryReceipt()" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+            <span>ชื่อร้าน</span>
+          </label>
+          <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" id="pos-sum-opt-address" onchange="renderPosSalesSummaryReceipt()" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+            <span>ที่อยู่</span>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeModal('modal-pos-sales-summary')" class="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition">
+            ยกเลิก
+          </button>
+          <button type="button" onclick="printPosSalesSummarySlip()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>สั่งปริ้นสลิป (80mm)</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
 
   <!-- SCRIPTS -->
   <script src="js/data.js?v=20260916-2"></script>

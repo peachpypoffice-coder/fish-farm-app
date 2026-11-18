@@ -1892,11 +1892,301 @@ function openPosNewBill() {
 }
 
 function openPosSalesSummary() {
-  handleSubtabClick('pos', 'pos-history', 'pos-history');
-  const cards = document.getElementById('pos-sales-summary-cards');
-  if (cards) {
-    cards.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  const modal = document.getElementById('modal-pos-sales-summary');
+  if (!modal) return;
+
+  const dateInput = document.getElementById('pos-summary-modal-date');
+  const histDate = document.getElementById('pos-history-date-filter')?.value;
+  if (dateInput && !dateInput.value) {
+    dateInput.value = histDate || (typeof getTodayString === 'function' ? getTodayString() : new Date().toISOString().slice(0, 10));
   }
+
+  renderPosSalesSummaryReceipt();
+  modal.classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+function formatPosSlipDateSlash(dateKey) {
+  if (!dateKey) return 'ทั้งหมด';
+  const m = String(dateKey).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return dateKey;
+}
+
+function renderPosSalesSummaryReceipt() {
+  const area = document.getElementById('pos-sales-summary-slip-area');
+  if (!area) return;
+
+  const dateVal = document.getElementById('pos-summary-modal-date')?.value || '';
+  const scope = document.getElementById('pos-summary-modal-scope')?.value || 'all';
+
+  const optReceived = document.getElementById('pos-sum-opt-received')?.checked;
+  const optCompact = document.getElementById('pos-sum-opt-compact')?.checked;
+  const optPayments = document.getElementById('pos-sum-opt-payments')?.checked;
+  const optItems = document.getElementById('pos-sum-opt-items')?.checked;
+  const optStoreName = document.getElementById('pos-sum-opt-storename')?.checked;
+  const optAddress = document.getElementById('pos-sum-opt-address')?.checked;
+
+  // กรองรายการตามวันที่และประเภทบิล
+  let orders = (state.orders || []).filter(o => o && o.status !== 'cancelled');
+  if (dateVal) {
+    orders = orders.filter(o => toPosDateKey(o.deliveryDate || o.createdAt) === dateVal);
+  }
+  if (scope === 'walkin') {
+    orders = orders.filter(o => Boolean((o.id && o.id.startsWith('POS-')) || o.isPosWalkIn));
+  } else if (scope === 'delivery') {
+    orders = orders.filter(o => !((o.id && o.id.startsWith('POS-')) || o.isPosWalkIn));
+  }
+
+  let cashTotal = 0;
+  let transferTotal = 0;
+  let creditTotal = 0;
+  let grossTotal = 0;
+  let discountTotal = 0;
+  let refundTotal = 0;
+  let netTotal = 0;
+  let receivedTotal = 0;
+
+  const itemAgg = {};
+  const billPaymentRows = [];
+
+  orders.forEach(o => {
+    const net = Number(o.netTotal || 0);
+    const disc = Number(o.totalDiscount || 0);
+    const gross = Number(o.grossTotal != null ? o.grossTotal : (net + disc));
+    const isWalkIn = Boolean((o.id && o.id.startsWith('POS-')) || o.isPosWalkIn);
+    const isPaid = isOrderPaidForPosSummary(o);
+
+    grossTotal += gross;
+    discountTotal += disc;
+    netTotal += net;
+
+    const method = o.collectedMethod || o.paymentMethod || 'เงินสด';
+    let billCash = 0;
+    let billTransfer = 0;
+    let billCredit = 0;
+
+    if (!isPaid || method === 'ค้างจ่าย' || method === 'ยังไม่ได้เก็บ') {
+      const depositPaid = Number(o.deposit || 0);
+      const unpaid = Math.max(0, net - depositPaid);
+      billCredit = unpaid;
+      creditTotal += unpaid;
+      if (depositPaid > 0) {
+        if ((o.paymentMethod || '').includes('เงินสด')) {
+          billCash += depositPaid;
+          cashTotal += depositPaid;
+        } else {
+          billTransfer += depositPaid;
+          transferTotal += depositPaid;
+        }
+        receivedTotal += depositPaid;
+      }
+    } else if (method === 'เงินสด+โอน') {
+      billCash = Number(o.cashSplitAmount || 0) + Number(o.deposit || 0);
+      billTransfer = Number(o.transferSplitAmount || 0);
+      cashTotal += billCash;
+      transferTotal += billTransfer;
+      receivedTotal += (billCash + billTransfer);
+    } else if (method === 'เงินสด') {
+      billCash = net;
+      cashTotal += net;
+      receivedTotal += net;
+    } else {
+      billTransfer = net;
+      transferTotal += net;
+      receivedTotal += net;
+    }
+
+    billPaymentRows.push({
+      id: o.id,
+      customer: o.customerName || '-',
+      method: !isPaid ? 'ขายเชื่อ/ค้างชำระ' : method,
+      net,
+      isWalkIn
+    });
+
+    (o.items || []).forEach(it => {
+      const key = `${it.name || 'สินค้า'}|${it.unit || 'ตัว'}`;
+      if (!itemAgg[key]) itemAgg[key] = { name: it.name || 'สินค้า', unit: it.unit || 'ตัว', qty: 0, amount: 0 };
+      itemAgg[key].qty += Number(it.qty || 0);
+      itemAgg[key].amount += Number(it.totalPrice != null ? it.totalPrice : (Number(it.qty || 0) * Number(it.unitPrice || 0)));
+    });
+  });
+
+  // คำนวณยอดเคลมคืนเงินในวันนั้น (ถ้ามี)
+  (state.claims || []).forEach(c => {
+    if (c && c.status === 'approved' && c.resolutionType === 'refund') {
+      if (!dateVal || toPosDateKey(c.claimDate || c.createdAt) === dateVal) {
+        refundTotal += Number(c.refundAmount || 0);
+      }
+    }
+  });
+
+  const fmt = n => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const now = new Date();
+  const pad2 = n => String(n).padStart(2, '0');
+  const nowStamp = `${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()} ${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+  const dashedLine = `<div class="my-2.5 border-t border-dashed border-slate-500"></div>`;
+
+  const itemsList = Object.values(itemAgg);
+
+  area.innerHTML = `
+    <div class="text-center space-y-0.5">
+      <div class="font-bold text-base">สรุปยอดขาย ${formatPosSlipDateSlash(dateVal)}</div>
+      ${optStoreName ? `
+        <div class="font-bold text-sm">บริษัท สุทธิ อินเตอร์ ฟาร์ม จำกัด</div>
+        <div class="font-bold text-sm">(ฟาร์มปลาผู้ใหญ่พร)</div>
+      ` : ''}
+      ${optAddress ? `
+        <div class="text-xs text-slate-600 pt-0.5">ต.ดอนคา อ.อู่ทอง จ.สุพรรณบุรี • โทร 081-xxx-xxxx</div>
+      ` : ''}
+      ${!optCompact ? `<div class="text-xs text-slate-500">จำนวนรวม ${orders.length} บิล</div>` : ''}
+    </div>
+
+    ${dashedLine}
+
+    <div class="space-y-1 text-sm">
+      <div class="flex justify-between">
+        <span>เงินสด</span>
+        <span class="font-medium tabular-nums">${fmt(cashTotal)}</span>
+      </div>
+      <div class="flex justify-between">
+        <span>เงินโอน</span>
+        <span class="font-medium tabular-nums">${fmt(transferTotal)}</span>
+      </div>
+      <div class="flex justify-between">
+        <span>ขายเชื่อ</span>
+        <span class="font-medium tabular-nums">${fmt(creditTotal)}</span>
+      </div>
+      ${optReceived ? `
+        <div class="flex justify-between font-semibold pt-0.5">
+          <span>ยอดรับจริง</span>
+          <span class="tabular-nums">${fmt(receivedTotal)}</span>
+        </div>
+      ` : ''}
+    </div>
+
+    ${dashedLine}
+
+    <div class="space-y-1 text-sm">
+      <div class="flex justify-between">
+        <span>ยอดรวม</span>
+        <span class="font-medium tabular-nums">${fmt(grossTotal)}</span>
+      </div>
+      <div class="flex justify-between">
+        <span>ส่วนลด</span>
+        <span class="font-medium tabular-nums">${fmt(discountTotal)}</span>
+      </div>
+      <div class="flex justify-between">
+        <span>คืนเงิน</span>
+        <span class="font-medium tabular-nums">${fmt(refundTotal)}</span>
+      </div>
+      <div class="flex justify-between items-baseline pt-1 font-extrabold text-base">
+        <span>ยอดสุทธิ</span>
+        <span class="text-lg tabular-nums">${fmt(netTotal - refundTotal)}</span>
+      </div>
+    </div>
+
+    ${optPayments && billPaymentRows.length > 0 ? `
+      ${dashedLine}
+      <div class="space-y-1 text-xs">
+        <div class="font-bold">แจกแจงการชำระ (${billPaymentRows.length} บิล)</div>
+        ${billPaymentRows.map(b => `
+          <div class="flex justify-between gap-2">
+            <span class="truncate">${b.id} (${b.method})</span>
+            <span class="tabular-nums shrink-0">${fmt(b.net)}</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+
+    ${optItems && itemsList.length > 0 ? `
+      ${dashedLine}
+      <div class="space-y-1 text-xs">
+        <div class="font-bold">รายการสินค้าที่ขาย</div>
+        ${itemsList.map(it => `
+          <div class="flex justify-between gap-2">
+            <span class="truncate">${it.name} x ${it.qty.toLocaleString()} ${it.unit}</span>
+            <span class="tabular-nums shrink-0">${fmt(it.amount)}</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+
+    <div class="text-center text-xs text-slate-700 mt-4 pt-1">
+      ** วันที่ ${nowStamp} **
+    </div>
+  `;
+}
+
+function printPosSalesSummarySlip() {
+  const area = document.getElementById('pos-sales-summary-slip-area');
+  if (!area) return;
+
+  const printWin = window.open('', '_blank', 'width=380,height=640');
+  if (!printWin) {
+    window.print();
+    return;
+  }
+
+  printWin.document.write(`<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>พิมพ์สลิปสรุปยอดขาย (80mm)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      width: 76mm;
+      max-width: 76mm;
+      margin: 0 auto;
+      padding: 4mm 3mm;
+      color: #000;
+      background: #fff;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .text-center { text-align: center; }
+    .font-bold { font-weight: 700; }
+    .font-semibold { font-weight: 600; }
+    .font-extrabold { font-weight: 800; }
+    .text-base { font-size: 15px; }
+    .text-lg { font-size: 18px; }
+    .text-sm { font-size: 13px; }
+    .text-xs { font-size: 11.5px; }
+    .flex { display: flex; }
+    .justify-between { justify-content: space-between; }
+    .items-baseline { align-items: baseline; }
+    .my-2\\.5 { margin: 8px 0; }
+    .mt-4 { margin-top: 12px; }
+    .pt-1 { padding-top: 4px; }
+    .pt-0\\.5 { padding-top: 2px; }
+    .space-y-1 > * + * { margin-top: 3px; }
+    .space-y-0\\.5 > * + * { margin-top: 2px; }
+    .border-t { border-top: 1px dashed #000; }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46mm; }
+  </style>
+</head>
+<body>
+  ${area.innerHTML}
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+        window.close();
+      }, 200);
+    };
+  <\/script>
+</body>
+</html>`);
+  printWin.document.close();
 }
 
 function toPosDateKey(d) {
