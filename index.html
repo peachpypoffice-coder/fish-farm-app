@@ -1980,7 +1980,11 @@
               เปิดบิลขายหน้าร้าน ตักปลาชั่งกิโล ขายอาหารและเวชภัณฑ์ ตัดสต็อก Real-time และออกใบเสร็จด่วน
             </p>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <button type="button" onclick="openPosSalesSummary()" class="btn-large bg-white/15 hover:bg-white/25 text-white border border-white/40 text-xs py-2 px-4 rounded-xl font-bold shadow-sm flex items-center gap-1.5 transition">
+              <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+              <span>สรุปยอดขาย</span>
+            </button>
             <button onclick="openPosNewBill()" class="btn-large bg-emerald-500 hover:bg-emerald-400 text-slate-900 text-xs py-2 px-4 rounded-xl font-bold shadow-sm flex items-center gap-1.5">
               <i data-lucide="plus-circle" class="w-4 h-4 text-slate-900"></i>
               <span>+ เปิดบิลใหม่</span>
@@ -2172,9 +2176,47 @@
 
       <!-- POS History Section (เมื่อเลือก Subtab ประวัติบิล & สรุปยอดขายรายวันรวมทั้งหน้าร้านและจัดส่งที่ชำระเงินแล้ว) -->
       <div id="pos-section-history" class="hidden space-y-4">
-        
+
+        <!-- ช่องเลือกวันที่เรียกดูประวัติย้อนหลัง (คลิกเลือกวันที่ได้เลย) -->
+        <div class="farm-card p-4 bg-white border border-emerald-200 shadow-xs space-y-3">
+          <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+              <div>
+                <label for="pos-history-date-filter" class="block text-xs font-bold text-slate-600 mb-1">📅 เลือกวันที่ดูบิลย้อนหลัง (วันเดียว)</label>
+                <input type="date" id="pos-history-date-filter" onchange="onPosSingleDateChange(this.value)" class="input-large text-xs py-2 px-3 w-full bg-white font-bold border-emerald-300">
+              </div>
+              <div>
+                <label for="pos-history-date-from" class="block text-xs font-bold text-slate-600 mb-1">หรือตั้งแต่วันที่</label>
+                <input type="date" id="pos-history-date-from" onchange="onPosRangeDateChange()" class="input-large text-xs py-2 px-3 w-full bg-white font-semibold">
+              </div>
+              <div>
+                <label for="pos-history-date-to" class="block text-xs font-bold text-slate-600 mb-1">ถึงวันที่</label>
+                <input type="date" id="pos-history-date-to" onchange="onPosRangeDateChange()" class="input-large text-xs py-2 px-3 w-full bg-white font-semibold">
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <button type="button" onclick="setPosHistoryDatePreset('today')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
+                วันนี้
+              </button>
+              <button type="button" onclick="setPosHistoryDatePreset('yesterday')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
+                เมื่อวาน
+              </button>
+              <button type="button" onclick="setPosHistoryDatePreset('7days')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
+                7 วันล่าสุด
+              </button>
+              <button type="button" onclick="setPosHistoryDatePreset('month')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
+                เดือนนี้
+              </button>
+              <button type="button" onclick="setPosHistoryDatePreset('all')" class="px-3 py-2 text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-200 transition">
+                ทั้งหมด
+              </button>
+            </div>
+          </div>
+          <p id="pos-history-date-summary" class="text-xs font-bold text-emerald-700 hidden"></p>
+        </div>
+
         <!-- Daily Revenue Summary Bar (สรุปยอดขายรายวัน: หน้าร้าน + จัดส่งที่ชำระเงินแล้ว) -->
-        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div id="pos-sales-summary-cards" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div class="farm-card p-4 bg-white border-l-4 border-l-emerald-600">
             <div class="text-xs font-bold text-slate-500">💰 รวมยอดรับชำระทั้งหมด</div>
             <div id="pos-hist-sum-total" class="text-xl font-black text-emerald-700 mt-1">฿0.00</div>
@@ -2207,13 +2249,10 @@
               </h3>
               <p class="text-xs text-slate-500 mt-0.5">รวมรายการขายสดหน้าร้าน และรายการลูกค้าจัดส่งที่ชำระเงินแล้วทั้งหมด</p>
             </div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <input type="date" id="pos-history-date-filter" onchange="renderPosHistory()" class="input-large text-xs py-1.5 px-2.5 bg-white font-bold">
-              <button type="button" onclick="document.getElementById('pos-history-date-filter').value = getTodayString(); renderPosHistory();" class="px-2.5 py-1.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
-                วันนี้
-              </button>
-              <button type="button" onclick="document.getElementById('pos-history-date-filter').value = ''; renderPosHistory();" class="px-2.5 py-1.5 text-xs font-bold bg-white text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-100 transition">
-                ทั้งหมด
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="renderPosHistory()" class="px-3 py-1.5 text-xs font-bold bg-white text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition flex items-center gap-1">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>รีเฟรช</span>
               </button>
             </div>
           </div>

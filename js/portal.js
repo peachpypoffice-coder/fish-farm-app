@@ -1891,6 +1891,81 @@ function openPosNewBill() {
   }
 }
 
+function openPosSalesSummary() {
+  handleSubtabClick('pos', 'pos-history', 'pos-history');
+  const cards = document.getElementById('pos-sales-summary-cards');
+  if (cards) {
+    cards.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function toPosDateKey(d) {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const m = d.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+  }
+  const dt = d instanceof Date ? d : new Date(d);
+  if (isNaN(dt)) return '';
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function onPosSingleDateChange(val) {
+  const fromEl = document.getElementById('pos-history-date-from');
+  const toEl = document.getElementById('pos-history-date-to');
+  if (fromEl) fromEl.value = val || '';
+  if (toEl) toEl.value = val || '';
+  renderPosHistory();
+}
+
+function onPosRangeDateChange() {
+  const singleEl = document.getElementById('pos-history-date-filter');
+  const fromEl = document.getElementById('pos-history-date-from');
+  const toEl = document.getElementById('pos-history-date-to');
+  if (singleEl && fromEl && toEl) {
+    singleEl.value = (fromEl.value && fromEl.value === toEl.value) ? fromEl.value : '';
+  }
+  renderPosHistory();
+}
+
+function setPosHistoryDatePreset(preset) {
+  const singleEl = document.getElementById('pos-history-date-filter');
+  const fromEl = document.getElementById('pos-history-date-from');
+  const toEl = document.getElementById('pos-history-date-to');
+  const today = new Date();
+  const todayKey = toPosDateKey(today);
+
+  if (preset === 'today') {
+    if (singleEl) singleEl.value = todayKey;
+    if (fromEl) fromEl.value = todayKey;
+    if (toEl) toEl.value = todayKey;
+  } else if (preset === 'yesterday') {
+    const y = new Date(today);
+    y.setDate(y.getDate() - 1);
+    const yKey = toPosDateKey(y);
+    if (singleEl) singleEl.value = yKey;
+    if (fromEl) fromEl.value = yKey;
+    if (toEl) toEl.value = yKey;
+  } else if (preset === '7days') {
+    const s = new Date(today);
+    s.setDate(s.getDate() - 6);
+    if (singleEl) singleEl.value = '';
+    if (fromEl) fromEl.value = toPosDateKey(s);
+    if (toEl) toEl.value = todayKey;
+  } else if (preset === 'month') {
+    const mStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const mEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    if (singleEl) singleEl.value = '';
+    if (fromEl) fromEl.value = toPosDateKey(mStart);
+    if (toEl) toEl.value = toPosDateKey(mEnd);
+  } else {
+    if (singleEl) singleEl.value = '';
+    if (fromEl) fromEl.value = '';
+    if (toEl) toEl.value = '';
+  }
+  renderPosHistory();
+}
+
 function switchPosSubTab(subtabId) {
   const secCashier = document.getElementById('pos-section-cashier');
   const secHistory = document.getElementById('pos-section-history');
@@ -1903,6 +1978,7 @@ function switchPosSubTab(subtabId) {
   } else if (subtabId === 'pos-history') {
     renderPosHistory();
   }
+  if (window.lucide) lucide.createIcons();
 }
 
 function isOrderPaidForPosSummary(o) {
@@ -1921,14 +1997,34 @@ function renderPosHistory() {
   const tbody = document.getElementById('pos-history-tbody');
   if (!tbody) return;
 
-  const dateFilterEl = document.getElementById('pos-history-date-filter');
-  const selectedDate = dateFilterEl ? dateFilterEl.value : '';
+  const singleDate = document.getElementById('pos-history-date-filter')?.value || '';
+  let dateFrom = document.getElementById('pos-history-date-from')?.value || singleDate;
+  let dateTo = document.getElementById('pos-history-date-to')?.value || singleDate;
+  if (dateFrom && dateTo && dateFrom > dateTo) [dateFrom, dateTo] = [dateTo, dateFrom];
 
   // รวมบิลขายหน้าร้าน (POS-...) และออเดอร์จัดส่งที่ชำระเงินแล้วทั้งหมด เพื่อสรุปยอดรายวันได้ในที่เดียว
   let paidOrders = (state.orders || []).filter(o => isOrderPaidForPosSummary(o));
 
-  if (selectedDate) {
-    paidOrders = paidOrders.filter(o => o.deliveryDate === selectedDate);
+  if (dateFrom || dateTo) {
+    paidOrders = paidOrders.filter(o => {
+      const dKey = toPosDateKey(o.deliveryDate || o.createdAt);
+      return !!dKey && (!dateFrom || dKey >= dateFrom) && (!dateTo || dKey <= dateTo);
+    });
+  }
+
+  const rangeLabel = (dateFrom && dateTo)
+    ? (dateFrom === dateTo ? formatThaiDate(dateFrom) : `${formatThaiDate(dateFrom)} - ${formatThaiDate(dateTo)}`)
+    : dateFrom ? `ตั้งแต่ ${formatThaiDate(dateFrom)}` : dateTo ? `ถึง ${formatThaiDate(dateTo)}` : '';
+
+  const summaryBanner = document.getElementById('pos-history-date-summary');
+  if (summaryBanner) {
+    if (rangeLabel) {
+      summaryBanner.textContent = `📅 แสดงประวัติบิลและสรุปยอดขาย: ${rangeLabel} (พบ ${paidOrders.length} รายการ)`;
+      summaryBanner.classList.remove('hidden');
+    } else {
+      summaryBanner.textContent = '';
+      summaryBanner.classList.add('hidden');
+    }
   }
 
   // คำนวณสรุปยอดรวม (หน้าร้าน + จัดส่งที่ชำระเงินแล้ว)
@@ -1973,7 +2069,7 @@ function renderPosHistory() {
   const elSumMethods = document.getElementById('pos-hist-sum-methods');
 
   if (elSumTotal) elSumTotal.textContent = '฿' + sumTotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (elSumCount) elSumCount.textContent = `รวมทั้งหมด ${paidOrders.length} รายการ${selectedDate ? ` (วันที่ ${formatThaiDate(selectedDate)})` : ''}`;
+  if (elSumCount) elSumCount.textContent = `รวมทั้งหมด ${paidOrders.length} รายการ${rangeLabel ? ` (${rangeLabel})` : ''}`;
   if (elSumWalkin) elSumWalkin.textContent = '฿' + sumWalkin.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (elSumWalkinCount) elSumWalkinCount.textContent = `${countWalkin} บิลขายหน้าร้าน`;
   if (elSumDel) elSumDel.textContent = '฿' + sumDelivery.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1986,7 +2082,7 @@ function renderPosHistory() {
   }
 
   if (paidOrders.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">ยังไม่มีรายการบิลขายหน้าร้านหรือออเดอร์จัดส่งที่ชำระเงินแล้ว${selectedDate ? ` ในวันที่ ${formatThaiDate(selectedDate)}` : ''}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">ยังไม่มีรายการบิลขายหน้าร้านหรือออเดอร์จัดส่งที่ชำระเงินแล้ว${rangeLabel ? ` ในช่วงวันที่ ${rangeLabel}` : ''}</td></tr>`;
     return;
   }
 
