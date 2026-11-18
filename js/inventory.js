@@ -200,7 +200,7 @@ function deductStockForDeliveredOrder(order) {
           changed = true;
         }
       }
-    } else if (item.category === 'อาหารปลา' || item.category === 'ยารักษาโรคปลา') {
+    } else {
       const supply = (state.supplies || []).find(s => s.name.includes(item.name) || item.name.includes(s.name));
       if (supply) {
         supply.stockQty = Math.max(0, (supply.stockQty || 0) - Number(item.qty));

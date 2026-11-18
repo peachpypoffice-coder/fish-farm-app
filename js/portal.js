@@ -1114,18 +1114,19 @@ function switchModuleWorkspace(mod) {
 
 // 4. POS (POINT OF SALE - โมดูลที่ 3: ขายสดหน้าร้าน)
 let posCart = [];
+let posSelectedCategory = 'all';
+let posSearchQuery = '';
 
-function renderPosView() {
-  const container = document.getElementById('pos-products-grid');
-  if (!container) return;
-
-  // รวมรายการปลาพร้อมขาย + อาหารปลา
+function getPosAllItems() {
+  // 1. รายการปลาพร้อมขายจากบ่อ/กระชังจริง
   const readyPonds = (state.ponds || []).filter(p => p.status === 'ready' && (p.totalQty || 0) > 0);
   const fishItems = readyPonds.map(p => {
     const avail = Math.max(0, (p.totalQty || 0) - (p.reservedQty || 0));
     return {
       type: 'fish',
       id: p.id,
+      code: p.code || '',
+      category: 'พันธุ์ปลา',
       name: p.fishName,
       size: p.fishSize,
       sieve: p.sieveCode,
@@ -1136,9 +1137,12 @@ function renderPosView() {
     };
   });
 
+  // 2. รายการจากคลังอาหารและเวชภัณฑ์ (state.supplies)
   const supplyItems = (state.supplies || []).map(s => ({
     type: 'supply',
     id: s.id,
+    code: '',
+    category: s.category || 'อาหารปลา',
     name: s.name,
     size: s.packageSize,
     sieve: '-',
@@ -1148,35 +1152,225 @@ function renderPosView() {
     avail: s.stockQty
   }));
 
-  const allItems = [...fishItems, ...supplyItems];
+  // 3. รายการเพิ่มเติมจาก PRODUCT_CATALOG (เช่น กระชังเลี้ยงปลา หรือรายการที่ยังไม่อยู่ใน supplies)
+  const catalogExtraItems = (typeof PRODUCT_CATALOG !== 'undefined' ? PRODUCT_CATALOG : [])
+    .filter(c => c.category !== 'พันธุ์ปลา' && !supplyItems.some(s => s.name === c.name || c.name.includes(s.name)))
+    .map(c => ({
+      type: 'catalog',
+      id: c.id,
+      code: '',
+      category: c.category || 'อุปกรณ์อื่นๆ',
+      name: c.name,
+      size: (c.defaultSizes && c.defaultSizes[0]) || '',
+      sieve: '-',
+      pondName: 'หน้าร้าน',
+      unit: c.unit || 'ชิ้น',
+      price: c.defaultPrice || 100,
+      avail: 99
+    }));
 
-  container.innerHTML = allItems.map(it => `
-    <div onclick="addPosItemToCart('${it.type}', '${it.id}')" 
-      class="bg-white p-3.5 rounded-2xl border border-slate-200 hover:border-emerald-400 hover:shadow-md transition cursor-pointer flex flex-col justify-between group">
-      <div>
-        <div class="flex items-start justify-between gap-1 mb-1">
-          <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${it.type === 'fish' ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'}">
-            ${it.type === 'fish' ? '🐟 ปลาเป็น' : '📦 อาหาร/พัสดุ'}
-          </span>
-          <span class="text-xs font-bold text-slate-500">${it.pondName}</span>
+  return [...fishItems, ...supplyItems, ...catalogExtraItems];
+}
+
+function getPosCategoriesConfig(allItems) {
+  const countByCat = (cat) => allItems.filter(it => it.category === cat).length;
+
+  const baseCategories = [
+    { id: 'all', label: 'ทั้งหมด', icon: 'layout-grid', emoji: '🛒', count: allItems.length },
+    { id: 'พันธุ์ปลา', label: 'พันธุ์ปลาพร้อมขาย', icon: 'fish', emoji: '🐟', count: countByCat('พันธุ์ปลา') },
+    { id: 'อาหารปลา', label: 'อาหารปลา', icon: 'package', emoji: '🌾', count: countByCat('อาหารปลา') },
+    { id: 'ยารักษาโรคปลา', label: 'ยารักษาโรคปลา', icon: 'pill', emoji: '💊', count: countByCat('ยารักษาโรคปลา') },
+    { id: 'สารปรับสภาพน้ำ', label: 'สารปรับสภาพน้ำ', icon: 'droplets', emoji: '🧪', count: countByCat('สารปรับสภาพน้ำ') },
+    { id: 'กระชังเลี้ยงปลา', label: 'กระชังเลี้ยงปลา', icon: 'box', emoji: '🕸️', count: countByCat('กระชังเลี้ยงปลา') }
+  ];
+
+  // เพิ่มหมวดหมู่อื่นๆ ถ้ามีในข้อมูลแต่ไม่อยู่ใน baseCategories
+  const knownIds = new Set(baseCategories.map(c => c.id));
+  allItems.forEach(it => {
+    if (it.category && !knownIds.has(it.category)) {
+      knownIds.add(it.category);
+      baseCategories.push({
+        id: it.category,
+        label: it.category,
+        icon: 'tag',
+        emoji: '📦',
+        count: countByCat(it.category)
+      });
+    }
+  });
+
+  return baseCategories;
+}
+
+function selectPosCategory(catId) {
+  posSelectedCategory = catId;
+  renderPosView();
+}
+
+function handlePosSearch(val) {
+  posSearchQuery = (val || '').trim();
+  const clearBtn = document.getElementById('pos-search-clear-btn');
+  if (clearBtn) {
+    clearBtn.classList.toggle('hidden', posSearchQuery.length === 0);
+  }
+  renderPosProductsGrid();
+}
+
+function clearPosSearch() {
+  posSearchQuery = '';
+  const inp = document.getElementById('pos-search-input');
+  if (inp) {
+    inp.value = '';
+    inp.focus();
+  }
+  const clearBtn = document.getElementById('pos-search-clear-btn');
+  if (clearBtn) clearBtn.classList.add('hidden');
+  renderPosProductsGrid();
+}
+
+function renderPosCategories(allItems) {
+  const sidebar = document.getElementById('pos-categories-sidebar');
+  if (!sidebar) return;
+
+  const categories = getPosCategoriesConfig(allItems);
+
+  sidebar.innerHTML = categories.map(cat => {
+    const isActive = posSelectedCategory === cat.id;
+    return `
+      <button
+        type="button"
+        onclick="selectPosCategory('${cat.id}')"
+        class="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between gap-2 shrink-0 lg:shrink ${
+          isActive
+            ? 'bg-emerald-600 text-white shadow-sm'
+            : 'bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200/80'
+        }"
+      >
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-base leading-none">${cat.emoji}</span>
+          <span class="truncate">${cat.label}</span>
         </div>
-        <h4 class="font-bold text-sm text-slate-800 group-hover:text-emerald-700 transition line-clamp-1">${it.name}</h4>
-        <div class="text-xs text-slate-500 mt-0.5">${it.size || ''} ${it.sieve && it.sieve !== '-' ? `(ตาคัด ${it.sieve})` : ''}</div>
-      </div>
+        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+          isActive
+            ? 'bg-white/20 text-white'
+            : 'bg-white text-slate-600 border border-slate-200'
+        }">
+          ${cat.count}
+        </span>
+      </button>
+    `;
+  }).join('');
+}
 
-      <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+function getPosCategoryBadgeStyle(category) {
+  switch (category) {
+    case 'พันธุ์ปลา':
+      return { bg: 'bg-sky-100 text-sky-800', label: '🐟 พันธุ์ปลา' };
+    case 'อาหารปลา':
+      return { bg: 'bg-amber-100 text-amber-800', label: '🌾 อาหารปลา' };
+    case 'ยารักษาโรคปลา':
+      return { bg: 'bg-rose-100 text-rose-800', label: '💊 ยา/เวชภัณฑ์' };
+    case 'สารปรับสภาพน้ำ':
+      return { bg: 'bg-cyan-100 text-cyan-800', label: '🧪 ปรับสภาพน้ำ' };
+    case 'กระชังเลี้ยงปลา':
+      return { bg: 'bg-indigo-100 text-indigo-800', label: '🕸️ กระชังปลา' };
+    default:
+      return { bg: 'bg-slate-100 text-slate-800', label: `📦 ${category || 'สินค้า'}` };
+  }
+}
+
+function renderPosProductsGrid() {
+  const container = document.getElementById('pos-products-grid');
+  if (!container) return;
+
+  const allItems = getPosAllItems();
+  const categories = getPosCategoriesConfig(allItems);
+  const activeCatObj = categories.find(c => c.id === posSelectedCategory) || categories[0];
+
+  const titleEl = document.getElementById('pos-active-category-title');
+  if (titleEl) {
+    titleEl.textContent = posSelectedCategory === 'all'
+      ? 'สินค้าและพันธุ์ปลาพร้อมขายทั้งหมด'
+      : `หมวดหมู่: ${activeCatObj.label}`;
+  }
+
+  // กรองตามหมวดหมู่ที่เลือกทางซ้ายมือ
+  let filtered = posSelectedCategory === 'all'
+    ? allItems
+    : allItems.filter(it => it.category === posSelectedCategory);
+
+  // กรองตามคำค้นหา
+  if (posSearchQuery) {
+    const q = posSearchQuery.toLowerCase();
+    filtered = filtered.filter(it =>
+      (it.name || '').toLowerCase().includes(q) ||
+      (it.size || '').toLowerCase().includes(q) ||
+      (it.pondName || '').toLowerCase().includes(q) ||
+      (it.code || '').toLowerCase().includes(q) ||
+      (it.sieve || '').toLowerCase().includes(q) ||
+      (it.category || '').toLowerCase().includes(q)
+    );
+  }
+
+  const countBadge = document.getElementById('pos-products-count-badge');
+  if (countBadge) {
+    countBadge.textContent = `${filtered.length} รายการ`;
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-full py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+        <i data-lucide="search-x" class="w-10 h-10 mx-auto text-slate-400 mb-2 opacity-60"></i>
+        <p class="text-sm font-bold text-slate-700">ไม่พบรายการสินค้าที่ค้นหา</p>
+        <p class="text-xs text-slate-500 mt-1">ลองเปลี่ยนคำค้นหา หรือเลือกหมวดหมู่อื่นทางด้านซ้ายมือ</p>
+        ${(posSearchQuery || posSelectedCategory !== 'all') ? `
+          <button type="button" onclick="posSelectedCategory='all'; clearPosSearch(); renderPosView();" class="mt-3 px-3 py-1.5 bg-white hover:bg-slate-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition shadow-2xs">
+            แสดงสินค้าทั้งหมด
+          </button>
+        ` : ''}
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  container.innerHTML = filtered.map(it => {
+    const badge = getPosCategoryBadgeStyle(it.category);
+    return `
+      <div onclick="addPosItemToCart('${it.type}', '${it.id}')" 
+        class="bg-white p-3.5 rounded-2xl border border-slate-200 hover:border-emerald-400 hover:shadow-md transition cursor-pointer flex flex-col justify-between group">
         <div>
-          <span class="text-[11px] text-slate-400 block">คงเหลือ</span>
-          <span class="font-black text-xs ${it.avail > 0 ? 'text-slate-800' : 'text-rose-500'}">${it.avail.toLocaleString()} ${it.unit}</span>
+          <div class="flex items-start justify-between gap-1 mb-1">
+            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${badge.bg}">
+              ${badge.label}
+            </span>
+            <span class="text-xs font-bold text-slate-500">${it.pondName}</span>
+          </div>
+          <h4 class="font-bold text-sm text-slate-800 group-hover:text-emerald-700 transition line-clamp-1">${it.name}</h4>
+          <div class="text-xs text-slate-500 mt-0.5">${it.size || ''} ${it.sieve && it.sieve !== '-' ? `(ตาคัด ${it.sieve})` : ''}</div>
         </div>
-        <div class="text-right">
-          <span class="text-[11px] text-slate-400 block">ราคา</span>
-          <span class="font-black text-sm text-emerald-700">฿${Number(it.price).toLocaleString()}</span>
+
+        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+          <div>
+            <span class="text-[11px] text-slate-400 block">คงเหลือ</span>
+            <span class="font-black text-xs ${it.avail > 0 ? 'text-slate-800' : 'text-rose-500'}">${it.avail.toLocaleString()} ${it.unit}</span>
+          </div>
+          <div class="text-right">
+            <span class="text-[11px] text-slate-400 block">ราคา</span>
+            <span class="font-black text-sm text-emerald-700">฿${Number(it.price).toLocaleString()}</span>
+          </div>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
+  lucide.createIcons();
+}
+
+function renderPosView() {
+  const allItems = getPosAllItems();
+  renderPosCategories(allItems);
+  renderPosProductsGrid();
   renderPosCart();
 }
 
@@ -1193,13 +1387,14 @@ function addPosItemToCart(type, id) {
     target = {
       type,
       id: pond.id,
+      category: 'พันธุ์ปลา',
       name: pond.fishName,
       size: pond.fishSize,
       unit: 'ตัว',
       unitPrice: pond.unitPrice || 1.5,
       maxAvail: avail
     };
-  } else {
+  } else if (type === 'supply') {
     const sup = (state.supplies || []).find(s => s.id === id);
     if (!sup) return;
     if (sup.stockQty <= 0) {
@@ -1209,13 +1404,29 @@ function addPosItemToCart(type, id) {
     target = {
       type,
       id: sup.id,
+      category: sup.category || 'อาหารปลา',
       name: sup.name,
       size: sup.packageSize,
       unit: sup.unit,
       unitPrice: sup.unitPrice || 450,
       maxAvail: sup.stockQty
     };
+  } else if (type === 'catalog') {
+    const catItem = (typeof PRODUCT_CATALOG !== 'undefined' ? PRODUCT_CATALOG : []).find(c => c.id === id);
+    if (!catItem) return;
+    target = {
+      type,
+      id: catItem.id,
+      category: catItem.category || 'อุปกรณ์อื่นๆ',
+      name: catItem.name,
+      size: (catItem.defaultSizes && catItem.defaultSizes[0]) || '',
+      unit: catItem.unit || 'ชิ้น',
+      unitPrice: catItem.defaultPrice || 100,
+      maxAvail: 99
+    };
   }
+
+  if (!target) return;
 
   const existing = posCart.find(it => it.type === type && it.id === id);
   if (existing) {
@@ -1327,7 +1538,7 @@ function handlePosCheckout() {
     const t = it.qty * it.unitPrice;
     grossTotal += t;
     return {
-      category: it.type === 'fish' ? 'พันธุ์ปลา' : 'อาหารปลา',
+      category: it.category || (it.type === 'fish' ? 'พันธุ์ปลา' : 'อาหารปลา'),
       name: it.name,
       size: it.size || '',
       qty: it.qty,
