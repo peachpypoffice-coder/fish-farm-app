@@ -263,6 +263,7 @@ function sortPondsByFishSizeAsc(a, b) {
 }
 
 function getPondStatusBadge(p) {
+  if (p.status === 'sick') return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-rose-100 text-rose-800 border-rose-300">ปลาป่วย/งดขาย</span>';
   if (!pondHasFish(p)) return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-slate-100 text-slate-600 border-slate-300">ว่าง</span>';
   if (p.status === 'ready') return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-300">พร้อมขาย</span>';
   if (p.status === 'growing') return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-sky-100 text-sky-800 border-sky-300">กำลังอนุบาล</span>';
@@ -729,7 +730,10 @@ function handlePondClick(pondId) {
 
   // Status Badge
   const statusBadge = document.getElementById('inspect-pond-status-badge');
-  if (isEmpty) {
+  if (pond.status === 'sick') {
+    statusBadge.textContent = 'ปลาป่วย / งดขาย';
+    statusBadge.className = 'text-xs font-bold px-2.5 py-1 rounded-full border bg-rose-100 text-rose-800 border-rose-300';
+  } else if (isEmpty) {
     statusBadge.textContent = 'บ่อว่าง';
     statusBadge.className = 'text-xs font-bold px-2.5 py-1 rounded-full border bg-slate-100 text-slate-600 border-slate-300';
   } else if (pond.status === 'ready') {
@@ -836,11 +840,21 @@ function renderSuppliesTable() {
     return;
   }
 
-  tbody.innerHTML = state.supplies.map(item => {
+  const filterCat = document.getElementById('supplies-category-filter')?.value || 'all';
+  const filteredSupplies = filterCat === 'all'
+    ? state.supplies
+    : state.supplies.filter(s => s.category === filterCat);
+
+  if (filteredSupplies.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">ยังไม่มีรายการสินค้าในหมวดหมู่ "${filterCat}" (คลิก "+ นำเข้าสินค้าตามหมวดหมู่" เพื่อเพิ่มรายการใหม่)</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filteredSupplies.map(item => {
     const isLow = item.stockQty <= item.minThreshold;
     return `
       <tr class="border-b border-slate-100 hover:bg-slate-50/80 transition ${isLow ? 'bg-rose-50/30' : ''}">
-        <td class="p-3.5 text-xs font-bold text-slate-500">${item.category}</td>
+        <td class="p-3.5 text-xs font-bold text-slate-600">${item.category}</td>
         <td class="p-3.5">
           <div class="font-bold text-sm text-slate-800">${item.name}</div>
           <div class="text-xs text-slate-400">${item.packageSize || '-'} • ผู้จำหน่าย: ${item.supplier || '-'}</div>
@@ -891,7 +905,7 @@ function renderGrnTable() {
 
   tbody.innerHTML = state.grnList.map(grn => {
     const isFingerling = grn.type === 'fingerling';
-    const totalQty = (grn.items || []).reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
+    const catLabel = grn.category || (isFingerling ? 'พันธุ์ปลา' : (grn.items && grn.items[0] && grn.items[0].category) || 'อาหารปลา');
     const itemNames = (grn.items || []).map(it => `${it.name} (${Number(it.qty).toLocaleString()} ${it.unit})`).join(', ');
 
     return `
@@ -905,7 +919,7 @@ function renderGrnTable() {
         </td>
         <td class="p-3.5 text-xs font-bold">
           <span class="px-2 py-0.5 rounded-full border ${isFingerling ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}">
-            ${isFingerling ? '🐟 ลูกปลาใหม่' : '📦 ปัจจัยการผลิต'}
+            ${isFingerling ? '🐟 ' : '📦 '}${catLabel}
           </span>
         </td>
         <td class="p-3.5">
@@ -1305,9 +1319,9 @@ function handleSaveGrading(e) {
   showNotification(`บันทึกการคัดขนาด ${sourcePond.name} สำเร็จ กระจายผลเรียบร้อยแล้ว`, 'success');
 }
 
-// 5. INBOUND & PROCUREMENT SYSTEM (รับเข้าสินค้า & ใบรับสินค้า GRN)
+// 5. INBOUND & PROCUREMENT SYSTEM (รับเข้าสินค้า & ใบรับสินค้า GRN ตามหมวดหมู่สินค้า)
 
-function openInboundGrnModal() {
+function openInboundGrnModal(defaultCategory = 'พันธุ์ปลา') {
   const modal = document.getElementById('modal-inbound-grn');
   if (!modal) return;
 
@@ -1315,10 +1329,10 @@ function openInboundGrnModal() {
   document.getElementById('inbound-supplier-input').value = '';
   document.getElementById('inbound-qty-input').value = '';
   document.getElementById('inbound-cost-input').value = '';
+  const priceInput = document.getElementById('inbound-price-input');
+  if (priceInput) priceInput.value = '';
   document.getElementById('inbound-total-cost-display').textContent = '฿0.00';
   document.getElementById('inbound-notes-input').value = '';
-
-  toggleInboundType('fingerling');
 
   const pondSelect = document.getElementById('inbound-target-pond-select');
   if (pondSelect) {
@@ -1336,38 +1350,103 @@ function openInboundGrnModal() {
     `).join('');
   }
 
-  const supplySelect = document.getElementById('inbound-supply-select');
-  if (supplySelect && state.supplies) {
-    supplySelect.innerHTML = state.supplies.map(s => `
-      <option value="${s.id}">${s.name} (${s.packageSize || s.unit})</option>
-    `).join('');
-  }
+  selectInboundCategory(defaultCategory || 'พันธุ์ปลา');
 
   modal.classList.remove('hidden');
   lucide.createIcons();
 }
 
-function toggleInboundType(type) {
-  const secFingerling = document.getElementById('inbound-sec-fingerling');
-  const secSupply = document.getElementById('inbound-sec-supply');
-  const btnFingerling = document.getElementById('btn-inbound-type-fingerling');
-  const btnSupply = document.getElementById('btn-inbound-type-supply');
-
-  if (secFingerling) secFingerling.classList.toggle('hidden', type !== 'fingerling');
-  if (secSupply) secSupply.classList.toggle('hidden', type !== 'supply');
-
-  if (btnFingerling && btnSupply) {
-    if (type === 'fingerling') {
-      btnFingerling.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-sky-600 text-white shadow-xs';
-      btnSupply.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm text-slate-600 hover:bg-sky-50 border border-slate-200';
-    } else {
-      btnSupply.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-sky-600 text-white shadow-xs';
-      btnFingerling.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm text-slate-600 hover:bg-sky-50 border border-slate-200';
-    }
-  }
+function selectInboundCategory(category) {
+  const isFish = category === 'พันธุ์ปลา' || category === 'fingerling';
+  const normalizedCat = isFish ? 'พันธุ์ปลา' : category;
 
   const typeHidden = document.getElementById('inbound-type-hidden');
-  if (typeHidden) typeHidden.value = type;
+  if (typeHidden) typeHidden.value = isFish ? 'fingerling' : 'supply';
+
+  const catHidden = document.getElementById('inbound-category-hidden');
+  if (catHidden) catHidden.value = normalizedCat;
+
+  const secFingerling = document.getElementById('inbound-sec-fingerling');
+  const secSupply = document.getElementById('inbound-sec-supply');
+  if (secFingerling) secFingerling.classList.toggle('hidden', !isFish);
+  if (secSupply) secSupply.classList.toggle('hidden', isFish);
+
+  // อัปเดตสถานะปุ่มหมวดหมู่ด้านบน
+  document.querySelectorAll('#inbound-category-buttons .inbound-cat-btn').forEach(btn => {
+    const btnCat = btn.getAttribute('data-cat');
+    if (btnCat === normalizedCat) {
+      btn.className = isFish
+        ? 'inbound-cat-btn py-2 px-3 rounded-xl font-bold text-xs bg-sky-600 text-white shadow-xs flex items-center gap-1.5 justify-center transition'
+        : 'inbound-cat-btn py-2 px-3 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-xs flex items-center gap-1.5 justify-center transition';
+    } else {
+      btn.className = 'inbound-cat-btn py-2 px-3 rounded-xl font-bold text-xs text-slate-600 hover:bg-emerald-50 border border-slate-200 bg-white flex items-center gap-1.5 justify-center transition';
+    }
+  });
+
+  // ซิงค์ dropdown หมวดหมู่ใน Section B
+  const catSelect = document.getElementById('inbound-supply-category-select');
+  if (catSelect && !isFish) {
+    catSelect.value = normalizedCat;
+    populateInboundSupplyOptions(normalizedCat);
+  }
+}
+
+function toggleInboundType(type) {
+  if (type === 'fingerling') {
+    selectInboundCategory('พันธุ์ปลา');
+  } else {
+    selectInboundCategory('อาหารปลา');
+  }
+}
+
+function populateInboundSupplyOptions(category) {
+  const supplySelect = document.getElementById('inbound-supply-select');
+  if (!supplySelect) return;
+
+  // รวมรายการจาก state.supplies และ PRODUCT_CATALOG ในหมวดหมู่ที่เลือก
+  const matchingSupplies = (state.supplies || []).filter(s => s.category === category);
+  const catalogMatches = (typeof PRODUCT_CATALOG !== 'undefined' ? PRODUCT_CATALOG : [])
+    .filter(c => c.category === category && !matchingSupplies.some(s => s.name === c.name || c.name.includes(s.name)));
+
+  const options = [];
+  matchingSupplies.forEach(s => {
+    options.push(`<option value="${s.id}">${s.name} (${s.packageSize || s.unit}) - คงเหลือ ${s.stockQty} ${s.unit}</option>`);
+  });
+  catalogMatches.forEach(c => {
+    const size = (c.defaultSizes && c.defaultSizes[0]) || c.unit;
+    options.push(`<option value="cat:${c.id}">${c.name} (${size})</option>`);
+  });
+  options.push(`<option value="__new__">+ เพิ่มรายการสินค้าใหม่ในหมวด "${category}"...</option>`);
+
+  supplySelect.innerHTML = options.join('');
+  onInboundSupplySelectChange(supplySelect.value);
+}
+
+function onInboundSupplySelectChange(val) {
+  const newFields = document.getElementById('inbound-new-supply-fields');
+  const priceInput = document.getElementById('inbound-price-input');
+  const unitInput = document.getElementById('inbound-new-supply-unit');
+  const cat = document.getElementById('inbound-category-hidden')?.value || 'อาหารปลา';
+
+  if (val === '__new__') {
+    if (newFields) newFields.classList.remove('hidden');
+    if (unitInput) {
+      if (cat === 'อาหารปลา' || cat === 'สารปรับสภาพน้ำ') unitInput.value = 'กระสอบ';
+      else if (cat === 'ยารักษาโรคปลา') unitInput.value = 'ขวด';
+      else if (cat === 'กระชังเลี้ยงปลา') unitInput.value = 'หลัง';
+      else unitInput.value = 'ชิ้น';
+    }
+  } else {
+    if (newFields) newFields.classList.add('hidden');
+    if (val && val.startsWith('cat:')) {
+      const catId = val.replace('cat:', '');
+      const catItem = (typeof PRODUCT_CATALOG !== 'undefined' ? PRODUCT_CATALOG : []).find(c => c.id === catId);
+      if (catItem && priceInput) priceInput.value = catItem.defaultPrice || '';
+    } else {
+      const sup = (state.supplies || []).find(s => s.id === val);
+      if (sup && priceInput) priceInput.value = sup.unitPrice || '';
+    }
+  }
 }
 
 function calculateInboundCost() {
@@ -1382,10 +1461,12 @@ function handleSaveInboundGrn(e) {
   if (e) e.preventDefault();
 
   const type = document.getElementById('inbound-type-hidden')?.value || 'fingerling';
+  const category = document.getElementById('inbound-category-hidden')?.value || (type === 'fingerling' ? 'พันธุ์ปลา' : 'อาหารปลา');
   const date = document.getElementById('inbound-date-input').value || getTodayString();
   const supplier = document.getElementById('inbound-supplier-input').value.trim() || 'ซัพพลายเออร์ทั่วไป';
   const qty = Number(document.getElementById('inbound-qty-input').value) || 0;
   const unitCost = Number(document.getElementById('inbound-cost-input').value) || 0;
+  const customSellPrice = Number(document.getElementById('inbound-price-input')?.value) || 0;
   const notes = document.getElementById('inbound-notes-input').value.trim();
 
   if (qty <= 0 || unitCost <= 0) {
@@ -1399,7 +1480,7 @@ function handleSaveInboundGrn(e) {
   let grnItem = null;
   let targetDestName = '';
 
-  if (type === 'fingerling') {
+  if (type === 'fingerling' || category === 'พันธุ์ปลา') {
     const fishName = document.getElementById('inbound-fish-select').value;
     const fishSize = document.getElementById('inbound-size-input').value.trim() || '1-1.5 นิ้ว (ล)';
     const sieveCode = document.getElementById('inbound-sieve-input').value.trim() || 'ล';
@@ -1412,14 +1493,17 @@ function handleSaveInboundGrn(e) {
       pond.sieveCode = sieveCode;
       pond.totalQty = (pond.totalQty || 0) + qty;
       pond.unitCost = unitCost;
-      pond.unitPrice = Math.max(pond.unitPrice || 0, Number((unitCost * 1.8).toFixed(2)));
-      pond.status = 'growing';
-      pond.statusLabel = 'กำลังอนุบาล';
+      pond.unitPrice = customSellPrice > 0
+        ? customSellPrice
+        : Math.max(pond.unitPrice || 0, Number((unitCost * 1.8).toFixed(2)));
+      pond.status = 'ready';
+      pond.statusLabel = 'พร้อมขาย';
       pond.lastGradedDate = date;
       targetDestName = pond.name;
     }
 
     grnItem = {
+      category: 'พันธุ์ปลา',
       name: `ลูกปลา${fishName}`,
       size: fishSize,
       sieveCode,
@@ -1429,13 +1513,68 @@ function handleSaveInboundGrn(e) {
       totalCost
     };
   } else {
-    const supplyId = document.getElementById('inbound-supply-select').value;
-    const supply = (state.supplies || []).find(s => s.id === supplyId);
+    const supplySelectVal = document.getElementById('inbound-supply-select').value;
+    let supply = null;
+
+    if (supplySelectVal === '__new__') {
+      const newName = document.getElementById('inbound-new-supply-name')?.value.trim();
+      const newSize = document.getElementById('inbound-new-supply-size')?.value.trim() || '-';
+      const newUnit = document.getElementById('inbound-new-supply-unit')?.value.trim() || 'ชิ้น';
+
+      if (!newName) {
+        showNotification('กรุณาระบุชื่อสินค้าใหม่ที่ต้องการนำเข้า', 'error');
+        return;
+      }
+
+      supply = {
+        id: 'sup_' + Date.now(),
+        category,
+        name: newName,
+        packageSize: newSize,
+        unit: newUnit,
+        stockQty: qty,
+        minThreshold: 5,
+        unitPrice: customSellPrice > 0 ? customSellPrice : Number((unitCost * 1.25).toFixed(2)),
+        supplier
+      };
+      if (!state.supplies) state.supplies = [];
+      state.supplies.push(supply);
+    } else if (supplySelectVal && supplySelectVal.startsWith('cat:')) {
+      const catId = supplySelectVal.replace('cat:', '');
+      const catItem = (typeof PRODUCT_CATALOG !== 'undefined' ? PRODUCT_CATALOG : []).find(c => c.id === catId);
+      if (catItem) {
+        supply = {
+          id: 'sup_' + Date.now(),
+          category: catItem.category || category,
+          name: catItem.name,
+          packageSize: (catItem.defaultSizes && catItem.defaultSizes[0]) || catItem.unit,
+          unit: catItem.unit || 'ชิ้น',
+          stockQty: qty,
+          minThreshold: 5,
+          unitPrice: customSellPrice > 0 ? customSellPrice : (catItem.defaultPrice || Number((unitCost * 1.25).toFixed(2))),
+          supplier
+        };
+        if (!state.supplies) state.supplies = [];
+        state.supplies.push(supply);
+      }
+    } else {
+      supply = (state.supplies || []).find(s => s.id === supplySelectVal);
+      if (supply) {
+        supply.stockQty = (supply.stockQty || 0) + qty;
+        supply.category = category || supply.category;
+        if (customSellPrice > 0) {
+          supply.unitPrice = customSellPrice;
+        } else {
+          supply.unitPrice = Math.max(supply.unitPrice || 0, Number((unitCost * 1.25).toFixed(2)));
+        }
+        if (supplier) supply.supplier = supplier;
+      }
+    }
+
     if (supply) {
-      supply.stockQty = (supply.stockQty || 0) + qty;
-      supply.unitPrice = Math.max(supply.unitPrice || 0, Number((unitCost * 1.25).toFixed(2)));
-      targetDestName = 'คลังปัจจัยการผลิต (' + supply.name + ')';
+      targetDestName = `คลัง${supply.category} (${supply.name})`;
       grnItem = {
+        category: supply.category,
         name: supply.name,
         size: supply.packageSize || supply.unit,
         sieveCode: '-',
@@ -1451,6 +1590,7 @@ function handleSaveInboundGrn(e) {
     id: grnId,
     date,
     type,
+    category,
     supplier,
     targetDestination: targetDestName,
     items: [grnItem],
@@ -1470,7 +1610,7 @@ function handleSaveInboundGrn(e) {
       source: 'Farm Inventory Agent',
       type: 'FINANCE_INBOUND_SUBMITTED',
       severity: 'info',
-      message: `ออกใบรับสินค้า ${grnId} จาก ${supplier} มูลค่า ฿${totalCost.toLocaleString()} ส่งยื่นเรื่องบัญชีต้นทุนเรียบร้อย`,
+      message: `ออกใบรับสินค้า ${grnId} หมวด "${category}" จาก ${supplier} มูลค่า ฿${totalCost.toLocaleString()} ส่งยื่นเรื่องบัญชีต้นทุนเรียบร้อย`,
       status: 'verified'
     });
   }
@@ -1478,7 +1618,8 @@ function handleSaveInboundGrn(e) {
   saveInventoryState();
   closeModal('modal-inbound-grn');
   renderInventoryView();
-  showNotification(`ออกใบรับสินค้า ${grnId} เรียบร้อย สต็อกเข้าคลังและส่งเรื่องบัญชีแล้ว`, 'success');
+  if (typeof renderPosView === 'function') renderPosView();
+  showNotification(`ออกใบรับสินค้า ${grnId} หมวด "${category}" เรียบร้อย สต็อกเข้าคลังและพร้อมขายใน POS แล้ว`, 'success');
   viewGrnDetail(grnId);
 }
 
@@ -2187,7 +2328,7 @@ function handleSaveEditPond(e) {
   
   pond.notes = document.getElementById('edit-pond-notes').value.trim();
 
-  const labels = { ready: 'พร้อมขาย', growing: 'กำลังอนุบาล', resting: 'พักบ่อ / ตากบ่อ', empty: 'บ่อว่าง' };
+  const labels = { ready: 'พร้อมขาย', growing: 'กำลังอนุบาล', resting: 'พักบ่อ / ตากบ่อ', empty: 'บ่อว่าง', sick: 'ปลาป่วย / งดขาย' };
   pond.statusLabel = labels[pond.status] || pond.status;
 
   saveInventoryState();

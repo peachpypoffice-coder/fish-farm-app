@@ -164,7 +164,7 @@
     </div>
   </div>
 
-  <!-- Mobile Backdrop Overlay for Sidebar Drawer -->
+  <!-- Backdrop Overlay for Sidebar Drawer -->
   <div id="portal-sidebar-backdrop" onclick="closePortalSidebar()" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 hidden md:hidden transition-opacity"></div>
 
   <!-- ================================================================= -->
@@ -183,7 +183,7 @@
             <p class="text-[10px] text-primary-fixed-dim font-medium opacity-90 truncate">บจก.สุทธิ อินเตอร์ ฟาร์ม</p>
           </div>
         </div>
-        <button onclick="closePortalSidebar()" class="md:hidden text-white/70 hover:text-white p-1">
+        <button id="portal-sidebar-close-btn" onclick="closePortalSidebar()" class="md:hidden text-white/70 hover:text-white p-1" title="ซ่อนเมนูด้านข้าง">
           <span class="material-symbols-outlined text-lg">close</span>
         </button>
       </div>
@@ -269,8 +269,8 @@
     <!-- TOPBAR / HEADER -->
     <header class="h-16 bg-surface-container-lowest flex items-center justify-between px-4 sm:px-6 lg:px-8 border-b border-outline-variant/15 shrink-0 z-20">
       <div class="flex items-center flex-1 min-w-0 mr-3">
-        <!-- Mobile Sidebar Toggle -->
-        <button onclick="togglePortalSidebar()" class="md:hidden mr-2.5 p-2 text-on-surface-variant hover:bg-surface-container rounded-xl flex-shrink-0">
+        <!-- Sidebar Toggle Button -->
+        <button id="portal-sidebar-toggle-btn" onclick="togglePortalSidebar()" class="md:hidden mr-2.5 p-2 text-on-surface-variant hover:bg-surface-container rounded-xl flex-shrink-0" title="เปิดเมนูโมดูล">
           <span class="material-symbols-outlined">menu</span>
         </button>
 
@@ -1616,12 +1616,28 @@
       <!-- Sub-section 2: Supplies Table -->
       <div id="inv-section-supplies" class="hidden space-y-4">
         <div class="farm-card overflow-hidden">
-          <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-            <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-              <i data-lucide="package-check" class="w-5 h-5 text-sky-600"></i>
-              <span>รายการอาหารปลา เวชภัณฑ์ และสารปรับสภาพน้ำ</span>
-            </h3>
-            <span class="text-xs text-slate-500 font-semibold hidden sm:inline">* แจ้งเตือนสั่งซื้อด่วนเมื่อต่ำกว่า Re-order Point (ROP)</span>
+          <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                <i data-lucide="package-check" class="w-5 h-5 text-sky-600"></i>
+                <span>รายการอาหารปลา เวชภัณฑ์ สารปรับสภาพน้ำ และกระชัง</span>
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">* แจ้งเตือนสั่งซื้อด่วนเมื่อต่ำกว่า Re-order Point (ROP) และเชื่อมต่อขายหน้าร้าน POS</p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <select id="supplies-category-filter" onchange="renderSuppliesTable()" class="input-large text-xs py-1.5 px-3 bg-white font-bold">
+                <option value="all">ทุกหมวดหมู่</option>
+                <option value="อาหารปลา">🌾 อาหารปลา</option>
+                <option value="ยารักษาโรคปลา">💊 ยารักษาโรคปลา</option>
+                <option value="สารปรับสภาพน้ำ">🧪 สารปรับสภาพน้ำ</option>
+                <option value="กระชังเลี้ยงปลา">🕸️ กระชังเลี้ยงปลา</option>
+                <option value="อุปกรณ์อื่นๆ">📦 อุปกรณ์/พัสดุอื่นๆ</option>
+              </select>
+              <button type="button" onclick="openInboundGrnModal('อาหารปลา')" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                <span>+ นำเข้าสินค้าตามหมวดหมู่</span>
+              </button>
+            </div>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
@@ -2041,23 +2057,15 @@
             </div>
 
             <!-- Customer Info -->
-            <div class="space-y-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <div>
-                <label class="block text-[11px] font-bold text-slate-600 mb-1">ชื่อลูกค้า:</label>
-                <input type="text" id="pos-customer-name" value="ลูกค้าหน้าร้าน (เงินสด)" class="input-large text-xs py-1.5 w-full bg-white">
-              </div>
-              <div class="grid grid-cols-2 gap-2">
+            <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-600 mb-1">ชื่อลูกค้า:</label>
+                  <input type="text" id="pos-customer-name" value="ลูกค้าหน้าร้าน (เงินสด)" class="input-large text-xs py-1.5 w-full bg-white">
+                </div>
                 <div>
                   <label class="block text-[11px] font-bold text-slate-600 mb-1">เบอร์โทรศัพท์:</label>
                   <input type="text" id="pos-customer-phone" placeholder="08x-xxx-xxxx" class="input-large text-xs py-1.5 w-full bg-white">
-                </div>
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-600 mb-1">ช่องทางชำระเงิน:</label>
-                  <select id="pos-payment-method" class="input-large text-xs py-1.5 w-full bg-white font-semibold">
-                    <option value="เงินสด">💵 เงินสด</option>
-                    <option value="โอนเงิน">📱 โอนเงินฟาร์ม</option>
-                    <option value="สแกน QR">📲 สแกน QR Code</option>
-                  </select>
                 </div>
               </div>
             </div>
@@ -2065,18 +2073,66 @@
             <!-- Cart Items List -->
             <div>
               <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
-                <span>รายการในบิล</span>
+                <span>รายการในบิล <span class="text-[10px] text-emerald-700 font-normal">(แก้ไขราคาและจำนวนได้)</span></span>
                 <span id="pos-cart-count">0 รายการ</span>
               </div>
-              <div id="pos-cart-items" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+              <div id="pos-cart-items" class="space-y-2 max-h-80 overflow-y-auto pr-1">
                 <!-- Populated by JS -->
               </div>
             </div>
 
-            <!-- Totals & Checkout -->
+            <!-- Totals, Bill Discount, Payment Method & Checkout -->
             <div class="pt-3 border-t border-slate-200 space-y-3">
-              <div class="flex items-baseline justify-between">
-                <span class="text-xs font-bold text-slate-600">ยอดรวมทั้งสิ้น:</span>
+              <!-- Subtotal -->
+              <div class="flex items-center justify-between text-xs text-slate-600">
+                <span class="font-semibold">ยอดรวมสินค้า:</span>
+                <span id="pos-cart-subtotal" class="font-bold text-slate-800">฿0.00</span>
+              </div>
+
+              <!-- ส่วนลดท้ายบิล (Bill Discount) -->
+              <div class="flex items-center justify-between gap-2 bg-amber-50/70 px-3 py-2 rounded-xl border border-amber-200">
+                <label for="pos-bill-discount" class="text-xs font-bold text-amber-900 flex items-center gap-1.5 shrink-0">
+                  <i data-lucide="tag" class="w-3.5 h-3.5 text-amber-600"></i>
+                  <span>ส่วนลดท้ายบิล (฿):</span>
+                </label>
+                <input
+                  type="number"
+                  id="pos-bill-discount"
+                  min="0"
+                  step="0.01"
+                  value="0"
+                  oninput="handlePosDiscountInput(this.value)"
+                  placeholder="0.00"
+                  class="input-large text-xs py-1 px-2.5 w-28 text-right font-black text-amber-900 bg-white border-amber-300 focus:border-amber-500"
+                >
+              </div>
+
+              <!-- วิธีการชำระเงิน (Payment Method) -->
+              <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <i data-lucide="wallet" class="w-3.5 h-3.5 text-emerald-600"></i>
+                  <span>วิธีการชำระเงิน:</span>
+                </label>
+                <input type="hidden" id="pos-payment-method" value="เงินสด">
+                <div class="grid grid-cols-3 gap-1.5" id="pos-payment-method-buttons">
+                  <button type="button" onclick="selectPosPaymentMethod('เงินสด')" data-method="เงินสด" class="pos-pay-btn py-2 px-2 rounded-xl text-xs font-bold border-2 border-emerald-600 bg-emerald-50 text-emerald-900 flex items-center justify-center gap-1 transition shadow-2xs">
+                    <span>💵</span>
+                    <span>เงินสด</span>
+                  </button>
+                  <button type="button" onclick="selectPosPaymentMethod('โอนเงิน')" data-method="โอนเงิน" class="pos-pay-btn py-2 px-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1 transition">
+                    <span>📱</span>
+                    <span>โอนเงิน</span>
+                  </button>
+                  <button type="button" onclick="selectPosPaymentMethod('สแกน QR')" data-method="สแกน QR" class="pos-pay-btn py-2 px-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1 transition">
+                    <span>📲</span>
+                    <span>สแกน QR</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Net Grand Total -->
+              <div class="flex items-baseline justify-between pt-1 border-t border-slate-100">
+                <span class="text-xs font-bold text-slate-700">ยอดรวมสุทธิทั้งสิ้น:</span>
                 <span id="pos-cart-total" class="text-2xl font-black text-emerald-700">฿0.00</span>
               </div>
 
@@ -3576,16 +3632,35 @@
         <div class="p-4 sm:p-6 space-y-4 flex-1 overflow-y-auto overscroll-contain">
           
           <input type="hidden" id="inbound-type-hidden" value="fingerling">
+          <input type="hidden" id="inbound-category-hidden" value="พันธุ์ปลา">
 
-          <!-- Type Switcher -->
+          <!-- Category Switcher (ครบทุกหมวดหมู่ตรงกับ POS) -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1.5">หมวดหมู่สินค้าที่รับเข้า:</label>
-            <div class="flex gap-2">
-              <button type="button" id="btn-inbound-type-fingerling" onclick="toggleInboundType('fingerling')" class="flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-sky-600 text-white shadow-xs">
-                🐟 ลูกปลาพันธุ์ใหม่ (เข้าบ่อเลี้ยง)
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">เลือกหมวดหมู่สินค้าที่นำเข้าสต็อก:</label>
+            <div id="inbound-category-buttons" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <button type="button" onclick="selectInboundCategory('พันธุ์ปลา')" data-cat="พันธุ์ปลา" class="inbound-cat-btn py-2 px-3 rounded-xl font-bold text-xs bg-sky-600 text-white shadow-xs flex items-center gap-1.5 justify-center transition">
+                <span>🐟</span>
+                <span>พันธุ์ปลาพร้อมขาย</span>
               </button>
-              <button type="button" id="btn-inbound-type-supply" onclick="toggleInboundType('supply')" class="flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm text-slate-600 hover:bg-sky-50 border border-slate-200">
-                📦 ปัจจัยการผลิต / อาหาร / เคมีภัณฑ์
+              <button type="button" onclick="selectInboundCategory('อาหารปลา')" data-cat="อาหารปลา" class="inbound-cat-btn py-2 px-3 rounded-xl font-bold text-xs text-slate-600 hover:bg-emerald-50 border border-slate-200 bg-white flex items-center gap-1.5 justify-center transition">
+                <span>🌾</span>
+                <span>อาหารปลา</span>
+              </button>
+              <button type="button" onclick="selectInboundCategory('ยารักษาโรคปลา')" data-cat="ยารักษาโรคปลา" class="inbound-cat-btn py-2 px-3 rounded-xl font-bold text-xs text-slate-600 hover:bg-emerald-50 border border-slate-200 bg-white flex items-center gap-1.5 justify-center transition">
+                <span>💊</span>
+                <span>ยารักษาโรคปลา</span>
+              </button>
+              <button type="button" onclick="selectInboundCategory('สารปรับสภาพน้ำ')" data-cat="สารปรับสภาพน้ำ" class="inbound-cat-btn py-2 px-3 rounded-xl font-bold text-xs text-slate-600 hover:bg-emerald-50 border border-slate-200 bg-white flex items-center gap-1.5 justify-center transition">
+                <span>🧪</span>
+                <span>สารปรับสภาพน้ำ</span>
+              </button>
+              <button type="button" onclick="selectInboundCategory('กระชังเลี้ยงปลา')" data-cat="กระชังเลี้ยงปลา" class="inbound-cat-btn py-2 px-3 rounded-xl font-bold text-xs text-slate-600 hover:bg-emerald-50 border border-slate-200 bg-white flex items-center gap-1.5 justify-center transition">
+                <span>🕸️</span>
+                <span>กระชังเลี้ยงปลา</span>
+              </button>
+              <button type="button" onclick="selectInboundCategory('อุปกรณ์อื่นๆ')" data-cat="อุปกรณ์อื่นๆ" class="inbound-cat-btn py-2 px-3 rounded-xl font-bold text-xs text-slate-600 hover:bg-emerald-50 border border-slate-200 bg-white flex items-center gap-1.5 justify-center transition">
+                <span>📦</span>
+                <span>อุปกรณ์/พัสดุอื่นๆ</span>
               </button>
             </div>
           </div>
@@ -3598,11 +3673,11 @@
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1">🏢 แหล่งที่มา / ซัพพลายเออร์:</label>
-              <input type="text" id="inbound-supplier-input" placeholder="เช่น ฟาร์มเพาะพันธุ์สุพรรณบุรี" class="input-large w-full text-xs font-semibold" required>
+              <input type="text" id="inbound-supplier-input" placeholder="เช่น ฟาร์มเพาะพันธุ์สุพรรณบุรี / บจก.ซีพีเอฟ" class="input-large w-full text-xs font-semibold" required>
             </div>
           </div>
 
-          <!-- Section A: ลูกปลาใหม่ -->
+          <!-- Section A: พันธุ์ปลา (เข้าบ่อเลี้ยง) -->
           <div id="inbound-sec-fingerling" class="space-y-3 bg-sky-50/50 p-3.5 rounded-xl border border-sky-200">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div class="sm:col-span-2">
@@ -3630,28 +3705,60 @@
             </div>
           </div>
 
-          <!-- Section B: ปัจจัยการผลิต -->
+          <!-- Section B: สินค้าตามหมวดหมู่ (อาหารปลา / ยารักษาโรคปลา / สารปรับสภาพน้ำ / กระชังเลี้ยงปลา / อุปกรณ์อื่นๆ) -->
           <div id="inbound-sec-supply" class="hidden space-y-3 bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-200">
-            <div>
-              <label class="block text-xs font-bold text-emerald-900 mb-1">เลือกรายการพัสดุ/อาหารปลา:</label>
-              <select id="inbound-supply-select" class="input-large w-full text-xs font-bold bg-white">
-                <!-- Populated by JS -->
-              </select>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-emerald-900 mb-1">หมวดหมู่สินค้า:</label>
+                <select id="inbound-supply-category-select" onchange="selectInboundCategory(this.value)" class="input-large w-full text-xs font-bold bg-white">
+                  <option value="อาหารปลา">🌾 อาหารปลา</option>
+                  <option value="ยารักษาโรคปลา">💊 ยารักษาโรคปลา</option>
+                  <option value="สารปรับสภาพน้ำ">🧪 สารปรับสภาพน้ำ</option>
+                  <option value="กระชังเลี้ยงปลา">🕸️ กระชังเลี้ยงปลา</option>
+                  <option value="อุปกรณ์อื่นๆ">📦 อุปกรณ์/พัสดุอื่นๆ</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-emerald-900 mb-1">เลือกรายการสินค้าในหมวดนี้:</label>
+                <select id="inbound-supply-select" onchange="onInboundSupplySelectChange(this.value)" class="input-large w-full text-xs font-bold bg-white">
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+            </div>
+
+            <!-- กรณีเพิ่มรายการสินค้าใหม่ในหมวดหมู่ -->
+            <div id="inbound-new-supply-fields" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-emerald-200/70">
+              <div>
+                <label class="block text-[11px] font-bold text-emerald-900 mb-1">ชื่อสินค้าใหม่:</label>
+                <input type="text" id="inbound-new-supply-name" placeholder="ระบุชื่อสินค้า..." class="input-large w-full text-xs bg-white font-semibold">
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-emerald-900 mb-1">ขนาดบรรจุ / สเปก:</label>
+                <input type="text" id="inbound-new-supply-size" placeholder="เช่น กระสอบ 20 กก., 3x4 ม." class="input-large w-full text-xs bg-white">
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-emerald-900 mb-1">หน่วยนับ:</label>
+                <input type="text" id="inbound-new-supply-unit" value="ชิ้น" placeholder="กระสอบ, ขวด, หลัง, ปาก" class="input-large w-full text-xs bg-white font-bold">
+              </div>
             </div>
           </div>
 
           <!-- Quantity & Cost Calculation -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">จำนวนที่รับเข้า:</label>
-              <input type="number" id="inbound-qty-input" min="1" placeholder="จำนวนตัว หรือ กระสอบ" oninput="calculateInboundCost()" class="input-large w-full text-xs font-black text-slate-800 text-right" required>
+              <input type="number" id="inbound-qty-input" min="1" placeholder="จำนวน" oninput="calculateInboundCost()" class="input-large w-full text-xs font-black text-slate-800 text-right bg-white" required>
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">ต้นทุนต่อหน่วย (฿):</label>
-              <input type="number" id="inbound-cost-input" step="0.01" min="0" placeholder="0.00" oninput="calculateInboundCost()" class="input-large w-full text-xs font-bold text-slate-800 text-right" required>
+              <label class="block text-xs font-bold text-slate-700 mb-1">ต้นทุน/หน่วย (฿):</label>
+              <input type="number" id="inbound-cost-input" step="0.01" min="0" placeholder="0.00" oninput="calculateInboundCost()" class="input-large w-full text-xs font-bold text-slate-800 text-right bg-white" required>
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-700 mb-1">มูลค่ารวมทั้งสิ้น:</label>
+              <label class="block text-xs font-bold text-emerald-800 mb-1">ราคาขายหน้าร้าน (฿):</label>
+              <input type="number" id="inbound-price-input" step="0.01" min="0" placeholder="อัตโนมัติ" class="input-large w-full text-xs font-bold text-emerald-700 text-right bg-white">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">มูลค่าต้นทุนรวม:</label>
               <div id="inbound-total-cost-display" class="input-large w-full text-sm font-black text-emerald-700 text-right bg-emerald-50/60 border-emerald-300 flex items-center justify-end">
                 ฿0.00
               </div>
@@ -4018,6 +4125,7 @@
               <option value="growing">กำลังอนุบาล</option>
               <option value="resting">พักบ่อ / ตากบ่อ</option>
               <option value="empty">บ่อว่าง</option>
+              <option value="sick">ปลาป่วย / งดขาย</option>
             </select>
           </div>
         </div>

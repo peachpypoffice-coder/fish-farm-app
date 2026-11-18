@@ -179,6 +179,9 @@ function showPortalView() {
   if (modView) modView.classList.add('hidden');
   if (topHeader) topHeader.classList.remove('hidden');
 
+  // แสดงแถบเมนูด้านข้างกลับมาเป็นปกติเมื่ออยู่ในหน้าศูนย์รวม 7 โมดูล
+  setPortalSidebarDrawerMode(false);
+
   // ซ่อนแถบ Subtabs ของโมดูลในระดับ Hub
   const moduleSubnav = document.getElementById('module-subnav-bar');
   if (moduleSubnav) moduleSubnav.classList.add('hidden');
@@ -815,6 +818,34 @@ function updatePortalSidebarProfile() {
   if (roleEl) roleEl.textContent = u.roleLabel || u.role || 'CEO / เจ้าของฟาร์ม';
 }
 
+function setPortalSidebarDrawerMode(isDrawer) {
+  const sidebar = document.getElementById('portal-sidebar');
+  const backdrop = document.getElementById('portal-sidebar-backdrop');
+  const toggleBtn = document.getElementById('portal-sidebar-toggle-btn');
+  const closeBtn = document.getElementById('portal-sidebar-close-btn');
+  if (!sidebar) return;
+
+  if (isDrawer) {
+    // หดแถบเมนูด้านข้างเข้าไปทางซ้ายมือเหมือนในมือถือทุกขนาดหน้าจอ
+    sidebar.classList.remove('md:translate-x-0', 'md:static', 'md:shadow-none');
+    sidebar.classList.add('-translate-x-full');
+    if (backdrop) {
+      backdrop.classList.remove('md:hidden');
+      backdrop.classList.add('hidden');
+    }
+    if (toggleBtn) toggleBtn.classList.remove('md:hidden');
+    if (closeBtn) closeBtn.classList.remove('md:hidden');
+  } else {
+    // กลับสู่หน้าศูนย์รวม 7 โมดูล: แสดงแถบเมนูด้านข้างบนจอคอมตามปกติ
+    sidebar.classList.add('md:translate-x-0', 'md:static', 'md:shadow-none', '-translate-x-full');
+    if (backdrop) {
+      backdrop.classList.add('hidden', 'md:hidden');
+    }
+    if (toggleBtn) toggleBtn.classList.add('md:hidden');
+    if (closeBtn) closeBtn.classList.add('md:hidden');
+  }
+}
+
 function togglePortalSidebar() {
   const sidebar = document.getElementById('portal-sidebar');
   const backdrop = document.getElementById('portal-sidebar-backdrop');
@@ -832,7 +863,8 @@ function togglePortalSidebar() {
 function closePortalSidebar() {
   const sidebar = document.getElementById('portal-sidebar');
   const backdrop = document.getElementById('portal-sidebar-backdrop');
-  if (sidebar && !sidebar.classList.contains('-translate-x-full') && window.innerWidth < 768) {
+  const isDrawerMode = sidebar && !sidebar.classList.contains('md:static');
+  if (sidebar && !sidebar.classList.contains('-translate-x-full') && (isDrawerMode || window.innerWidth < 768)) {
     sidebar.classList.add('-translate-x-full');
   }
   if (backdrop) backdrop.classList.add('hidden');
@@ -956,8 +988,8 @@ function openModule(moduleId) {
     if (icon) icon.style.fontVariationSettings = "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24";
   }
 
-  // ปิดเมนูบนมือถือถ้าเปิดอยู่
-  closePortalSidebar();
+  // เมื่อกดเข้าโมดูลแล้ว ให้แถบเมนูด้านข้างหดเข้าไปทางซ้ายมือเหมือนในมือถือ
+  setPortalSidebarDrawerMode(true);
 
   // สร้างแถบ Subtabs เฉพาะโมดูลนี้
   renderModuleSubtabs(mod);
@@ -1448,13 +1480,50 @@ function updatePosCartQty(index, newQty) {
     posCart.splice(index, 1);
   } else {
     if (q > posCart[index].maxAvail) {
-      showNotification(`สต็อกคงเหลือเพียง ${posCart[index].maxAvail}`, 'warning');
+      showNotification(`สต็อกคงเหลือเพียง ${posCart[index].maxAvail} ${posCart[index].unit}`, 'warning');
       posCart[index].qty = posCart[index].maxAvail;
     } else {
       posCart[index].qty = q;
     }
   }
   renderPosCart();
+}
+
+function updatePosCartPrice(index, newPrice) {
+  const p = Number(newPrice);
+  if (isNaN(p) || p < 0) {
+    showNotification('กรุณาระบุราคาต่อหน่วยให้ถูกต้อง', 'warning');
+    renderPosCart();
+    return;
+  }
+  if (posCart[index]) {
+    posCart[index].unitPrice = p;
+  }
+  renderPosCart();
+}
+
+function handlePosDiscountInput(val) {
+  const discount = Math.max(0, Number(val) || 0);
+  const subtotal = posCart.reduce((sum, it) => sum + (it.qty * it.unitPrice), 0);
+  const netTotal = Math.max(0, subtotal - discount);
+  const totalEl = document.getElementById('pos-cart-total');
+  if (totalEl) {
+    totalEl.textContent = '฿' + netTotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+}
+
+function selectPosPaymentMethod(method) {
+  const hiddenInput = document.getElementById('pos-payment-method');
+  if (hiddenInput) hiddenInput.value = method;
+
+  document.querySelectorAll('#pos-payment-method-buttons .pos-pay-btn').forEach(btn => {
+    const isSelected = btn.getAttribute('data-method') === method;
+    if (isSelected) {
+      btn.className = 'pos-pay-btn py-2 px-2 rounded-xl text-xs font-bold border-2 border-emerald-600 bg-emerald-50 text-emerald-900 flex items-center justify-center gap-1 transition shadow-2xs';
+    } else {
+      btn.className = 'pos-pay-btn py-2 px-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1 transition';
+    }
+  });
 }
 
 function removePosCartItem(index) {
@@ -1464,13 +1533,17 @@ function removePosCartItem(index) {
 
 function clearPosCart() {
   posCart = [];
+  const discInput = document.getElementById('pos-bill-discount');
+  if (discInput) discInput.value = 0;
   renderPosCart();
 }
 
 function renderPosCart() {
   const container = document.getElementById('pos-cart-items');
+  const subtotalEl = document.getElementById('pos-cart-subtotal');
   const totalEl = document.getElementById('pos-cart-total');
   const countEl = document.getElementById('pos-cart-count');
+  const discInput = document.getElementById('pos-bill-discount');
   if (!container) return;
 
   if (posCart.length === 0) {
@@ -1480,43 +1553,63 @@ function renderPosCart() {
         <p class="text-xs">ยังไม่มีรายการสินค้าในบิล<br/>คลิกเลือกรายการปลาหรืออาหารจากด้านซ้ายได้เลยครับ</p>
       </div>
     `;
+    if (subtotalEl) subtotalEl.textContent = '฿0.00';
     if (totalEl) totalEl.textContent = '฿0.00';
     if (countEl) countEl.textContent = '0 รายการ';
     lucide.createIcons();
     return;
   }
 
-  let grandTotal = 0;
+  let subtotal = 0;
   let totalItemsCount = 0;
 
   container.innerHTML = posCart.map((it, idx) => {
     const itemTotal = it.qty * it.unitPrice;
-    grandTotal += itemTotal;
+    subtotal += itemTotal;
     totalItemsCount += it.qty;
 
     return `
       <div class="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-2xs">
         <div class="min-w-0 flex-1">
           <div class="font-bold text-xs text-slate-800 truncate">${it.name}</div>
-          <div class="text-[11px] text-slate-400">${it.size || ''} • ฿${it.unitPrice}/${it.unit}</div>
+          <div class="text-[11px] text-slate-500 mt-1 flex items-center gap-1 flex-wrap">
+            ${it.size ? `<span class="text-slate-400">${it.size} •</span>` : ''}
+            <div class="inline-flex items-center bg-sky-50/80 border border-sky-200 rounded-lg px-1.5 py-0.5" title="แก้ไขราคาขายต่อหน่วย">
+              <span class="text-sky-700 font-bold text-[10px] mr-0.5">฿</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value="${it.unitPrice}"
+                onchange="updatePosCartPrice(${idx}, this.value)"
+                class="w-14 text-right font-bold text-xs text-sky-900 bg-transparent border-none p-0 focus:ring-0 focus:outline-none"
+              >
+              <span class="text-[10px] text-slate-500 ml-0.5">/${it.unit}</span>
+            </div>
+          </div>
         </div>
 
-        <div class="flex items-center gap-1.5">
+        <div class="flex items-center gap-1.5 shrink-0">
           <input type="number" min="1" max="${it.maxAvail}" value="${it.qty}" 
             onchange="updatePosCartQty(${idx}, this.value)"
-            class="input-large text-xs py-1 px-1.5 w-16 text-center font-bold">
+            title="ระบุจำนวน (${it.unit})"
+            class="input-large text-xs py-1 px-2 w-24 text-center font-bold bg-white">
           <span class="text-xs text-slate-500">${it.unit}</span>
         </div>
 
-        <div class="text-right min-w-[70px]">
-          <span class="font-black text-xs text-emerald-700 block">฿${itemTotal.toLocaleString()}</span>
+        <div class="text-right min-w-[68px] shrink-0">
+          <span class="font-black text-xs text-emerald-700 block">฿${itemTotal.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
           <button type="button" onclick="removePosCartItem(${idx})" class="text-[11px] text-rose-500 hover:text-rose-700 font-semibold">ลบ</button>
         </div>
       </div>
     `;
   }).join('');
 
-  if (totalEl) totalEl.textContent = '฿' + grandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 });
+  const billDiscount = Math.max(0, Number(discInput?.value) || 0);
+  const netGrandTotal = Math.max(0, subtotal - billDiscount);
+
+  if (subtotalEl) subtotalEl.textContent = '฿' + subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (totalEl) totalEl.textContent = '฿' + netGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (countEl) countEl.textContent = `${totalItemsCount.toLocaleString()} ชิ้น (${posCart.length} รายการ)`;
 
   lucide.createIcons();
@@ -1531,6 +1624,7 @@ function handlePosCheckout() {
   const custName = document.getElementById('pos-customer-name')?.value.trim() || 'ลูกค้าหน้าร้าน (เงินสด)';
   const custPhone = document.getElementById('pos-customer-phone')?.value.trim() || '-';
   const payMethod = document.getElementById('pos-payment-method')?.value || 'เงินสด';
+  const billDiscountRaw = Math.max(0, Number(document.getElementById('pos-bill-discount')?.value) || 0);
   const dateStr = getTodayString();
 
   let grossTotal = 0;
@@ -1544,10 +1638,15 @@ function handlePosCheckout() {
       qty: it.qty,
       unit: it.unit,
       unitPrice: it.unitPrice,
+      unitDiscount: 0,
+      netUnitPrice: it.unitPrice,
       totalPrice: t,
       pondId: it.type === 'fish' ? it.id : undefined
     };
   });
+
+  const totalDiscount = Math.min(grossTotal, billDiscountRaw);
+  const netTotal = Math.max(0, grossTotal - totalDiscount);
 
   const orderId = 'POS-' + dateStr.replace(/-/g, '') + '-' + String((state.orders || []).length + 1).padStart(3, '0');
 
@@ -1567,14 +1666,16 @@ function handlePosCheckout() {
     paymentMethod: payMethod,
     items,
     grossTotal,
-    totalDiscount: 0,
-    netTotal: grossTotal,
-    deposit: grossTotal,
+    totalDiscount,
+    netTotal,
+    deposit: netTotal,
     remainingBalance: 0,
-    actualCollected: grossTotal,
+    actualCollected: netTotal,
     collectedMethod: payMethod,
     driverName: 'ลูกค้าตักรับเองหน้าร้าน',
-    notes: 'เปิดบิลขายด่วนหน้าร้าน POS สำเร็จ',
+    notes: totalDiscount > 0
+      ? `เปิดบิลขายด่วนหน้าร้าน POS สำเร็จ (ส่วนลดท้ายบิล ฿${totalDiscount.toLocaleString()})`
+      : 'เปิดบิลขายด่วนหน้าร้าน POS สำเร็จ',
     createdAt: dateStr + ' ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
   };
 
@@ -1586,7 +1687,7 @@ function handlePosCheckout() {
   state.orders.unshift(newPosOrder);
   saveState();
 
-  showNotification(`ออกบิลขายหน้าร้าน ${orderId} ยอดรวม ฿${grossTotal.toLocaleString()} สำเร็จ!`, 'success');
+  showNotification(`ออกบิลขายหน้าร้าน ${orderId} ยอดสุทธิ ฿${netTotal.toLocaleString()} (${payMethod}) สำเร็จ!`, 'success');
   clearPosCart();
   renderPosView();
 
@@ -1596,6 +1697,7 @@ function handlePosCheckout() {
 
 function openPosNewBill() {
   clearPosCart();
+  selectPosPaymentMethod('เงินสด');
   const inp = document.getElementById('pos-customer-name');
   if (inp) {
     inp.value = 'ลูกค้าหน้าร้าน (เงินสด)';
