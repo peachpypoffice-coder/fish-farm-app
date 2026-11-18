@@ -245,6 +245,23 @@ function sortPondsByZoneAndCode(a, b) {
   return na - nb;
 }
 
+// แปลงขนาดปลา เช่น '1.5-2 นิ้ว', '2-3 นิ้ว', '3-4 นิ้ว' เป็นคู่ตัวเลข [min, max] เพื่อเรียงจากน้อยไปมาก
+function parseFishSizeNumbers(sizeStr) {
+  const nums = String(sizeStr || '').match(/\d+(?:\.\d+)?/g);
+  if (!nums || nums.length === 0) return [9999, 9999];
+  const min = parseFloat(nums[0]);
+  const max = nums.length > 1 ? parseFloat(nums[1]) : min;
+  return [isNaN(min) ? 9999 : min, isNaN(max) ? 9999 : max];
+}
+
+function sortPondsByFishSizeAsc(a, b) {
+  const [minA, maxA] = parseFishSizeNumbers(a.fishSize);
+  const [minB, maxB] = parseFishSizeNumbers(b.fishSize);
+  if (minA !== minB) return minA - minB;
+  if (maxA !== maxB) return maxA - maxB;
+  return sortPondsByZoneAndCode(a, b);
+}
+
 function getPondStatusBadge(p) {
   if (!pondHasFish(p)) return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-slate-100 text-slate-600 border-slate-300">ว่าง</span>';
   if (p.status === 'ready') return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-300">พร้อมขาย</span>';
@@ -368,7 +385,7 @@ function renderFishLocationSearch() {
     }
 
     container.innerHTML = names.map(name => {
-      const list = groups[name].slice().sort(sortPondsByZoneAndCode);
+      const list = groups[name].slice().sort(sortPondsByFishSizeAsc);
       const total = list.reduce((s, p) => s + (p.totalQty || 0), 0);
       const reserved = list.reduce((s, p) => s + (p.reservedQty || 0), 0);
       const avail = Math.max(0, total - reserved);
@@ -394,10 +411,11 @@ function renderFishLocationSearch() {
                 <tr class="bg-slate-50 text-xs font-bold text-slate-600 border-b border-slate-200">
                   <th class="py-2 px-3">📍 ที่จัดเก็บ (กระชัง/อ่าง)</th>
                   <th class="py-2 px-3">โซน</th>
-                  <th class="py-2 px-3">ขนาด</th>
+                  <th class="py-2 px-3">ขนาด (น้อย ➔ มาก)</th>
                   <th class="py-2 px-3 text-right">จำนวน</th>
                   <th class="py-2 px-3 text-right">พร้อมขาย</th>
                   <th class="py-2 px-3 text-center">สถานะ</th>
+                  <th class="py-2 px-3 text-center">จัดการ</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
@@ -409,6 +427,11 @@ function renderFishLocationSearch() {
                     <td class="py-2 px-3 text-right font-semibold">${Number(p.totalQty || 0).toLocaleString()}</td>
                     <td class="py-2 px-3 text-right font-semibold text-emerald-700">${Math.max(0, (p.totalQty || 0) - (p.reservedQty || 0)).toLocaleString()}</td>
                     <td class="py-2 px-3 text-center">${getPondStatusBadge(p)}</td>
+                    <td class="py-2 px-3 text-center">
+                      <button type="button" onclick="event.stopPropagation(); openEditPondModal('${invEsc(p.id)}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition shadow-2xs">
+                        <span>✏️ แก้ไข</span>
+                      </button>
+                    </td>
                   </tr>`).join('')}
               </tbody>
             </table>
@@ -437,25 +460,32 @@ function renderFishLocationSearch() {
           const has = pondHasFish(p);
           const avail = Math.max(0, (p.totalQty || 0) - (p.reservedQty || 0));
           return `
-            <button type="button" onclick="handlePondClick('${invEsc(p.id)}')" class="text-left bg-white rounded-2xl border ${has ? 'border-sky-200' : 'border-slate-200'} shadow-xs hover:shadow-md hover:border-sky-400 transition p-4 space-y-2">
-              <div class="flex items-start justify-between gap-2">
-                <div>
-                  <div class="font-black text-slate-800">${invEsc(p.name)}</div>
-                  <div class="text-[11px] text-slate-500 mt-0.5">${invEsc(p.zoneName || p.typeName || '-')}${p.sizeDesc ? ' • ' + invEsc(p.sizeDesc) : ''}</div>
-                </div>
-                ${getPondStatusBadge(p)}
-              </div>
-              ${has ? `
-                <div class="pt-2 border-t border-slate-100">
-                  <div class="font-bold text-sky-900">🐟 ${invEsc(p.fishName || '-')}</div>
-                  <div class="text-xs text-slate-500">ขนาด ${invEsc(p.fishSize || '-')}</div>
-                  <div class="flex justify-between text-xs mt-1.5">
-                    <span class="text-slate-600">จำนวน <strong>${Number(p.totalQty || 0).toLocaleString()}</strong> ตัว</span>
-                    <span class="text-emerald-700">พร้อมขาย <strong>${avail.toLocaleString()}</strong></span>
+            <div onclick="handlePondClick('${invEsc(p.id)}')" class="cursor-pointer text-left bg-white rounded-2xl border ${has ? 'border-sky-200' : 'border-slate-200'} shadow-xs hover:shadow-md hover:border-sky-400 transition p-4 space-y-2 flex flex-col justify-between">
+              <div class="space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <div class="font-black text-slate-800">${invEsc(p.name)}</div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">${invEsc(p.zoneName || p.typeName || '-')}${p.sizeDesc ? ' • ' + invEsc(p.sizeDesc) : ''}</div>
                   </div>
-                </div>` : `
-                <div class="pt-2 border-t border-slate-100 text-xs text-slate-400">ไม่มีปลาจัดเก็บอยู่</div>`}
-            </button>`;
+                  ${getPondStatusBadge(p)}
+                </div>
+                ${has ? `
+                  <div class="pt-2 border-t border-slate-100">
+                    <div class="font-bold text-sky-900">🐟 ${invEsc(p.fishName || '-')}</div>
+                    <div class="text-xs text-slate-500">ขนาด ${invEsc(p.fishSize || '-')}</div>
+                    <div class="flex justify-between text-xs mt-1.5">
+                      <span class="text-slate-600">จำนวน <strong>${Number(p.totalQty || 0).toLocaleString()}</strong> ตัว</span>
+                      <span class="text-emerald-700">พร้อมขาย <strong>${avail.toLocaleString()}</strong></span>
+                    </div>
+                  </div>` : `
+                  <div class="pt-2 border-t border-slate-100 text-xs text-slate-400">ไม่มีปลาจัดเก็บอยู่</div>`}
+              </div>
+              <div class="pt-2 border-t border-slate-100 flex justify-end">
+                <button type="button" onclick="event.stopPropagation(); openEditPondModal('${invEsc(p.id)}')" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold transition shadow-2xs">
+                  <span>✏️ แก้ไข</span>
+                </button>
+              </div>
+            </div>`;
         }).join('')}
       </div>`;
   }
