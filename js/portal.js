@@ -66,6 +66,7 @@ const FARM_MODULES = [
     defaultTab: 'pos',
     subtabs: [
       { id: 'pos-cashier', label: 'แคชเชียร์ขายสดหน้าร้าน', icon: 'shopping-cart' },
+      { id: 'pos-products', label: 'คลังสินค้า & รายการสินค้า POS', icon: 'package' },
       { id: 'pos-history', label: 'ประวัติบิลขายหน้าร้าน', icon: 'receipt' }
     ],
     rolesAllowed: ['CEO', 'Manager', 'Sales', 'Accountant']
@@ -1021,7 +1022,7 @@ function renderModuleSubtabs(mod) {
 
   const currentTab = isDriver 
     ? (['daily', 'claims'].includes(state.activeTab) ? state.activeTab : 'daily')
-    : (state.activeTab || mod.defaultTab);
+    : (mod.id === 'pos' ? 'pos-cashier' : (state.activeTab || mod.defaultTab));
 
   container.innerHTML = allowedSubtabs.map((st, idx) => `
     <button id="mod-subtab-btn-${st.id}" onclick="handleSubtabClick('${mod.id}', '${st.id}', '${st.subtabParam || ''}')" 
@@ -1128,7 +1129,7 @@ function switchModuleWorkspace(mod) {
   } else if (mod.id === 'pos') {
     const pane = document.getElementById('tab-pos');
     if (pane) pane.classList.remove('hidden');
-    renderPosView();
+    switchPosSubTab('pos-cashier');
   } else if (mod.id === 'production') {
     const pane = document.getElementById('tab-production');
     if (pane) pane.classList.remove('hidden');
@@ -1144,99 +1145,140 @@ function switchModuleWorkspace(mod) {
   }
 }
 
-// 4. POS (POINT OF SALE - โมดูลที่ 3: ขายสดหน้าร้าน)
+// 4. POS (POINT OF SALE - โมดูลที่ 3: ขายสดหน้าร้าน & คลังสินค้า POS ตามไฟล์ Excel)
 let posCart = [];
 let posSelectedCategory = 'all';
+let posSelectedGroup = 'all'; // 'all', 'fish', 'feed_sack', 'feed_kg', 'other'
+let posCategoryFilterText = '';
 let posSearchQuery = '';
 
+function ensurePosProductsLoaded() {
+  if (!state.posProducts || !Array.isArray(state.posProducts) || state.posProducts.length === 0) {
+    const saved = localStorage.getItem('phuyaiporn_pos_products');
+    if (saved) {
+      try {
+        state.posProducts = JSON.parse(saved);
+      } catch (e) {
+        state.posProducts = [];
+      }
+    }
+    if (!state.posProducts || state.posProducts.length === 0) {
+      state.posProducts = typeof INITIAL_POS_PRODUCTS !== 'undefined'
+        ? JSON.parse(JSON.stringify(INITIAL_POS_PRODUCTS))
+        : [];
+      localStorage.setItem('phuyaiporn_pos_products', JSON.stringify(state.posProducts));
+    }
+  }
+  return state.posProducts;
+}
+
+// จัดกลุ่มหมวดหมู่หลักจากชื่อ Category ในไฟล์ Excel
+function getPosCategoryGroup(categoryStr) {
+  const cat = String(categoryStr || '').trim();
+  if (/^201\b/.test(cat)) return 'feed_sack';
+  if (/^202\b/.test(cat)) return 'feed_kg';
+  if (/^([1-9]|[1-3][0-9]|4[0-7])\s/.test(cat) || cat.includes('ปลากิโล') || cat.includes('พันธุ์ปลา') || cat.includes('ลูกกุ้ง')) {
+    return 'fish';
+  }
+  return 'other';
+}
+
+// เรียงลำดับหมวดหมู่ตามรหัสตัวเลขด้านหน้า (1..47, ปลากิโล, 201, 202, 203, 301, กระชังปลา, ค่าดำเนินการ)
+function comparePosCategories(catA, catB) {
+  const a = String(catA || '').trim();
+  const b = String(catB || '').trim();
+  const matchA = a.match(/^(\d+)\s*(.*)$/);
+  const matchB = b.match(/^(\d+)\s*(.*)$/);
+
+  if (matchA && matchB) {
+    const numA = parseInt(matchA[1], 10);
+    const numB = parseInt(matchB[1], 10);
+    if (numA !== numB) return numA - numB;
+    return matchA[2].localeCompare(matchB[2], 'th');
+  }
+  if (matchA && !matchB) return -1;
+  if (!matchA && matchB) return 1;
+  return a.localeCompare(b, 'th');
+}
+
 function getPosAllItems() {
-  // 1. รายการปลาพร้อมขายจากบ่อ/กระชังจริง
-  const readyPonds = (state.ponds || []).filter(p => p.status === 'ready' && (p.totalQty || 0) > 0);
-  const fishItems = readyPonds.map(p => {
-    const avail = Math.max(0, (p.totalQty || 0) - (p.reservedQty || 0));
-    return {
-      type: 'fish',
-      id: p.id,
-      code: p.code || '',
-      category: 'พันธุ์ปลา',
-      name: p.fishName,
-      size: p.fishSize,
-      sieve: p.sieveCode,
-      pondName: p.name,
-      unit: 'ตัว',
-      price: p.unitPrice || 1.5,
-      avail
-    };
-  });
-
-  // 2. รายการจากคลังอาหารและเวชภัณฑ์ (state.supplies)
-  const supplyItems = (state.supplies || []).map(s => ({
-    type: 'supply',
-    id: s.id,
-    code: '',
-    category: s.category || 'อาหารปลา',
-    name: s.name,
-    size: s.packageSize,
-    sieve: '-',
-    pondName: 'คลังพัสดุ',
-    unit: s.unit,
-    price: s.unitPrice || 450,
-    avail: s.stockQty
+  const posProducts = ensurePosProductsLoaded();
+  return posProducts.map(p => ({
+    type: 'pos_product',
+    id: p.id,
+    code: p.code || '',
+    category: (p.category || 'อื่นๆ').trim(),
+    group: getPosCategoryGroup(p.category),
+    name: p.name || '',
+    unit: p.unit || 'ชิ้น',
+    cost: Number(p.cost || 0),
+    price: Number(p.price || 0),
+    avail: Number(p.quantity || 0)
   }));
+}
 
-  // 3. รายการเพิ่มเติมจาก PRODUCT_CATALOG (เช่น กระชังเลี้ยงปลา หรือรายการที่ยังไม่อยู่ใน supplies)
-  const catalogExtraItems = (typeof PRODUCT_CATALOG !== 'undefined' ? PRODUCT_CATALOG : [])
-    .filter(c => c.category !== 'พันธุ์ปลา' && !supplyItems.some(s => s.name === c.name || c.name.includes(s.name)))
-    .map(c => ({
-      type: 'catalog',
-      id: c.id,
-      code: '',
-      category: c.category || 'อุปกรณ์อื่นๆ',
-      name: c.name,
-      size: (c.defaultSizes && c.defaultSizes[0]) || '',
-      sieve: '-',
-      pondName: 'หน้าร้าน',
-      unit: c.unit || 'ชิ้น',
-      price: c.defaultPrice || 100,
-      avail: 99
-    }));
-
-  return [...fishItems, ...supplyItems, ...catalogExtraItems];
+function getPosCategoryEmoji(category, group) {
+  const cat = String(category || '');
+  if (cat.includes('กุ้ง')) return '🦐';
+  if (cat.includes('กบ')) return '🐸';
+  if (cat.includes('ปลากิโล')) return '⚖️';
+  if (group === 'fish') return '🐟';
+  if (group === 'feed_sack') return '🌾';
+  if (group === 'feed_kg') return '🛍️';
+  if (cat.includes('กระชัง')) return '🕸️';
+  if (cat.includes('ถุงหิ้ว')) return '🛍️';
+  if (cat.includes('ค่าดำเนินการ')) return '🧾';
+  return '📦';
 }
 
 function getPosCategoriesConfig(allItems) {
-  const countByCat = (cat) => allItems.filter(it => it.category === cat).length;
-
-  const baseCategories = [
-    { id: 'all', label: 'ทั้งหมด', icon: 'layout-grid', emoji: '🛒', count: allItems.length },
-    { id: 'พันธุ์ปลา', label: 'พันธุ์ปลาพร้อมขาย', icon: 'fish', emoji: '🐟', count: countByCat('พันธุ์ปลา') },
-    { id: 'อาหารปลา', label: 'อาหารปลา', icon: 'package', emoji: '🌾', count: countByCat('อาหารปลา') },
-    { id: 'ยารักษาโรคปลา', label: 'ยารักษาโรคปลา', icon: 'pill', emoji: '💊', count: countByCat('ยารักษาโรคปลา') },
-    { id: 'สารปรับสภาพน้ำ', label: 'สารปรับสภาพน้ำ', icon: 'droplets', emoji: '🧪', count: countByCat('สารปรับสภาพน้ำ') },
-    { id: 'กระชังเลี้ยงปลา', label: 'กระชังเลี้ยงปลา', icon: 'box', emoji: '🕸️', count: countByCat('กระชังเลี้ยงปลา') }
-  ];
-
-  // เพิ่มหมวดหมู่อื่นๆ ถ้ามีในข้อมูลแต่ไม่อยู่ใน baseCategories
-  const knownIds = new Set(baseCategories.map(c => c.id));
+  const catMap = new Map();
   allItems.forEach(it => {
-    if (it.category && !knownIds.has(it.category)) {
-      knownIds.add(it.category);
-      baseCategories.push({
-        id: it.category,
-        label: it.category,
-        icon: 'tag',
-        emoji: '📦',
-        count: countByCat(it.category)
-      });
-    }
+    const cat = it.category || 'อื่นๆ';
+    catMap.set(cat, (catMap.get(cat) || 0) + 1);
   });
 
-  return baseCategories;
+  const sortedCatNames = Array.from(catMap.keys()).sort(comparePosCategories);
+
+  const categories = [
+    {
+      id: 'all',
+      label: 'ทั้งหมด (All)',
+      group: 'all',
+      emoji: '🛒',
+      count: allItems.length
+    }
+  ];
+
+  sortedCatNames.forEach(catName => {
+    const grp = getPosCategoryGroup(catName);
+    categories.push({
+      id: catName,
+      label: catName,
+      group: grp,
+      emoji: getPosCategoryEmoji(catName, grp),
+      count: catMap.get(catName) || 0
+    });
+  });
+
+  return categories;
+}
+
+function selectPosCategoryGroup(groupId) {
+  posSelectedGroup = groupId;
+  posSelectedCategory = 'all';
+  renderPosView();
 }
 
 function selectPosCategory(catId) {
   posSelectedCategory = catId;
   renderPosView();
+}
+
+function handlePosCategoryFilter(val) {
+  posCategoryFilterText = (val || '').trim().toLowerCase();
+  const allItems = getPosAllItems();
+  renderPosCategories(allItems);
 }
 
 function handlePosSearch(val) {
@@ -1262,53 +1304,117 @@ function clearPosSearch() {
 
 function renderPosCategories(allItems) {
   const sidebar = document.getElementById('pos-categories-sidebar');
+  const groupTabsContainer = document.getElementById('pos-category-group-tabs');
+  const catCountEl = document.getElementById('pos-sidebar-cat-count');
   if (!sidebar) return;
 
   const categories = getPosCategoriesConfig(allItems);
+  if (catCountEl) {
+    catCountEl.textContent = `${categories.length - 1} หมวด`;
+  }
 
-  sidebar.innerHTML = categories.map(cat => {
+  // วาดปุ่มแท็บกลุ่มหลักด้านบน
+  if (groupTabsContainer) {
+    const groups = [
+      { id: 'all', label: 'ทั้งหมด', emoji: '🛒' },
+      { id: 'fish', label: 'พันธุ์ปลา (1-47)', emoji: '🐟' },
+      { id: 'feed_sack', label: 'อาหารกระสอบ (201)', emoji: '🌾' },
+      { id: 'feed_kg', label: 'อาหารแบ่งโล (202)', emoji: '⚖️' },
+      { id: 'other', label: 'กระชัง/อื่นๆ (203/301)', emoji: '📦' }
+    ];
+    groupTabsContainer.innerHTML = groups.map(g => {
+      const active = posSelectedGroup === g.id;
+      return `
+        <button
+          type="button"
+          onclick="selectPosCategoryGroup('${g.id}')"
+          class="px-2 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 truncate ${
+            active
+              ? 'bg-emerald-600 text-white shadow-2xs'
+              : 'bg-white/70 text-slate-600 hover:bg-white hover:text-emerald-700'
+          }"
+          title="${g.label}"
+        >
+          <span>${g.emoji}</span>
+          <span class="truncate">${g.label}</span>
+        </button>
+      `;
+    }).join('');
+  }
+
+  // กรองหมวดหมู่ตามกลุ่มหลักและคำค้นหมวดหมู่
+  const filteredCategories = categories.filter(cat => {
+    if (cat.id === 'all') return true;
+    if (posSelectedGroup !== 'all' && cat.group !== posSelectedGroup) return false;
+    if (posCategoryFilterText && !cat.label.toLowerCase().includes(posCategoryFilterText)) return false;
+    return true;
+  });
+
+  // คำนวณจำนวนรายการในปุ่ม "ทั้งหมด" ตามกลุ่มที่เลือก
+  const groupTotalCount = posSelectedGroup === 'all'
+    ? allItems.length
+    : allItems.filter(it => it.group === posSelectedGroup).length;
+
+  sidebar.innerHTML = filteredCategories.map(cat => {
     const isActive = posSelectedCategory === cat.id;
+    const displayCount = cat.id === 'all' ? groupTotalCount : cat.count;
+    const displayLabel = cat.id === 'all'
+      ? (posSelectedGroup === 'all' ? 'ทั้งหมด (ทุกหมวดหมู่)' : 'ทั้งหมดในกลุ่มนี้')
+      : cat.label;
+    const safeId = cat.id.replace(/'/g, "\\'");
+
     return `
       <button
         type="button"
-        onclick="selectPosCategory('${cat.id}')"
-        class="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between gap-2 shrink-0 lg:shrink ${
+        onclick="selectPosCategory('${safeId}')"
+        class="w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between gap-1.5 shrink-0 lg:shrink ${
           isActive
             ? 'bg-emerald-600 text-white shadow-sm'
             : 'bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200/80'
         }"
       >
-        <div class="flex items-center gap-2 min-w-0">
-          <span class="text-base leading-none">${cat.emoji}</span>
-          <span class="truncate">${cat.label}</span>
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span class="text-sm leading-none shrink-0">${cat.emoji}</span>
+          <span class="truncate">${displayLabel}</span>
         </div>
-        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+        <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full shrink-0 ${
           isActive
             ? 'bg-white/20 text-white'
             : 'bg-white text-slate-600 border border-slate-200'
         }">
-          ${cat.count}
+          ${displayCount}
         </span>
       </button>
     `;
   }).join('');
 }
 
-function getPosCategoryBadgeStyle(category) {
-  switch (category) {
-    case 'พันธุ์ปลา':
-      return { bg: 'bg-sky-100 text-sky-800', label: '🐟 พันธุ์ปลา' };
-    case 'อาหารปลา':
-      return { bg: 'bg-amber-100 text-amber-800', label: '🌾 อาหารปลา' };
-    case 'ยารักษาโรคปลา':
-      return { bg: 'bg-rose-100 text-rose-800', label: '💊 ยา/เวชภัณฑ์' };
-    case 'สารปรับสภาพน้ำ':
-      return { bg: 'bg-cyan-100 text-cyan-800', label: '🧪 ปรับสภาพน้ำ' };
-    case 'กระชังเลี้ยงปลา':
-      return { bg: 'bg-indigo-100 text-indigo-800', label: '🕸️ กระชังปลา' };
-    default:
-      return { bg: 'bg-slate-100 text-slate-800', label: `📦 ${category || 'สินค้า'}` };
+function getPosCategoryBadgeStyle(category, group) {
+  const grp = group || getPosCategoryGroup(category);
+  const emoji = getPosCategoryEmoji(category, grp);
+  if (grp === 'fish') {
+    return { bg: 'bg-sky-100 text-sky-800 border border-sky-200', label: `${emoji} ${category}` };
   }
+  if (grp === 'feed_sack') {
+    return { bg: 'bg-amber-100 text-amber-900 border border-amber-200', label: `${emoji} ${category}` };
+  }
+  if (grp === 'feed_kg') {
+    return { bg: 'bg-orange-100 text-orange-800 border border-orange-200', label: `${emoji} ${category}` };
+  }
+  if (String(category).includes('กระชัง')) {
+    return { bg: 'bg-indigo-100 text-indigo-800 border border-indigo-200', label: `${emoji} ${category}` };
+  }
+  return { bg: 'bg-slate-100 text-slate-700 border border-slate-200', label: `${emoji} ${category || 'สินค้า'}` };
+}
+
+function formatPosNumber(num) {
+  const n = Number(num || 0);
+  return n.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+}
+
+function formatPosPrice(num) {
+  const n = Number(num || 0);
+  return n.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 function renderPosProductsGrid() {
@@ -1316,37 +1422,46 @@ function renderPosProductsGrid() {
   if (!container) return;
 
   const allItems = getPosAllItems();
-  const categories = getPosCategoriesConfig(allItems);
-  const activeCatObj = categories.find(c => c.id === posSelectedCategory) || categories[0];
+
+  const groupLabels = {
+    all: 'สินค้าและพันธุ์ปลาทั้งหมด',
+    fish: 'กลุ่มพันธุ์ปลา (หมวด 1-47 & ปลากิโล)',
+    feed_sack: 'กลุ่มอาหารสัตว์ กระสอบ (หมวด 201)',
+    feed_kg: 'กลุ่มอาหารสัตว์ แบ่งโล (หมวด 202)',
+    other: 'กลุ่มสินค้าอื่นๆ / กระชัง / ถุงหิ้ว'
+  };
 
   const titleEl = document.getElementById('pos-active-category-title');
   if (titleEl) {
     titleEl.textContent = posSelectedCategory === 'all'
-      ? 'สินค้าและพันธุ์ปลาพร้อมขายทั้งหมด'
-      : `หมวดหมู่: ${activeCatObj.label}`;
+      ? (groupLabels[posSelectedGroup] || 'สินค้าทั้งหมด')
+      : `หมวดหมู่: ${posSelectedCategory}`;
   }
 
-  // กรองตามหมวดหมู่ที่เลือกทางซ้ายมือ
-  let filtered = posSelectedCategory === 'all'
+  // 1. กรองตามกลุ่มหลัก
+  let filtered = posSelectedGroup === 'all'
     ? allItems
-    : allItems.filter(it => it.category === posSelectedCategory);
+    : allItems.filter(it => it.group === posSelectedGroup);
 
-  // กรองตามคำค้นหา
+  // 2. กรองตามหมวดหมู่ย่อยที่เลือกทางซ้ายมือ
+  if (posSelectedCategory !== 'all') {
+    filtered = filtered.filter(it => it.category === posSelectedCategory);
+  }
+
+  // 3. กรองตามคำค้นหา (Product code, Product name, Category, Unit)
   if (posSearchQuery) {
     const q = posSearchQuery.toLowerCase();
     filtered = filtered.filter(it =>
-      (it.name || '').toLowerCase().includes(q) ||
-      (it.size || '').toLowerCase().includes(q) ||
-      (it.pondName || '').toLowerCase().includes(q) ||
       (it.code || '').toLowerCase().includes(q) ||
-      (it.sieve || '').toLowerCase().includes(q) ||
-      (it.category || '').toLowerCase().includes(q)
+      (it.name || '').toLowerCase().includes(q) ||
+      (it.category || '').toLowerCase().includes(q) ||
+      (it.unit || '').toLowerCase().includes(q)
     );
   }
 
   const countBadge = document.getElementById('pos-products-count-badge');
   if (countBadge) {
-    countBadge.textContent = `${filtered.length} รายการ`;
+    countBadge.textContent = `${filtered.length.toLocaleString()} รายการ`;
   }
 
   if (filtered.length === 0) {
@@ -1355,9 +1470,9 @@ function renderPosProductsGrid() {
         <i data-lucide="search-x" class="w-10 h-10 mx-auto text-slate-400 mb-2 opacity-60"></i>
         <p class="text-sm font-bold text-slate-700">ไม่พบรายการสินค้าที่ค้นหา</p>
         <p class="text-xs text-slate-500 mt-1">ลองเปลี่ยนคำค้นหา หรือเลือกหมวดหมู่อื่นทางด้านซ้ายมือ</p>
-        ${(posSearchQuery || posSelectedCategory !== 'all') ? `
-          <button type="button" onclick="posSelectedCategory='all'; clearPosSearch(); renderPosView();" class="mt-3 px-3 py-1.5 bg-white hover:bg-slate-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition shadow-2xs">
-            แสดงสินค้าทั้งหมด
+        ${(posSearchQuery || posSelectedCategory !== 'all' || posSelectedGroup !== 'all') ? `
+          <button type="button" onclick="posSelectedGroup='all'; posSelectedCategory='all'; clearPosSearch(); renderPosView();" class="mt-3 px-3 py-1.5 bg-white hover:bg-slate-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition shadow-2xs">
+            แสดงสินค้าทั้งหมด (${allItems.length} รายการ)
           </button>
         ` : ''}
       </div>
@@ -1367,29 +1482,37 @@ function renderPosProductsGrid() {
   }
 
   container.innerHTML = filtered.map(it => {
-    const badge = getPosCategoryBadgeStyle(it.category);
+    const badge = getPosCategoryBadgeStyle(it.category, it.group);
+    const hasStock = it.avail > 0;
     return `
       <div onclick="addPosItemToCart('${it.type}', '${it.id}')" 
-        class="bg-white p-3.5 rounded-2xl border border-slate-200 hover:border-emerald-400 hover:shadow-md transition cursor-pointer flex flex-col justify-between group">
+        class="bg-white p-3.5 rounded-2xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between group relative">
         <div>
-          <div class="flex items-start justify-between gap-1 mb-1">
-            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${badge.bg}">
+          <div class="flex items-center justify-between gap-1.5 mb-1.5">
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md truncate max-w-[70%] ${badge.bg}" title="Category: ${it.category}">
               ${badge.label}
             </span>
-            <span class="text-xs font-bold text-slate-500">${it.pondName}</span>
+            <span class="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0" title="Product code">
+              #${it.code || '-'}
+            </span>
           </div>
-          <h4 class="font-bold text-sm text-slate-800 group-hover:text-emerald-700 transition line-clamp-1">${it.name}</h4>
-          <div class="text-xs text-slate-500 mt-0.5">${it.size || ''} ${it.sieve && it.sieve !== '-' ? `(ตาคัด ${it.sieve})` : ''}</div>
+          <h4 class="font-bold text-sm text-slate-800 group-hover:text-emerald-700 transition line-clamp-2 leading-snug" title="${it.name}">
+            ${it.name}
+          </h4>
         </div>
 
-        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-end justify-between gap-2">
           <div>
-            <span class="text-[11px] text-slate-400 block">คงเหลือ</span>
-            <span class="font-black text-xs ${it.avail > 0 ? 'text-slate-800' : 'text-rose-500'}">${it.avail.toLocaleString()} ${it.unit}</span>
+            <span class="text-[10px] text-slate-400 block">Quantity (คงเหลือ)</span>
+            <span class="font-extrabold text-xs ${hasStock ? 'text-emerald-700' : 'text-slate-400'}">
+              ${formatPosNumber(it.avail)} ${it.unit}
+            </span>
+            <span class="text-[10px] text-slate-400 block mt-0.5">ทุน: ฿${formatPosPrice(it.cost)}</span>
           </div>
           <div class="text-right">
-            <span class="text-[11px] text-slate-400 block">ราคา</span>
-            <span class="font-black text-sm text-emerald-700">฿${Number(it.price).toLocaleString()}</span>
+            <span class="text-[10px] text-slate-400 block">Price (ราคาขาย)</span>
+            <span class="font-black text-base text-emerald-700">฿${formatPosPrice(it.price)}</span>
+            <span class="text-[10px] text-slate-400">/${it.unit}</span>
           </div>
         </div>
       </div>
@@ -1407,15 +1530,29 @@ function renderPosView() {
 }
 
 function addPosItemToCart(type, id) {
+  ensurePosProductsLoaded();
   let target = null;
-  if (type === 'fish') {
+
+  if (type === 'pos_product') {
+    const prod = (state.posProducts || []).find(p => p.id === id);
+    if (!prod) return;
+    target = {
+      type: 'pos_product',
+      id: prod.id,
+      posProductId: prod.id,
+      productCode: prod.code || '',
+      category: prod.category || 'สินค้าทั่วไป',
+      name: prod.name,
+      size: '',
+      unit: prod.unit || 'ชิ้น',
+      cost: Number(prod.cost || 0),
+      unitPrice: Number(prod.price || 0),
+      stockAvail: Number(prod.quantity || 0)
+    };
+  } else if (type === 'fish') {
     const pond = (state.ponds || []).find(p => p.id === id);
     if (!pond) return;
     const avail = Math.max(0, (pond.totalQty || 0) - (pond.reservedQty || 0));
-    if (avail <= 0) {
-      showNotification(`ปลาในบ่อ ${pond.name} หมดแล้ว`, 'error');
-      return;
-    }
     target = {
       type,
       id: pond.id,
@@ -1424,15 +1561,11 @@ function addPosItemToCart(type, id) {
       size: pond.fishSize,
       unit: 'ตัว',
       unitPrice: pond.unitPrice || 1.5,
-      maxAvail: avail
+      stockAvail: avail
     };
   } else if (type === 'supply') {
     const sup = (state.supplies || []).find(s => s.id === id);
     if (!sup) return;
-    if (sup.stockQty <= 0) {
-      showNotification(`สินค้า ${sup.name} หมดสต็อก`, 'error');
-      return;
-    }
     target = {
       type,
       id: sup.id,
@@ -1441,32 +1574,15 @@ function addPosItemToCart(type, id) {
       size: sup.packageSize,
       unit: sup.unit,
       unitPrice: sup.unitPrice || 450,
-      maxAvail: sup.stockQty
-    };
-  } else if (type === 'catalog') {
-    const catItem = (typeof PRODUCT_CATALOG !== 'undefined' ? PRODUCT_CATALOG : []).find(c => c.id === id);
-    if (!catItem) return;
-    target = {
-      type,
-      id: catItem.id,
-      category: catItem.category || 'อุปกรณ์อื่นๆ',
-      name: catItem.name,
-      size: (catItem.defaultSizes && catItem.defaultSizes[0]) || '',
-      unit: catItem.unit || 'ชิ้น',
-      unitPrice: catItem.defaultPrice || 100,
-      maxAvail: 99
+      stockAvail: sup.stockQty
     };
   }
 
   if (!target) return;
 
-  const existing = posCart.find(it => it.type === type && it.id === id);
+  const existing = posCart.find(it => it.type === target.type && it.id === target.id);
   if (existing) {
-    if (existing.qty + 1 > existing.maxAvail) {
-      showNotification(`สต็อกมีจำกัดเพียง ${existing.maxAvail} ${existing.unit}`, 'warning');
-      return;
-    }
-    existing.qty += 1;
+    existing.qty = Number((existing.qty + 1).toFixed(4));
   } else {
     posCart.push({ ...target, qty: 1 });
   }
@@ -1476,15 +1592,10 @@ function addPosItemToCart(type, id) {
 
 function updatePosCartQty(index, newQty) {
   const q = Number(newQty);
-  if (q <= 0) {
+  if (isNaN(q) || q <= 0) {
     posCart.splice(index, 1);
   } else {
-    if (q > posCart[index].maxAvail) {
-      showNotification(`สต็อกคงเหลือเพียง ${posCart[index].maxAvail} ${posCart[index].unit}`, 'warning');
-      posCart[index].qty = posCart[index].maxAvail;
-    } else {
-      posCart[index].qty = q;
-    }
+    posCart[index].qty = Number(q.toFixed(4));
   }
   renderPosCart();
 }
@@ -1523,45 +1634,40 @@ function sendOrderToPos(orderId) {
 
   posLinkedOrderId = order.id;
   posCart = [];
+  ensurePosProductsLoaded();
 
   // โอนรายการสินค้าที่สั่งจองไว้เข้าสู่ตะกร้า POS โดยอัตโนมัติ
   (order.items || []).forEach(it => {
     const isFish = it.category === 'พันธุ์ปลา';
-    let targetId = it.pondId || it.id || ('item_' + Math.random().toString(36).substr(2, 5));
-    let maxAvail = Math.max(Number(it.qty) || 1, 999999);
+    let targetId = it.posProductId || it.pondId || it.id || ('item_' + Math.random().toString(36).substr(2, 5));
+    let posProductId = it.posProductId;
+    let productCode = it.productCode || '';
 
-    if (isFish) {
-      let pond = it.pondId ? (state.ponds || []).find(p => p.id === it.pondId) : null;
-      if (!pond && typeof getAvailableFishStock === 'function') {
-        const stock = getAvailableFishStock(it.name, it.size);
-        if (stock.matchingPonds && stock.matchingPonds.length > 0) {
-          pond = stock.matchingPonds[0];
-        }
-      }
-      if (pond) {
-        targetId = pond.id;
-        maxAvail = Math.max(Number(it.qty) || 1, pond.totalQty || 0);
-      }
-    } else {
-      const sup = (state.supplies || []).find(s => s.name.includes(it.name) || it.name.includes(s.name));
-      if (sup) {
-        targetId = sup.id;
-        maxAvail = Math.max(Number(it.qty) || 1, sup.stockQty || 0);
-      }
+    // ลองจับคู่กับรายการสินค้าในคลัง POS ตามชื่อหรือรหัส
+    const matchedPosProd = (state.posProducts || []).find(p =>
+      (it.posProductId && p.id === it.posProductId) ||
+      (it.productCode && p.code === it.productCode) ||
+      p.name === it.name
+    );
+    if (matchedPosProd) {
+      posProductId = matchedPosProd.id;
+      productCode = matchedPosProd.code;
+      targetId = matchedPosProd.id;
     }
 
     const unitPrice = Number(it.unitPrice !== undefined ? it.unitPrice : (it.netUnitPrice || 0));
 
     posCart.push({
-      type: isFish ? 'fish' : 'supply',
+      type: matchedPosProd ? 'pos_product' : (isFish ? 'fish' : 'supply'),
       id: targetId,
-      category: it.category || (isFish ? 'พันธุ์ปลา' : 'อาหารปลา'),
+      posProductId,
+      productCode,
+      category: it.category || (matchedPosProd ? matchedPosProd.category : (isFish ? 'พันธุ์ปลา' : 'อาหารปลา')),
       name: it.name,
       size: it.size || '',
-      unit: it.unit || (isFish ? 'ตัว' : 'ชิ้น'),
+      unit: it.unit || (matchedPosProd ? matchedPosProd.unit : (isFish ? 'ตัว' : 'ชิ้น')),
       unitPrice,
-      qty: Number(it.qty) || 1,
-      maxAvail
+      qty: Number(it.qty) || 1
     });
   });
 
@@ -1675,7 +1781,7 @@ function renderPosCart() {
     container.innerHTML = `
       <div class="text-center py-12 text-slate-400">
         <i data-lucide="shopping-cart" class="w-10 h-10 mx-auto mb-2 opacity-40"></i>
-        <p class="text-xs">ยังไม่มีรายการสินค้าในบิล<br/>คลิกเลือกรายการปลาหรืออาหารจากด้านซ้ายได้เลยครับ</p>
+        <p class="text-xs">ยังไม่มีรายการสินค้าในบิล<br/>คลิกเลือกรายการสินค้าจากด้านซ้ายได้เลยครับ</p>
       </div>
     `;
     if (subtotalEl) subtotalEl.textContent = '฿0.00';
@@ -1696,18 +1802,21 @@ function renderPosCart() {
     return `
       <div class="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-2xs">
         <div class="min-w-0 flex-1">
-          <div class="font-bold text-xs text-slate-800 truncate">${it.name}</div>
+          <div class="flex items-center gap-1.5">
+            ${it.productCode ? `<span class="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">#${it.productCode}</span>` : ''}
+            <span class="font-bold text-xs text-slate-800 truncate" title="${it.name}">${it.name}</span>
+          </div>
           <div class="text-[11px] text-slate-500 mt-1 flex items-center gap-1 flex-wrap">
-            ${it.size ? `<span class="text-slate-400">${it.size} •</span>` : ''}
-            <div class="inline-flex items-center bg-sky-50/80 border border-sky-200 rounded-lg px-1.5 py-0.5" title="แก้ไขราคาขายต่อหน่วย">
+            <span class="text-[10px] text-slate-400 truncate max-w-[110px]">${it.category || ''}</span>
+            <div class="inline-flex items-center bg-sky-50/80 border border-sky-200 rounded-lg px-1.5 py-0.5" title="แก้ไขราคาขายต่อหน่วย (Price)">
               <span class="text-sky-700 font-bold text-[10px] mr-0.5">฿</span>
               <input
                 type="number"
                 min="0"
-                step="0.01"
+                step="any"
                 value="${it.unitPrice}"
                 onchange="updatePosCartPrice(${idx}, this.value)"
-                class="w-14 text-right font-bold text-xs text-sky-900 bg-transparent border-none p-0 focus:ring-0 focus:outline-none"
+                class="w-16 text-right font-bold text-xs text-sky-900 bg-transparent border-none p-0 focus:ring-0 focus:outline-none"
               >
               <span class="text-[10px] text-slate-500 ml-0.5">/${it.unit}</span>
             </div>
@@ -1715,10 +1824,10 @@ function renderPosCart() {
         </div>
 
         <div class="flex items-center gap-1.5 shrink-0">
-          <input type="number" min="1" max="${it.maxAvail}" value="${it.qty}" 
+          <input type="number" min="0.01" step="any" value="${it.qty}" 
             onchange="updatePosCartQty(${idx}, this.value)"
-            title="ระบุจำนวน (${it.unit})"
-            class="input-large text-xs py-1 px-2 w-24 text-center font-bold bg-white">
+            title="ระบุจำนวน (${it.unit}) รองรับทศนิยม เช่น 0.5"
+            class="input-large text-xs py-1 px-2 w-20 text-center font-bold bg-white">
           <span class="text-xs text-slate-500">${it.unit}</span>
         </div>
 
@@ -1735,7 +1844,7 @@ function renderPosCart() {
 
   if (subtotalEl) subtotalEl.textContent = '฿' + subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (totalEl) totalEl.textContent = '฿' + netPayable.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (countEl) countEl.textContent = `${totalItemsCount.toLocaleString()} ชิ้น (${posCart.length} รายการ)`;
+  if (countEl) countEl.textContent = `${formatPosNumber(totalItemsCount)} หน่วย (${posCart.length} รายการ)`;
 
   lucide.createIcons();
 }
@@ -1757,11 +1866,14 @@ function handlePosCheckout() {
     const t = it.qty * it.unitPrice;
     grossTotal += t;
     return {
+      posProductId: it.posProductId || (it.type === 'pos_product' ? it.id : undefined),
+      productCode: it.productCode || '',
       category: it.category || (it.type === 'fish' ? 'พันธุ์ปลา' : 'อาหารปลา'),
       name: it.name,
       size: it.size || '',
       qty: it.qty,
       unit: it.unit,
+      cost: Number(it.cost || 0),
       unitPrice: it.unitPrice,
       unitDiscount: 0,
       netUnitPrice: it.unitPrice,
@@ -1830,7 +1942,7 @@ function handlePosCheckout() {
     }
   }
 
-  // กรณีที่ 2: ลูกค้าที่มาซื้อสดหน้าร้านโดยตรง (Walk-in POS) -> โชว์เฉพาะในโมดูล POS ไม่เอาไปปนในโมดูลจองปลา
+  // กรณีที่ 2: ลูกค้าที่มาซื้อสดหน้าร้านโดยตรง (Walk-in POS)
   const orderId = 'POS-' + dateStr.replace(/-/g, '') + '-' + String((state.orders || []).length + 1).padStart(3, '0');
 
   const newPosOrder = {
@@ -1863,7 +1975,7 @@ function handlePosCheckout() {
     createdAt: dateStr + ' ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
   };
 
-  // ตัดสต็อกจริงทันที
+  // ตัดสต็อกจริงทันที (ตัดใน state.posProducts ด้วย)
   if (typeof deductStockForDeliveredOrder === 'function') {
     deductStockForDeliveredOrder(newPosOrder);
   }
@@ -1877,6 +1989,447 @@ function handlePosCheckout() {
 
   // เปิดดูใบเสร็จด่วน
   viewOrderSlip(orderId);
+}
+
+// ====================================================================
+// 4.1 POS PRODUCTS & STOCK MANAGEMENT (ตรงตามหัวข้อในไฟล์ Excel 7 คอลัมน์)
+// Product code | Product name | Category | Quantity | Unit | Cost | Price
+// ====================================================================
+
+function populatePosProdCategoryDropdown() {
+  const selectEl = document.getElementById('pos-prod-table-category');
+  const datalistEl = document.getElementById('pos-category-datalist');
+  const products = ensurePosProductsLoaded();
+  const groupVal = document.getElementById('pos-prod-table-group')?.value || 'all';
+
+  const allCats = Array.from(new Set(products.map(p => (p.category || 'อื่นๆ').trim()))).sort(comparePosCategories);
+
+  if (datalistEl) {
+    datalistEl.innerHTML = allCats.map(c => `<option value="${c}"></option>`).join('');
+  }
+
+  if (selectEl) {
+    const prevVal = selectEl.value || 'all';
+    const filteredCats = groupVal === 'all'
+      ? allCats
+      : allCats.filter(c => getPosCategoryGroup(c) === groupVal);
+
+    selectEl.innerHTML = `<option value="all">ทุกหมวดหมู่ (${filteredCats.length} หมวด)</option>` +
+      filteredCats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    if (filteredCats.includes(prevVal)) {
+      selectEl.value = prevVal;
+    } else {
+      selectEl.value = 'all';
+    }
+  }
+}
+
+function onPosProdTableGroupChange() {
+  populatePosProdCategoryDropdown();
+  renderPosProductsTable();
+}
+
+function handlePosProdTableFilter() {
+  renderPosProductsTable();
+}
+
+function renderPosProductsTable() {
+  const tbody = document.getElementById('pos-products-table-tbody');
+  if (!tbody) return;
+
+  const products = ensurePosProductsLoaded();
+
+  // อัปเดตตัวเลือกหมวดหมู่หากยังไม่ได้สร้าง
+  const catSelect = document.getElementById('pos-prod-table-category');
+  if (catSelect && catSelect.options.length <= 1) {
+    populatePosProdCategoryDropdown();
+  }
+
+  // คำนวณ KPIs ทั้งหมด
+  const uniqueCats = new Set(products.map(p => (p.category || '').trim()));
+  let inStockCount = 0;
+  let zeroStockCount = 0;
+  let totalCostVal = 0;
+  let totalPriceVal = 0;
+
+  products.forEach(p => {
+    const q = Number(p.quantity || 0);
+    const c = Number(p.cost || 0);
+    const pr = Number(p.price || 0);
+    if (q > 0) {
+      inStockCount++;
+      totalCostVal += q * c;
+      totalPriceVal += q * pr;
+    } else {
+      zeroStockCount++;
+    }
+  });
+
+  const elKpiTotal = document.getElementById('pos-prod-kpi-total');
+  const elKpiCats = document.getElementById('pos-prod-kpi-cats');
+  const elKpiIn = document.getElementById('pos-prod-kpi-instock');
+  const elKpiOut = document.getElementById('pos-prod-kpi-outstock');
+  const elKpiCost = document.getElementById('pos-prod-kpi-cost-val');
+  const elKpiPrice = document.getElementById('pos-prod-kpi-price-val');
+
+  if (elKpiTotal) elKpiTotal.textContent = `${products.length.toLocaleString()} รายการ`;
+  if (elKpiCats) elKpiCats.textContent = `${uniqueCats.size.toLocaleString()} หมวดหมู่ (Categories)`;
+  if (elKpiIn) elKpiIn.textContent = `${inStockCount.toLocaleString()} รายการ`;
+  if (elKpiOut) elKpiOut.textContent = `สต็อกเป็น 0: ${zeroStockCount.toLocaleString()} รายการ`;
+  if (elKpiCost) elKpiCost.textContent = '฿' + totalCostVal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (elKpiPrice) elKpiPrice.textContent = '฿' + totalPriceVal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // ตัวกรองตาราง
+  const searchQ = (document.getElementById('pos-prod-table-search')?.value || '').trim().toLowerCase();
+  const groupFilter = document.getElementById('pos-prod-table-group')?.value || 'all';
+  const catFilter = document.getElementById('pos-prod-table-category')?.value || 'all';
+  const stockFilter = document.getElementById('pos-prod-table-stock')?.value || 'all';
+
+  const filtered = products.filter(p => {
+    const grp = getPosCategoryGroup(p.category);
+    if (groupFilter !== 'all' && grp !== groupFilter) return false;
+    if (catFilter !== 'all' && (p.category || '').trim() !== catFilter) return false;
+    const qty = Number(p.quantity || 0);
+    if (stockFilter === 'instock' && qty <= 0) return false;
+    if (stockFilter === 'zero' && qty > 0) return false;
+    if (searchQ) {
+      const match =
+        (p.code || '').toLowerCase().includes(searchQ) ||
+        (p.name || '').toLowerCase().includes(searchQ) ||
+        (p.category || '').toLowerCase().includes(searchQ) ||
+        (p.unit || '').toLowerCase().includes(searchQ);
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  const showingEl = document.getElementById('pos-prod-table-showing');
+  if (showingEl) {
+    showingEl.textContent = `แสดง ${filtered.length.toLocaleString()} จาก ${products.length.toLocaleString()} รายการ`;
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="p-8 text-center text-slate-400">
+          ไม่พบรายการสินค้าตามเงื่อนไขที่ค้นหา
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(p => {
+    const badge = getPosCategoryBadgeStyle(p.category);
+    const qty = Number(p.quantity || 0);
+    return `
+      <tr class="hover:bg-emerald-50/40 transition">
+        <td class="p-3 font-mono font-bold text-slate-700 whitespace-nowrap">${p.code || '-'}</td>
+        <td class="p-3 font-bold text-slate-800">${p.name || '-'}</td>
+        <td class="p-3 whitespace-nowrap">
+          <span class="px-2 py-0.5 rounded-md text-[11px] font-bold ${badge.bg}">
+            ${badge.label}
+          </span>
+        </td>
+        <td class="p-3 text-right whitespace-nowrap">
+          <input
+            type="number"
+            step="any"
+            value="${qty}"
+            onchange="updatePosProductInline('${p.id}', 'quantity', this.value)"
+            class="w-24 text-right font-extrabold text-xs px-2 py-1 rounded-lg border ${
+              qty > 0 ? 'border-emerald-300 bg-emerald-50/50 text-emerald-800' : 'border-slate-200 bg-white text-slate-500'
+            } focus:border-emerald-500 focus:bg-white focus:outline-none"
+          >
+        </td>
+        <td class="p-3 text-center font-semibold text-slate-600 whitespace-nowrap">${p.unit || '-'}</td>
+        <td class="p-3 text-right whitespace-nowrap">
+          <input
+            type="number"
+            step="any"
+            min="0"
+            value="${Number(p.cost || 0)}"
+            onchange="updatePosProductInline('${p.id}', 'cost', this.value)"
+            class="w-24 text-right font-bold text-xs px-2 py-1 rounded-lg border border-slate-200 bg-white text-amber-800 focus:border-amber-500 focus:outline-none"
+          >
+        </td>
+        <td class="p-3 text-right whitespace-nowrap">
+          <input
+            type="number"
+            step="any"
+            min="0"
+            value="${Number(p.price || 0)}"
+            onchange="updatePosProductInline('${p.id}', 'price', this.value)"
+            class="w-24 text-right font-black text-xs px-2 py-1 rounded-lg border border-emerald-200 bg-white text-emerald-700 focus:border-emerald-500 focus:outline-none"
+          >
+        </td>
+        <td class="p-3 text-right whitespace-nowrap">
+          <div class="inline-flex items-center gap-1">
+            <button
+              type="button"
+              onclick="quickSellPosProduct('${p.id}')"
+              class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition flex items-center gap-1"
+              title="หยิบใส่ตะกร้าขายหน้าร้าน"
+            >
+              <i data-lucide="shopping-cart" class="w-3 h-3"></i>
+              <span>ขาย</span>
+            </button>
+            <button
+              type="button"
+              onclick="openPosProductModal('${p.id}')"
+              class="p-1.5 rounded-lg bg-slate-100 hover:bg-sky-100 text-slate-600 hover:text-sky-700 transition"
+              title="แก้ไขข้อมูลสินค้า"
+            >
+              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            </button>
+            <button
+              type="button"
+              onclick="deletePosProduct('${p.id}')"
+              class="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 transition"
+              title="ลบรายการ"
+            >
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function updatePosProductInline(prodId, field, rawVal) {
+  const products = ensurePosProductsLoaded();
+  const prod = products.find(p => p.id === prodId);
+  if (!prod) return;
+
+  const num = Number(rawVal);
+  if (isNaN(num)) {
+    showNotification('กรุณากรอกตัวเลขให้ถูกต้อง', 'warning');
+    renderPosProductsTable();
+    return;
+  }
+
+  prod[field] = Number(num.toFixed(4));
+  if (typeof saveInventoryState === 'function') saveInventoryState();
+  renderPosProductsTable();
+  renderPosView();
+
+  const labelMap = { quantity: 'จำนวนคงเหลือ (Quantity)', cost: 'ราคาทุน (Cost)', price: 'ราคาขาย (Price)' };
+  showNotification(`อัปเดต ${labelMap[field] || field} ของ "${prod.name}" เป็น ${formatPosNumber(prod[field])} เรียบร้อย`, 'success');
+}
+
+function quickSellPosProduct(prodId) {
+  addPosItemToCart('pos_product', prodId);
+  handleSubtabClick('pos', 'pos-cashier', '');
+  showNotification('เพิ่มสินค้าลงในบิลขายหน้าร้านแล้ว', 'success');
+}
+
+function openPosProductModal(prodId = null) {
+  const modal = document.getElementById('modal-pos-product');
+  if (!modal) return;
+
+  populatePosProdCategoryDropdown();
+
+  const titleEl = document.getElementById('modal-pos-product-title');
+  const idInp = document.getElementById('pos-prod-edit-id');
+  const codeInp = document.getElementById('pos-prod-input-code');
+  const nameInp = document.getElementById('pos-prod-input-name');
+  const catInp = document.getElementById('pos-prod-input-category');
+  const qtyInp = document.getElementById('pos-prod-input-qty');
+  const unitInp = document.getElementById('pos-prod-input-unit');
+  const costInp = document.getElementById('pos-prod-input-cost');
+  const priceInp = document.getElementById('pos-prod-input-price');
+
+  if (prodId) {
+    const prod = ensurePosProductsLoaded().find(p => p.id === prodId);
+    if (!prod) return;
+    if (titleEl) titleEl.textContent = `แก้ไขสินค้า: ${prod.name}`;
+    if (idInp) idInp.value = prod.id;
+    if (codeInp) codeInp.value = prod.code || '';
+    if (nameInp) nameInp.value = prod.name || '';
+    if (catInp) catInp.value = prod.category || '';
+    if (qtyInp) qtyInp.value = Number(prod.quantity || 0);
+    if (unitInp) unitInp.value = prod.unit || 'ตัว';
+    if (costInp) costInp.value = Number(prod.cost || 0);
+    if (priceInp) priceInp.value = Number(prod.price || 0);
+  } else {
+    if (titleEl) titleEl.textContent = 'เพิ่มรายการสินค้า POS ใหม่';
+    if (idInp) idInp.value = '';
+    if (codeInp) codeInp.value = 'PD' + Date.now().toString().slice(-6);
+    if (nameInp) nameInp.value = '';
+    if (catInp) catInp.value = posSelectedCategory !== 'all' ? posSelectedCategory : '203 สินค้าอื่นๆ';
+    if (qtyInp) qtyInp.value = 0;
+    if (unitInp) unitInp.value = 'ชิ้น';
+    if (costInp) costInp.value = 0;
+    if (priceInp) priceInp.value = 0;
+  }
+
+  modal.classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+function handleSavePosProduct(e) {
+  if (e) e.preventDefault();
+  const products = ensurePosProductsLoaded();
+
+  const editId = document.getElementById('pos-prod-edit-id')?.value;
+  const code = (document.getElementById('pos-prod-input-code')?.value || '').trim();
+  const name = (document.getElementById('pos-prod-input-name')?.value || '').trim();
+  const category = (document.getElementById('pos-prod-input-category')?.value || '').trim();
+  const quantity = Number(document.getElementById('pos-prod-input-qty')?.value || 0);
+  const unit = (document.getElementById('pos-prod-input-unit')?.value || 'ชิ้น').trim();
+  const cost = Number(document.getElementById('pos-prod-input-cost')?.value || 0);
+  const price = Number(document.getElementById('pos-prod-input-price')?.value || 0);
+
+  if (!code || !name || !category) {
+    showNotification('กรุณากรอกรหัสสินค้า ชื่อสินค้า และหมวดหมู่ให้ครบถ้วน', 'error');
+    return;
+  }
+
+  if (editId) {
+    const existing = products.find(p => p.id === editId);
+    if (existing) {
+      existing.code = code;
+      existing.name = name;
+      existing.category = category;
+      existing.quantity = quantity;
+      existing.unit = unit;
+      existing.cost = cost;
+      existing.price = price;
+    }
+    showNotification(`บันทึกการแก้ไขสินค้า "${name}" เรียบร้อยแล้ว`, 'success');
+  } else {
+    const newProd = {
+      id: 'pos_prod_' + Date.now(),
+      code,
+      name,
+      category,
+      quantity,
+      unit,
+      cost,
+      price
+    };
+    products.unshift(newProd);
+    showNotification(`เพิ่มสินค้าใหม่ "${name}" (รหัส ${code}) เรียบร้อยแล้ว`, 'success');
+  }
+
+  if (typeof saveInventoryState === 'function') saveInventoryState();
+  closeModal('modal-pos-product');
+  populatePosProdCategoryDropdown();
+  renderPosProductsTable();
+  renderPosView();
+}
+
+function deletePosProduct(prodId) {
+  const products = ensurePosProductsLoaded();
+  const idx = products.findIndex(p => p.id === prodId);
+  if (idx === -1) return;
+  const target = products[idx];
+  if (!confirm(`ยืนยันการลบรายการสินค้า "${target.name}" (รหัส: ${target.code}) ออกจากคลัง POS หรือไม่?`)) return;
+
+  products.splice(idx, 1);
+  if (typeof saveInventoryState === 'function') saveInventoryState();
+  populatePosProdCategoryDropdown();
+  renderPosProductsTable();
+  renderPosView();
+  showNotification(`ลบรายการสินค้า "${target.name}" เรียบร้อยแล้ว`, 'info');
+}
+
+function handlePosExcelImport(event) {
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+
+  if (typeof XLSX === 'undefined') {
+    showNotification('ไม่พบไลบรารีอ่านไฟล์ Excel (SheetJS)', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      if (!rows || rows.length === 0) {
+        showNotification('ไม่พบข้อมูลในไฟล์ Excel ที่เลือก', 'error');
+        return;
+      }
+
+      const importedProducts = [];
+      rows.forEach((r, idx) => {
+        const code = String(r['Product code'] ?? r['รหัสสินค้า'] ?? r['Code'] ?? '').trim();
+        const name = String(r['Product name'] ?? r['ชื่อสินค้า'] ?? r['Name'] ?? '').trim();
+        const category = String(r['Category'] ?? r['หมวดหมู่'] ?? 'อื่นๆ').trim();
+        const quantity = Number(r['Quantity'] ?? r['จำนวน'] ?? r['คงเหลือ'] ?? 0) || 0;
+        let unit = String(r['Unit'] ?? r['หน่วย'] ?? r['หน่วยนับ'] ?? 'ชิ้น').trim();
+        if (unit === 'ถุุง') unit = 'ถุง';
+        const cost = Number(r['Cost'] ?? r['ราคาทุน'] ?? r['ต้นทุน'] ?? 0) || 0;
+        const price = Number(r['Price'] ?? r['ราคาขาย'] ?? r['ราคา'] ?? 0) || 0;
+
+        if (code || name) {
+          importedProducts.push({
+            id: 'pos_prod_' + (idx + 1) + '_' + Date.now().toString().slice(-4),
+            code,
+            name,
+            category,
+            quantity: Number(quantity.toFixed(4)),
+            unit,
+            cost: Number(cost.toFixed(4)),
+            price: Number(price.toFixed(4))
+          });
+        }
+      });
+
+      if (importedProducts.length === 0) {
+        showNotification('รูปแบบคอลัมน์ในไฟล์ไม่ตรงกับ Product code, Product name, Category, Quantity, Unit, Cost, Price', 'error');
+        return;
+      }
+
+      state.posProducts = importedProducts;
+      if (typeof saveInventoryState === 'function') saveInventoryState();
+      populatePosProdCategoryDropdown();
+      renderPosProductsTable();
+      renderPosView();
+      showNotification(`นำเข้าข้อมูลสินค้าจากไฟล์ "${file.name}" จำนวน ${importedProducts.length.toLocaleString()} รายการสำเร็จ!`, 'success');
+    } catch (err) {
+      console.error('POS Excel Import Error:', err);
+      showNotification('เกิดข้อผิดพลาดในการอ่านไฟล์ Excel', 'error');
+    } finally {
+      event.target.value = '';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function exportPosProductsToExcel() {
+  const products = ensurePosProductsLoaded();
+  if (typeof XLSX === 'undefined') {
+    showNotification('ไม่พบไลบรารีส่งออกไฟล์ Excel', 'error');
+    return;
+  }
+
+  const exportRows = products.map(p => ({
+    'Product code': p.code || '',
+    'Product name': p.name || '',
+    'Category': p.category || '',
+    'Quantity': Number(p.quantity || 0),
+    'Unit': p.unit || '',
+    'Cost': Number(p.cost || 0),
+    'Price': Number(p.price || 0)
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(exportRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Products');
+  const today = typeof getTodayString === 'function' ? getTodayString().replace(/-/g, '_') : 'export';
+  XLSX.writeFile(wb, `export_product_all_${today}.xlsx`);
+  showNotification(`ส่งออกไฟล์ Excel จำนวน ${exportRows.length.toLocaleString()} รายการสำเร็จ`, 'success');
 }
 
 function openPosNewBill() {
@@ -2258,13 +2811,18 @@ function setPosHistoryDatePreset(preset) {
 
 function switchPosSubTab(subtabId) {
   const secCashier = document.getElementById('pos-section-cashier');
+  const secProducts = document.getElementById('pos-section-products');
   const secHistory = document.getElementById('pos-section-history');
 
   if (secCashier) secCashier.classList.toggle('hidden', subtabId !== 'pos-cashier');
+  if (secProducts) secProducts.classList.toggle('hidden', subtabId !== 'pos-products');
   if (secHistory) secHistory.classList.toggle('hidden', subtabId !== 'pos-history');
 
   if (subtabId === 'pos-cashier') {
     renderPosView();
+  } else if (subtabId === 'pos-products') {
+    populatePosProdCategoryDropdown();
+    renderPosProductsTable();
   } else if (subtabId === 'pos-history') {
     renderPosHistory();
   }

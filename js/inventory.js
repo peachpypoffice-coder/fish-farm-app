@@ -14,6 +14,7 @@ function initInventoryState() {
     const savedGrading = localStorage.getItem('phuyaiporn_grading');
     const savedGrn = localStorage.getItem('phuyaiporn_grn');
     const savedEvents = localStorage.getItem('phuyaiporn_system_events');
+    const savedPosProducts = localStorage.getItem('phuyaiporn_pos_products');
 
     let loadedPonds = savedPonds ? JSON.parse(savedPonds) : null;
     // ตรวจสอบว่ามีผังสต็อก 48 หน่วยตามแปลนจริงหรือไม่ ถ้ายังไม่มีหรือเป็นแบบเก่า ให้อัปเกรดเป็น 48 หน่วยทันที
@@ -22,12 +23,19 @@ function initInventoryState() {
       localStorage.setItem('phuyaiporn_ponds', JSON.stringify(loadedPonds));
     }
 
+    let loadedPosProducts = savedPosProducts ? JSON.parse(savedPosProducts) : null;
+    if (!loadedPosProducts || !Array.isArray(loadedPosProducts) || loadedPosProducts.length === 0) {
+      loadedPosProducts = typeof INITIAL_POS_PRODUCTS !== 'undefined' ? JSON.parse(JSON.stringify(INITIAL_POS_PRODUCTS)) : [];
+      localStorage.setItem('phuyaiporn_pos_products', JSON.stringify(loadedPosProducts));
+    }
+
     state.ponds = loadedPonds;
     state.supplies = savedSupplies ? JSON.parse(savedSupplies) : (typeof INITIAL_SUPPLIES !== 'undefined' ? INITIAL_SUPPLIES : []);
     state.mortalityLogs = savedMortality ? JSON.parse(savedMortality) : (typeof INITIAL_MORTALITY_LOGS !== 'undefined' ? INITIAL_MORTALITY_LOGS : []);
     state.gradingLogs = savedGrading ? JSON.parse(savedGrading) : (typeof INITIAL_GRADING_LOGS !== 'undefined' ? INITIAL_GRADING_LOGS : []);
     state.grnList = savedGrn ? JSON.parse(savedGrn) : (typeof INITIAL_GRN_LOGS !== 'undefined' ? INITIAL_GRN_LOGS : []);
     state.systemEvents = savedEvents ? JSON.parse(savedEvents) : (typeof INITIAL_SYSTEM_EVENTS !== 'undefined' ? INITIAL_SYSTEM_EVENTS : []);
+    state.posProducts = loadedPosProducts;
   } catch (err) {
     console.warn('Inventory state load error:', err);
     state.ponds = typeof INITIAL_PONDS !== 'undefined' ? JSON.parse(JSON.stringify(INITIAL_PONDS)) : [];
@@ -36,6 +44,7 @@ function initInventoryState() {
     state.gradingLogs = typeof INITIAL_GRADING_LOGS !== 'undefined' ? INITIAL_GRADING_LOGS : [];
     state.grnList = typeof INITIAL_GRN_LOGS !== 'undefined' ? INITIAL_GRN_LOGS : [];
     state.systemEvents = typeof INITIAL_SYSTEM_EVENTS !== 'undefined' ? INITIAL_SYSTEM_EVENTS : [];
+    state.posProducts = typeof INITIAL_POS_PRODUCTS !== 'undefined' ? JSON.parse(JSON.stringify(INITIAL_POS_PRODUCTS)) : [];
   }
 }
 
@@ -47,6 +56,9 @@ function saveInventoryState() {
     localStorage.setItem('phuyaiporn_grading', JSON.stringify(state.gradingLogs));
     localStorage.setItem('phuyaiporn_grn', JSON.stringify(state.grnList));
     localStorage.setItem('phuyaiporn_system_events', JSON.stringify(state.systemEvents));
+    if (state.posProducts) {
+      localStorage.setItem('phuyaiporn_pos_products', JSON.stringify(state.posProducts));
+    }
   } catch (err) {
     console.error('Inventory state save error:', err);
   }
@@ -62,7 +74,8 @@ function saveInventoryState() {
         mortalityLogs: state.mortalityLogs,
         gradingLogs: state.gradingLogs,
         grnList: state.grnList,
-        systemEvents: state.systemEvents
+        systemEvents: state.systemEvents,
+        posProducts: state.posProducts
       })
     }).catch(e => console.warn('Inventory server sync error:', e));
   }
@@ -165,7 +178,20 @@ function deductStockForDeliveredOrder(order) {
   let changed = false;
 
   order.items.forEach(item => {
-    if (item.category === 'พันธุ์ปลา') {
+    // กรณีเป็นรายการจากคลังสินค้า POS (483 รายการจากไฟล์ Excel)
+    if (item.posProductId || item.productCode) {
+      const posProd = (state.posProducts || []).find(p =>
+        (item.posProductId && p.id === item.posProductId) ||
+        (item.productCode && p.code === item.productCode)
+      );
+      if (posProd) {
+        const deductAmt = Number(item.qty) || 0;
+        posProd.quantity = Math.max(0, Number(((posProd.quantity || 0) - deductAmt).toFixed(4)));
+        changed = true;
+      }
+    }
+
+    if (item.category === 'พันธุ์ปลา' || (item.pondId && !item.posProductId)) {
       let remainingToDeduct = Number(item.qty) || 0;
 
       // 1. กรณีระบุ pondId เจาะจง (เช่น มาจาก POS หรือระบุบ่อตอนขาย)
@@ -185,7 +211,7 @@ function deductStockForDeliveredOrder(order) {
       }
 
       // 2. ถ้ายังเหลือยอด หรือไม่ได้ระบุ pondId ให้ตัดจากบ่อที่ตรงกันตามลำดับ
-      if (remainingToDeduct > 0) {
+      if (remainingToDeduct > 0 && !item.posProductId) {
         const stock = getAvailableFishStock(item.name, item.size);
         for (const pond of (stock.matchingPonds || [])) {
           if (remainingToDeduct <= 0) break;
@@ -200,7 +226,7 @@ function deductStockForDeliveredOrder(order) {
           changed = true;
         }
       }
-    } else {
+    } else if (!item.posProductId) {
       const supply = (state.supplies || []).find(s => s.name.includes(item.name) || item.name.includes(s.name));
       if (supply) {
         supply.stockQty = Math.max(0, (supply.stockQty || 0) - Number(item.qty));

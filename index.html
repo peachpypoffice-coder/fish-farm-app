@@ -1981,304 +1981,451 @@
             </p>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
-            <button type="button" onclick="openPosSalesSummary()" class="btn-large bg-white/15 hover:bg-white/25 text-white border border-white/40 text-xs py-2 px-4 rounded-xl font-bold shadow-sm flex items-center gap-1.5 transition">
-              <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
-              <span>สรุปยอดขาย</span>
-            </button>
-            <button onclick="openPosNewBill()" class="btn-large bg-emerald-500 hover:bg-emerald-400 text-slate-900 text-xs py-2 px-4 rounded-xl font-bold shadow-sm flex items-center gap-1.5">
-              <i data-lucide="plus-circle" class="w-4 h-4 text-slate-900"></i>
-              <span>+ เปิดบิลใหม่</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- POS Main Area: Cashier Section -->
-      <div id="pos-section-cashier" class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        
-        <!-- Left Col: Category Sidebar (ช่องหมวดหมู่ทางซ้ายมือ) -->
-        <div class="lg:col-span-3 xl:col-span-2">
-          <div class="farm-card p-3.5 sticky top-24 space-y-2 border border-slate-200">
-            <div class="px-2 py-1.5 border-b border-slate-100 flex items-center justify-between">
-              <h3 class="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                <i data-lucide="layers" class="w-4 h-4 text-emerald-600"></i>
-                <span>หมวดหมู่สินค้า</span>
-              </h3>
-            </div>
-            <!-- Category Buttons List populated by JS -->
-            <div id="pos-categories-sidebar" class="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible pb-1 lg:pb-0 scrollbar-none">
-              <!-- Populated by renderPosCategories() in portal.js -->
+              <button onclick="openPosProductModal()" class="btn-large bg-white/15 hover:bg-white/25 text-white border border-white/40 text-xs py-2 px-4 rounded-xl font-bold shadow-sm flex items-center gap-1.5 transition">
+                <i data-lucide="package-plus" class="w-4 h-4"></i>
+                <span>+ เพิ่มสินค้า POS</span>
+              </button>
+              <button type="button" onclick="openPosSalesSummary()" class="btn-large bg-white/15 hover:bg-white/25 text-white border border-white/40 text-xs py-2 px-4 rounded-xl font-bold shadow-sm flex items-center gap-1.5 transition">
+                <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                <span>สรุปยอดขาย</span>
+              </button>
+              <button onclick="openPosNewBill()" class="btn-large bg-emerald-500 hover:bg-emerald-400 text-slate-900 text-xs py-2 px-4 rounded-xl font-bold shadow-sm flex items-center gap-1.5">
+                <i data-lucide="plus-circle" class="w-4 h-4 text-slate-900"></i>
+                <span>+ เปิดบิลใหม่</span>
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- Center Col: Search Bar + Products & Fish Picker -->
-        <div class="lg:col-span-5 xl:col-span-6 space-y-4">
-          <div class="farm-card p-4 space-y-4">
-            <!-- Header & Search Bar -->
-            <div class="flex flex-col gap-3">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-                  <i data-lucide="layout-grid" class="w-4 h-4 text-emerald-600"></i>
-                  <span id="pos-active-category-title">เลือกสินค้า / ปลาพร้อมขายลงในบิล</span>
+        <!-- POS Main Area: Cashier Section -->
+        <div id="pos-section-cashier" class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          
+          <!-- Left Col: Category Sidebar (ช่องหมวดหมู่ทางซ้ายมือ ตามโครงสร้างไฟล์ Excel) -->
+          <div class="lg:col-span-3 xl:col-span-3">
+            <div class="farm-card p-3.5 sticky top-24 space-y-2.5 border border-slate-200">
+              <div class="px-1.5 py-1 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <i data-lucide="layers" class="w-4 h-4 text-emerald-600"></i>
+                  <span>หมวดหมู่สินค้า (POS)</span>
                 </h3>
-                <span id="pos-products-count-badge" class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full w-fit">
-                  0 รายการ
-                </span>
+                <span id="pos-sidebar-cat-count" class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">55 หมวด</span>
               </div>
 
-              <!-- Search Input Box -->
+              <!-- แท็บกลุ่มหมวดหมู่หลัก (พันธุ์ปลา 1-47 / อาหารกระสอบ 201 / อาหารแบ่งโล 202 / อื่นๆ) -->
+              <div id="pos-category-group-tabs" class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+                <!-- Populated by renderPosCategories() -->
+              </div>
+
+              <!-- ช่องค้นหาหมวดหมู่ด่วน -->
               <div class="relative">
-                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
                 <input
                   type="text"
-                  id="pos-search-input"
-                  oninput="handlePosSearch(this.value)"
-                  placeholder="ค้นหาชื่อพันธุ์ปลา, ไซส์ปลา, รหัสบ่อ/กระชัง, อาหารปลา, เวชภัณฑ์..."
-                  class="input-large pl-10 pr-9 py-2.5 w-full text-xs sm:text-sm bg-slate-50 focus:bg-white border-slate-200 focus:border-emerald-500 rounded-xl transition"
+                  id="pos-category-filter-input"
+                  oninput="handlePosCategoryFilter(this.value)"
+                  placeholder="กรองชื่อหมวดหมู่ (เช่น 1, 201, ปลาดุก)..."
+                  class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-emerald-500 focus:outline-none"
                 >
-                <button
-                  type="button"
-                  id="pos-search-clear-btn"
-                  onclick="clearPosSearch()"
-                  class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
-                  title="ล้างคำค้นหา"
-                >
-                  <i data-lucide="x" class="w-4 h-4"></i>
+              </div>
+
+              <!-- Category Buttons List populated by JS -->
+              <div id="pos-categories-sidebar" class="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-y-auto lg:max-h-[540px] pb-1 lg:pb-0 pr-0.5">
+                <!-- Populated by renderPosCategories() in portal.js -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Center Col: Search Bar + Products & Fish Picker -->
+          <div class="lg:col-span-5 xl:col-span-5 space-y-4">
+            <div class="farm-card p-4 space-y-4">
+              <!-- Header & Search Bar -->
+              <div class="flex flex-col gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                    <i data-lucide="layout-grid" class="w-4 h-4 text-emerald-600"></i>
+                    <span id="pos-active-category-title">เลือกสินค้าลงในบิล</span>
+                  </h3>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span id="pos-products-count-badge" class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full w-fit">
+                      0 รายการ
+                    </span>
+                    <button type="button" onclick="handleSubtabClick('pos', 'pos-products', '')" class="text-[11px] font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 px-2.5 py-0.5 rounded-full transition flex items-center gap-1">
+                      <i data-lucide="settings-2" class="w-3 h-3"></i>
+                      <span>จัดการสต็อก/ราคา</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Search Input Box -->
+                <div class="relative">
+                  <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                  <input
+                    type="text"
+                    id="pos-search-input"
+                    oninput="handlePosSearch(this.value)"
+                    placeholder="ค้นหารหัสสินค้า (Product code), ชื่อสินค้า (Product name), หมวดหมู่ (Category)..."
+                    class="input-large pl-10 pr-9 py-2.5 w-full text-xs sm:text-sm bg-slate-50 focus:bg-white border-slate-200 focus:border-emerald-500 rounded-xl transition"
+                  >
+                  <button
+                    type="button"
+                    id="pos-search-clear-btn"
+                    onclick="clearPosSearch()"
+                    class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
+                    title="ล้างคำค้นหา"
+                  >
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Products Grid populated by JS -->
+              <div id="pos-products-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3 max-h-[680px] overflow-y-auto pr-1">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Col: Cart & Checkout Panel -->
+          <div class="lg:col-span-4 xl:col-span-4">
+            <div class="farm-card p-5 sticky top-24 space-y-4 border-2 border-emerald-100">
+              <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                <h3 class="font-black text-slate-800 text-base flex items-center gap-2">
+                  <i data-lucide="shopping-cart" class="w-5 h-5 text-emerald-600"></i>
+                  <span>บิลขายปัจจุบัน</span>
+                </h3>
+                <button type="button" onclick="clearPosCart()" class="text-xs text-rose-500 hover:text-rose-700 font-semibold transition">
+                  ล้างบิล
+                </button>
+              </div>
+
+              <!-- Customer Info -->
+              <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <!-- แถบแสดงสถานะกรณีส่งออเดอร์มาจากโมดูลจองปลา -->
+                <div id="pos-linked-order-banner" class="hidden bg-sky-100/90 border border-sky-300 text-sky-900 px-2.5 py-1.5 rounded-lg text-[11px] flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <i data-lucide="file-symlink" class="w-3.5 h-3.5 text-sky-700 shrink-0"></i>
+                    <span class="font-bold truncate">เชื่อมบิลจอง: <strong id="pos-linked-order-id">-</strong></span>
+                  </div>
+                  <span id="pos-linked-deposit-badge" class="hidden bg-emerald-600 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded shrink-0">มัดจำ ฿0</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">ชื่อลูกค้า:</label>
+                    <input type="text" id="pos-customer-name" value="ลูกค้าหน้าร้าน (เงินสด)" class="input-large text-xs py-1.5 w-full bg-white">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">เบอร์โทรศัพท์:</label>
+                    <input type="text" id="pos-customer-phone" placeholder="08x-xxx-xxxx" class="input-large text-xs py-1.5 w-full bg-white">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cart Items List -->
+              <div>
+                <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
+                  <span>รายการในบิล <span class="text-[10px] text-emerald-700 font-normal">(แก้ไขราคาและจำนวนทศนิยมได้)</span></span>
+                  <span id="pos-cart-count">0 รายการ</span>
+                </div>
+                <div id="pos-cart-items" class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+
+              <!-- Totals, Bill Discount, Payment Method & Checkout -->
+              <div class="pt-3 border-t border-slate-200 space-y-3">
+                <!-- Subtotal -->
+                <div class="flex items-center justify-between text-xs text-slate-600">
+                  <span class="font-semibold">ยอดรวมสินค้า:</span>
+                  <span id="pos-cart-subtotal" class="font-bold text-slate-800">฿0.00</span>
+                </div>
+
+                <!-- หักเงินมัดจำเดิม (แสดงเมื่อดึงออเดอร์จองที่มีมัดจำมาคิดเงิน) -->
+                <div id="pos-cart-deposit-row" class="hidden flex items-center justify-between text-xs text-sky-700">
+                  <span class="font-semibold">หักเงินมัดจำที่รับไว้แล้ว:</span>
+                  <span id="pos-cart-deposit-val" class="font-bold">-฿0.00</span>
+                </div>
+
+                <!-- ส่วนลดท้ายบิล (Bill Discount) -->
+                <div class="flex items-center justify-between gap-2 bg-amber-50/70 px-3 py-2 rounded-xl border border-amber-200">
+                  <label for="pos-bill-discount" class="text-xs font-bold text-amber-900 flex items-center gap-1.5 shrink-0">
+                    <i data-lucide="tag" class="w-3.5 h-3.5 text-amber-600"></i>
+                    <span>ส่วนลดท้ายบิล (฿):</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="pos-bill-discount"
+                    min="0"
+                    step="0.01"
+                    value="0"
+                    oninput="handlePosDiscountInput(this.value)"
+                    placeholder="0.00"
+                    class="input-large text-xs py-1 px-2.5 w-28 text-right font-black text-amber-900 bg-white border-amber-300 focus:border-amber-500"
+                  >
+                </div>
+
+                <!-- วิธีการชำระเงิน (Payment Method) -->
+                <div class="space-y-1.5">
+                  <label class="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <i data-lucide="wallet" class="w-3.5 h-3.5 text-emerald-600"></i>
+                    <span>วิธีการชำระเงิน:</span>
+                  </label>
+                  <input type="hidden" id="pos-payment-method" value="เงินสด">
+                  <div class="grid grid-cols-3 gap-1.5" id="pos-payment-method-buttons">
+                    <button type="button" onclick="selectPosPaymentMethod('เงินสด')" data-method="เงินสด" class="pos-pay-btn py-2 px-2 rounded-xl text-xs font-bold border-2 border-emerald-600 bg-emerald-50 text-emerald-900 flex items-center justify-center gap-1 transition shadow-2xs">
+                      <span>💵</span>
+                      <span>เงินสด</span>
+                    </button>
+                    <button type="button" onclick="selectPosPaymentMethod('โอนเงิน')" data-method="โอนเงิน" class="pos-pay-btn py-2 px-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1 transition">
+                      <span>📱</span>
+                      <span>โอนเงิน</span>
+                    </button>
+                    <button type="button" onclick="selectPosPaymentMethod('สแกน QR')" data-method="สแกน QR" class="pos-pay-btn py-2 px-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1 transition">
+                      <span>📲</span>
+                      <span>สแกน QR</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Net Grand Total -->
+                <div class="flex items-baseline justify-between pt-1 border-t border-slate-100">
+                  <span id="pos-cart-total-label" class="text-xs font-bold text-slate-700">ยอดรวมสุทธิทั้งสิ้น:</span>
+                  <span id="pos-cart-total" class="text-2xl font-black text-emerald-700">฿0.00</span>
+                </div>
+
+                <button type="button" onclick="handlePosCheckout()" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white w-full py-3 font-black text-sm rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2">
+                  <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                  <span>รับเงินและออกบิล (ตัดสต็อก)</span>
                 </button>
               </div>
             </div>
-
-            <!-- Products Grid populated by JS -->
-            <div id="pos-products-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              <!-- Populated by JS -->
-            </div>
           </div>
+
         </div>
 
-        <!-- Right Col: Cart & Checkout Panel -->
-        <div class="lg:col-span-4 xl:col-span-4">
-          <div class="farm-card p-5 sticky top-24 space-y-4 border-2 border-emerald-100">
-            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
-              <h3 class="font-black text-slate-800 text-base flex items-center gap-2">
-                <i data-lucide="shopping-cart" class="w-5 h-5 text-emerald-600"></i>
-                <span>บิลขายปัจจุบัน</span>
-              </h3>
-              <button type="button" onclick="clearPosCart()" class="text-xs text-rose-500 hover:text-rose-700 font-semibold transition">
-                ล้างบิล
-              </button>
+        <!-- POS Products & Stock Management Section (ตารางคลังสินค้า & รายการสินค้า POS ตามหัวข้อไฟล์ Excel) -->
+        <div id="pos-section-products" class="hidden space-y-4">
+          
+          <!-- KPI Summary Cards for POS Products -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="farm-card p-4 bg-white border-l-4 border-l-emerald-600">
+              <div class="text-xs font-bold text-slate-500">📦 รายการสินค้าทั้งหมด (Products)</div>
+              <div id="pos-prod-kpi-total" class="text-xl font-black text-slate-800 mt-1">0 รายการ</div>
+              <div id="pos-prod-kpi-cats" class="text-[11px] text-slate-400 mt-0.5">0 หมวดหมู่ (Categories)</div>
             </div>
-
-            <!-- Customer Info -->
-            <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <!-- แถบแสดงสถานะกรณีส่งออเดอร์มาจากโมดูลจองปลา -->
-              <div id="pos-linked-order-banner" class="hidden bg-sky-100/90 border border-sky-300 text-sky-900 px-2.5 py-1.5 rounded-lg text-[11px] flex items-center justify-between gap-2">
-                <div class="flex items-center gap-1.5 min-w-0">
-                  <i data-lucide="file-symlink" class="w-3.5 h-3.5 text-sky-700 shrink-0"></i>
-                  <span class="font-bold truncate">เชื่อมบิลจอง: <strong id="pos-linked-order-id">-</strong></span>
-                </div>
-                <span id="pos-linked-deposit-badge" class="hidden bg-emerald-600 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded shrink-0">มัดจำ ฿0</span>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-600 mb-1">ชื่อลูกค้า:</label>
-                  <input type="text" id="pos-customer-name" value="ลูกค้าหน้าร้าน (เงินสด)" class="input-large text-xs py-1.5 w-full bg-white">
-                </div>
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-600 mb-1">เบอร์โทรศัพท์:</label>
-                  <input type="text" id="pos-customer-phone" placeholder="08x-xxx-xxxx" class="input-large text-xs py-1.5 w-full bg-white">
-                </div>
-              </div>
+            <div class="farm-card p-4 bg-white border-l-4 border-l-teal-500">
+              <div class="text-xs font-bold text-slate-500">✅ มีสต็อกพร้อมขาย (Quantity > 0)</div>
+              <div id="pos-prod-kpi-instock" class="text-xl font-black text-teal-700 mt-1">0 รายการ</div>
+              <div id="pos-prod-kpi-outstock" class="text-[11px] text-slate-400 mt-0.5">สต็อกเป็น 0: 0 รายการ</div>
             </div>
-
-            <!-- Cart Items List -->
-            <div>
-              <div class="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
-                <span>รายการในบิล <span class="text-[10px] text-emerald-700 font-normal">(แก้ไขราคาและจำนวนได้)</span></span>
-                <span id="pos-cart-count">0 รายการ</span>
-              </div>
-              <div id="pos-cart-items" class="space-y-2 max-h-80 overflow-y-auto pr-1">
-                <!-- Populated by JS -->
-              </div>
+            <div class="farm-card p-4 bg-white border-l-4 border-l-amber-500">
+              <div class="text-xs font-bold text-slate-500">💰 มูลค่าต้นทุนสต็อกรวม (Cost Value)</div>
+              <div id="pos-prod-kpi-cost-val" class="text-xl font-black text-amber-700 mt-1">฿0.00</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">คำนวณจาก Quantity × Cost</div>
             </div>
+            <div class="farm-card p-4 bg-white border-l-4 border-l-sky-500">
+              <div class="text-xs font-bold text-slate-500">🏷️ มูลค่าราคาขายรวม (Price Value)</div>
+              <div id="pos-prod-kpi-price-val" class="text-xl font-black text-sky-700 mt-1">฿0.00</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">คำนวณจาก Quantity × Price</div>
+            </div>
+          </div>
 
-            <!-- Totals, Bill Discount, Payment Method & Checkout -->
-            <div class="pt-3 border-t border-slate-200 space-y-3">
-              <!-- Subtotal -->
-              <div class="flex items-center justify-between text-xs text-slate-600">
-                <span class="font-semibold">ยอดรวมสินค้า:</span>
-                <span id="pos-cart-subtotal" class="font-bold text-slate-800">฿0.00</span>
+          <!-- Filter & Action Toolbar -->
+          <div class="farm-card p-4 bg-white border border-slate-200 space-y-3">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+                <!-- Search -->
+                <div class="relative flex-1">
+                  <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                  <input
+                    type="text"
+                    id="pos-prod-table-search"
+                    oninput="handlePosProdTableFilter()"
+                    placeholder="ค้นหา Product code, Product name, Category, Unit..."
+                    class="input-large pl-9 pr-4 py-2 w-full text-xs bg-slate-50 focus:bg-white border-slate-200 rounded-xl"
+                  >
+                </div>
+                <!-- Group Filter -->
+                <select id="pos-prod-table-group" onchange="onPosProdTableGroupChange(this.value)" class="input-large text-xs py-2 px-3 bg-white border-slate-200 rounded-xl font-semibold">
+                  <option value="all">ทุกกลุ่มสินค้า (All Groups)</option>
+                  <option value="fish">🐟 พันธุ์ปลา (หมวด 1 - 47 & ปลากิโล)</option>
+                  <option value="feed_sack">🌾 อาหารสัตว์ กระสอบ (หมวด 201)</option>
+                  <option value="feed_kg">⚖️ อาหารสัตว์ แบ่งโล (หมวด 202)</option>
+                  <option value="other">📦 สินค้าอื่นๆ / กระชัง / ถุงหิ้ว (203, 301)</option>
+                </select>
+                <!-- Category Filter -->
+                <select id="pos-prod-table-category" onchange="handlePosProdTableFilter()" class="input-large text-xs py-2 px-3 bg-white border-slate-200 rounded-xl font-semibold max-w-xs">
+                  <option value="all">ทุกหมวดหมู่ (All Categories)</option>
+                </select>
+                <!-- Stock Status Filter -->
+                <select id="pos-prod-table-stock" onchange="handlePosProdTableFilter()" class="input-large text-xs py-2 px-3 bg-white border-slate-200 rounded-xl font-semibold">
+                  <option value="all">สต็อกทั้งหมด (All)</option>
+                  <option value="instock">มีสต็อก (Quantity > 0)</option>
+                  <option value="zero">สต็อกเป็น 0 (Quantity = 0)</option>
+                </select>
               </div>
 
-              <!-- หักเงินมัดจำเดิม (แสดงเมื่อดึงออเดอร์จองที่มีมัดจำมาคิดเงิน) -->
-              <div id="pos-cart-deposit-row" class="hidden flex items-center justify-between text-xs text-sky-700">
-                <span class="font-semibold">หักเงินมัดจำที่รับไว้แล้ว:</span>
-                <span id="pos-cart-deposit-val" class="font-bold">-฿0.00</span>
-              </div>
-
-              <!-- ส่วนลดท้ายบิล (Bill Discount) -->
-              <div class="flex items-center justify-between gap-2 bg-amber-50/70 px-3 py-2 rounded-xl border border-amber-200">
-                <label for="pos-bill-discount" class="text-xs font-bold text-amber-900 flex items-center gap-1.5 shrink-0">
-                  <i data-lucide="tag" class="w-3.5 h-3.5 text-amber-600"></i>
-                  <span>ส่วนลดท้ายบิล (฿):</span>
+              <!-- Actions: Add, Import Excel, Export Excel -->
+              <div class="flex items-center gap-2 flex-wrap">
+                <button type="button" onclick="openPosProductModal()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition">
+                  <i data-lucide="plus" class="w-4 h-4"></i>
+                  <span>เพิ่มรายการสินค้า</span>
+                </button>
+                <label class="px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold cursor-pointer flex items-center gap-1.5 transition">
+                  <i data-lucide="upload" class="w-4 h-4 text-sky-600"></i>
+                  <span>นำเข้า Excel (.xlsx)</span>
+                  <input type="file" id="pos-excel-import-input" accept=".xlsx,.xls,.csv" onchange="handlePosExcelImport(event)" class="hidden">
                 </label>
-                <input
-                  type="number"
-                  id="pos-bill-discount"
-                  min="0"
-                  step="0.01"
-                  value="0"
-                  oninput="handlePosDiscountInput(this.value)"
-                  placeholder="0.00"
-                  class="input-large text-xs py-1 px-2.5 w-28 text-right font-black text-amber-900 bg-white border-amber-300 focus:border-amber-500"
-                >
+                <button type="button" onclick="exportPosProductsToExcel()" class="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold flex items-center gap-1.5 transition">
+                  <i data-lucide="download" class="w-4 h-4 text-emerald-600"></i>
+                  <span>ส่งออก Excel</span>
+                </button>
               </div>
+            </div>
+          </div>
 
-              <!-- วิธีการชำระเงิน (Payment Method) -->
-              <div class="space-y-1.5">
-                <label class="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <i data-lucide="wallet" class="w-3.5 h-3.5 text-emerald-600"></i>
-                  <span>วิธีการชำระเงิน:</span>
-                </label>
-                <input type="hidden" id="pos-payment-method" value="เงินสด">
-                <div class="grid grid-cols-3 gap-1.5" id="pos-payment-method-buttons">
-                  <button type="button" onclick="selectPosPaymentMethod('เงินสด')" data-method="เงินสด" class="pos-pay-btn py-2 px-2 rounded-xl text-xs font-bold border-2 border-emerald-600 bg-emerald-50 text-emerald-900 flex items-center justify-center gap-1 transition shadow-2xs">
-                    <span>💵</span>
-                    <span>เงินสด</span>
-                  </button>
-                  <button type="button" onclick="selectPosPaymentMethod('โอนเงิน')" data-method="โอนเงิน" class="pos-pay-btn py-2 px-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1 transition">
-                    <span>📱</span>
-                    <span>โอนเงิน</span>
-                  </button>
-                  <button type="button" onclick="selectPosPaymentMethod('สแกน QR')" data-method="สแกน QR" class="pos-pay-btn py-2 px-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1 transition">
-                    <span>📲</span>
-                    <span>สแกน QR</span>
-                  </button>
+          <!-- Table matching Excel Headers: Product code | Product name | Category | Quantity | Unit | Cost | Price -->
+          <div class="farm-card overflow-hidden">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 class="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2">
+                  <i data-lucide="table-2" class="w-4 h-4 text-emerald-600"></i>
+                  <span>ตารางฐานข้อมูลสต็อกสินค้า POS (โครงสร้างตรงตามไฟล์ export_product_all_19_11_2026.xlsx)</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">สามารถแก้ไข จำนวนคงเหลือ (Quantity), ราคาทุน (Cost), และราคาขาย (Price) ในตารางได้ทันที</p>
+              </div>
+              <span id="pos-prod-table-showing" class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full w-fit">
+                แสดง 0 รายการ
+              </span>
+            </div>
+
+            <div class="overflow-x-auto max-h-[640px]">
+              <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 z-10">
+                  <tr class="bg-slate-100 text-xs font-extrabold text-slate-700 border-b border-slate-200 shadow-2xs">
+                    <th class="p-3 whitespace-nowrap">Product code<br><span class="text-[10px] font-normal text-slate-500">รหัสสินค้า</span></th>
+                    <th class="p-3 min-w-[220px]">Product name<br><span class="text-[10px] font-normal text-slate-500">ชื่อสินค้า</span></th>
+                    <th class="p-3 whitespace-nowrap">Category<br><span class="text-[10px] font-normal text-slate-500">หมวดหมู่</span></th>
+                    <th class="p-3 text-right whitespace-nowrap">Quantity<br><span class="text-[10px] font-normal text-slate-500">จำนวนคงเหลือ</span></th>
+                    <th class="p-3 text-center whitespace-nowrap">Unit<br><span class="text-[10px] font-normal text-slate-500">หน่วยนับ</span></th>
+                    <th class="p-3 text-right whitespace-nowrap">Cost<br><span class="text-[10px] font-normal text-slate-500">ราคาทุน (฿)</span></th>
+                    <th class="p-3 text-right whitespace-nowrap">Price<br><span class="text-[10px] font-normal text-slate-500">ราคาขาย (฿)</span></th>
+                    <th class="p-3 text-right whitespace-nowrap">การจัดการ<br><span class="text-[10px] font-normal text-slate-500">ขาย / แก้ไข</span></th>
+                  </tr>
+                </thead>
+                <tbody id="pos-products-table-tbody" class="divide-y divide-slate-100 text-xs">
+                  <!-- Populated by renderPosProductsTable() -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- POS History Section (เมื่อเลือก Subtab ประวัติบิล & สรุปยอดขายรายวันรวมทั้งหน้าร้านและจัดส่งที่ชำระเงินแล้ว) -->
+        <div id="pos-section-history" class="hidden space-y-4">
+
+          <!-- ช่องเลือกวันที่เรียกดูประวัติย้อนหลัง (คลิกเลือกวันที่ได้เลย) -->
+          <div class="farm-card p-4 bg-white border border-emerald-200 shadow-xs space-y-3">
+            <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+                <div>
+                  <label for="pos-history-date-filter" class="block text-xs font-bold text-slate-600 mb-1">📅 เลือกวันที่ดูบิลย้อนหลัง (วันเดียว)</label>
+                  <input type="date" id="pos-history-date-filter" onchange="onPosSingleDateChange(this.value)" class="input-large text-xs py-2 px-3 w-full bg-white font-bold border-emerald-300">
+                </div>
+                <div>
+                  <label for="pos-history-date-from" class="block text-xs font-bold text-slate-600 mb-1">หรือตั้งแต่วันที่</label>
+                  <input type="date" id="pos-history-date-from" onchange="onPosRangeDateChange()" class="input-large text-xs py-2 px-3 w-full bg-white font-semibold">
+                </div>
+                <div>
+                  <label for="pos-history-date-to" class="block text-xs font-bold text-slate-600 mb-1">ถึงวันที่</label>
+                  <input type="date" id="pos-history-date-to" onchange="onPosRangeDateChange()" class="input-large text-xs py-2 px-3 w-full bg-white font-semibold">
                 </div>
               </div>
-
-              <!-- Net Grand Total -->
-              <div class="flex items-baseline justify-between pt-1 border-t border-slate-100">
-                <span id="pos-cart-total-label" class="text-xs font-bold text-slate-700">ยอดรวมสุทธิทั้งสิ้น:</span>
-                <span id="pos-cart-total" class="text-2xl font-black text-emerald-700">฿0.00</span>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <button type="button" onclick="setPosHistoryDatePreset('today')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
+                  วันนี้
+                </button>
+                <button type="button" onclick="setPosHistoryDatePreset('yesterday')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
+                  เมื่อวาน
+                </button>
+                <button type="button" onclick="setPosHistoryDatePreset('7days')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
+                  7 วันล่าสุด
+                </button>
+                <button type="button" onclick="setPosHistoryDatePreset('month')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
+                  เดือนนี้
+                </button>
+                <button type="button" onclick="setPosHistoryDatePreset('all')" class="px-3 py-2 text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-200 transition">
+                  ทั้งหมด
+                </button>
               </div>
+            </div>
+            <p id="pos-history-date-summary" class="text-xs font-bold text-emerald-700 hidden"></p>
+          </div>
 
-              <button type="button" onclick="handlePosCheckout()" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white w-full py-3 font-black text-sm rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2">
-                <i data-lucide="check-circle-2" class="w-5 h-5"></i>
-                <span>รับเงินและออกบิล (ตัดสต็อก)</span>
-              </button>
+          <!-- Daily Revenue Summary Bar (สรุปยอดขายรายวัน: หน้าร้าน + จัดส่งที่ชำระเงินแล้ว) -->
+          <div id="pos-sales-summary-cards" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div class="farm-card p-4 bg-white border-l-4 border-l-emerald-600">
+              <div class="text-xs font-bold text-slate-500">💰 รวมยอดรับชำระทั้งหมด</div>
+              <div id="pos-hist-sum-total" class="text-xl font-black text-emerald-700 mt-1">฿0.00</div>
+              <div id="pos-hist-sum-count" class="text-[11px] text-slate-400 mt-0.5">0 บิล</div>
+            </div>
+            <div class="farm-card p-4 bg-white border-l-4 border-l-teal-500">
+              <div class="text-xs font-bold text-slate-500">🛒 ยอดขายหน้าร้าน (Walk-in)</div>
+              <div id="pos-hist-sum-walkin" class="text-xl font-black text-teal-700 mt-1">฿0.00</div>
+              <div id="pos-hist-sum-walkin-count" class="text-[11px] text-slate-400 mt-0.5">0 บิลหน้าร้าน</div>
+            </div>
+            <div class="farm-card p-4 bg-white border-l-4 border-l-sky-500">
+              <div class="text-xs font-bold text-slate-500">🚚 ยอดจัดส่ง/จอง (ชำระเงินแล้ว)</div>
+              <div id="pos-hist-sum-delivery" class="text-xl font-black text-sky-700 mt-1">฿0.00</div>
+              <div id="pos-hist-sum-delivery-count" class="text-[11px] text-slate-400 mt-0.5">0 ออเดอร์จัดส่ง</div>
+            </div>
+            <div class="farm-card p-4 bg-white border-l-4 border-l-amber-500">
+              <div class="text-xs font-bold text-slate-500">💵 แยกตามช่องทางรับเงิน</div>
+              <div id="pos-hist-sum-methods" class="text-xs font-bold text-slate-800 mt-1.5 space-y-0.5">
+                <div>เงินสด: ฿0 • โอน/QR: ฿0</div>
+              </div>
             </div>
           </div>
-        </div>
 
-      </div>
-
-      <!-- POS History Section (เมื่อเลือก Subtab ประวัติบิล & สรุปยอดขายรายวันรวมทั้งหน้าร้านและจัดส่งที่ชำระเงินแล้ว) -->
-      <div id="pos-section-history" class="hidden space-y-4">
-
-        <!-- ช่องเลือกวันที่เรียกดูประวัติย้อนหลัง (คลิกเลือกวันที่ได้เลย) -->
-        <div class="farm-card p-4 bg-white border border-emerald-200 shadow-xs space-y-3">
-          <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
+          <div class="farm-card overflow-hidden">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <label for="pos-history-date-filter" class="block text-xs font-bold text-slate-600 mb-1">📅 เลือกวันที่ดูบิลย้อนหลัง (วันเดียว)</label>
-                <input type="date" id="pos-history-date-filter" onchange="onPosSingleDateChange(this.value)" class="input-large text-xs py-2 px-3 w-full bg-white font-bold border-emerald-300">
+                <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                  <i data-lucide="receipt" class="w-4 h-4 text-emerald-600"></i>
+                  <span>ประวัติบิลขายหน้าร้าน & ออเดอร์จัดส่งที่ชำระเงินแล้ว (สรุปยอดรายวัน)</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">รวมรายการขายสดหน้าร้าน และรายการลูกค้าจัดส่งที่ชำระเงินแล้วทั้งหมด</p>
               </div>
-              <div>
-                <label for="pos-history-date-from" class="block text-xs font-bold text-slate-600 mb-1">หรือตั้งแต่วันที่</label>
-                <input type="date" id="pos-history-date-from" onchange="onPosRangeDateChange()" class="input-large text-xs py-2 px-3 w-full bg-white font-semibold">
-              </div>
-              <div>
-                <label for="pos-history-date-to" class="block text-xs font-bold text-slate-600 mb-1">ถึงวันที่</label>
-                <input type="date" id="pos-history-date-to" onchange="onPosRangeDateChange()" class="input-large text-xs py-2 px-3 w-full bg-white font-semibold">
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="renderPosHistory()" class="px-3 py-1.5 text-xs font-bold bg-white text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition flex items-center gap-1">
+                  <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                  <span>รีเฟรช</span>
+                </button>
               </div>
             </div>
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <button type="button" onclick="setPosHistoryDatePreset('today')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
-                วันนี้
-              </button>
-              <button type="button" onclick="setPosHistoryDatePreset('yesterday')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
-                เมื่อวาน
-              </button>
-              <button type="button" onclick="setPosHistoryDatePreset('7days')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
-                7 วันล่าสุด
-              </button>
-              <button type="button" onclick="setPosHistoryDatePreset('month')" class="px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
-                เดือนนี้
-              </button>
-              <button type="button" onclick="setPosHistoryDatePreset('all')" class="px-3 py-2 text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-200 transition">
-                ทั้งหมด
-              </button>
-            </div>
-          </div>
-          <p id="pos-history-date-summary" class="text-xs font-bold text-emerald-700 hidden"></p>
-        </div>
-
-        <!-- Daily Revenue Summary Bar (สรุปยอดขายรายวัน: หน้าร้าน + จัดส่งที่ชำระเงินแล้ว) -->
-        <div id="pos-sales-summary-cards" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div class="farm-card p-4 bg-white border-l-4 border-l-emerald-600">
-            <div class="text-xs font-bold text-slate-500">💰 รวมยอดรับชำระทั้งหมด</div>
-            <div id="pos-hist-sum-total" class="text-xl font-black text-emerald-700 mt-1">฿0.00</div>
-            <div id="pos-hist-sum-count" class="text-[11px] text-slate-400 mt-0.5">0 บิล</div>
-          </div>
-          <div class="farm-card p-4 bg-white border-l-4 border-l-teal-500">
-            <div class="text-xs font-bold text-slate-500">🛒 ยอดขายหน้าร้าน (Walk-in)</div>
-            <div id="pos-hist-sum-walkin" class="text-xl font-black text-teal-700 mt-1">฿0.00</div>
-            <div id="pos-hist-sum-walkin-count" class="text-[11px] text-slate-400 mt-0.5">0 บิลหน้าร้าน</div>
-          </div>
-          <div class="farm-card p-4 bg-white border-l-4 border-l-sky-500">
-            <div class="text-xs font-bold text-slate-500">🚚 ยอดจัดส่ง/จอง (ชำระเงินแล้ว)</div>
-            <div id="pos-hist-sum-delivery" class="text-xl font-black text-sky-700 mt-1">฿0.00</div>
-            <div id="pos-hist-sum-delivery-count" class="text-[11px] text-slate-400 mt-0.5">0 ออเดอร์จัดส่ง</div>
-          </div>
-          <div class="farm-card p-4 bg-white border-l-4 border-l-amber-500">
-            <div class="text-xs font-bold text-slate-500">💵 แยกตามช่องทางรับเงิน</div>
-            <div id="pos-hist-sum-methods" class="text-xs font-bold text-slate-800 mt-1.5 space-y-0.5">
-              <div>เงินสด: ฿0 • โอน/QR: ฿0</div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-100 text-xs font-bold text-slate-700 uppercase border-b border-slate-200">
+                    <th class="p-3">เลขที่บิล / รหัส</th>
+                    <th class="p-3">ประเภท</th>
+                    <th class="p-3">วันที่</th>
+                    <th class="p-3">ลูกค้า</th>
+                    <th class="p-3">รายการสินค้า</th>
+                    <th class="p-3 text-center">วิธีชำระเงิน</th>
+                    <th class="p-3 text-right">ยอดสุทธิ</th>
+                    <th class="p-3 text-right">การจัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="pos-history-tbody">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
 
-        <div class="farm-card overflow-hidden">
-          <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-                <i data-lucide="receipt" class="w-4 h-4 text-emerald-600"></i>
-                <span>ประวัติบิลขายหน้าร้าน & ออเดอร์จัดส่งที่ชำระเงินแล้ว (สรุปยอดรายวัน)</span>
-              </h3>
-              <p class="text-xs text-slate-500 mt-0.5">รวมรายการขายสดหน้าร้าน และรายการลูกค้าจัดส่งที่ชำระเงินแล้วทั้งหมด</p>
-            </div>
-            <div class="flex items-center gap-2">
-              <button type="button" onclick="renderPosHistory()" class="px-3 py-1.5 text-xs font-bold bg-white text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition flex items-center gap-1">
-                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                <span>รีเฟรช</span>
-              </button>
-            </div>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="bg-slate-100 text-xs font-bold text-slate-700 uppercase border-b border-slate-200">
-                  <th class="p-3">เลขที่บิล / รหัส</th>
-                  <th class="p-3">ประเภท</th>
-                  <th class="p-3">วันที่</th>
-                  <th class="p-3">ลูกค้า</th>
-                  <th class="p-3">รายการสินค้า</th>
-                  <th class="p-3 text-center">วิธีชำระเงิน</th>
-                  <th class="p-3 text-right">ยอดสุทธิ</th>
-                  <th class="p-3 text-right">การจัดการ</th>
-                </tr>
-              </thead>
-              <tbody id="pos-history-tbody">
-                <!-- Populated by JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-    </section>
+      </section>
 
     <!-- ================================================================= -->
     <!-- TAB: ฝ่ายผลิตและเพาะพันธุ์ (PRODUCTION & BREEDING) - โมดูลที่ 4 -->
@@ -4628,14 +4775,92 @@
     </div>
   </div>
 
+  <!-- ================================================================= -->
+  <!-- MODAL: เพิ่ม / แก้ไขข้อมูลสินค้า POS (ตรงตามหัวข้อไฟล์ Excel) -->
+  <!-- ================================================================= -->
+  <div id="modal-pos-product" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
+      <div class="px-5 py-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="package" class="w-5 h-5"></i>
+          <h3 id="modal-pos-product-title" class="font-bold text-base">เพิ่ม/แก้ไขข้อมูลสินค้า POS</h3>
+        </div>
+        <button type="button" onclick="closeModal('modal-pos-product')" class="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
 
+      <form id="form-pos-product" onsubmit="handleSavePosProduct(event)" class="p-5 space-y-4">
+        <input type="hidden" id="pos-prod-edit-id" value="">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Product code (รหัสสินค้า) <span class="text-rose-500">*</span></label>
+            <input type="text" id="pos-prod-input-code" required placeholder="เช่น 20101009, 40101001, PD690001" class="input-large text-xs py-2 px-3 w-full bg-white">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Unit (หน่วยนับ) <span class="text-rose-500">*</span></label>
+            <input type="text" id="pos-prod-input-unit" list="pos-unit-datalist" required placeholder="เช่น ตัว, กระสอบ, ถุง, กิโล, ชิ้น" class="input-large text-xs py-2 px-3 w-full bg-white">
+            <datalist id="pos-unit-datalist">
+              <option value="ตัว"></option>
+              <option value="กระสอบ"></option>
+              <option value="ถุง"></option>
+              <option value="กิโล"></option>
+              <option value="ชิ้น"></option>
+              <option value="ขวด"></option>
+              <option value="แกลอน"></option>
+              <option value="ใบ"></option>
+              <option value="กระป๋อง"></option>
+            </datalist>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Product name (ชื่อสินค้า) <span class="text-rose-500">*</span></label>
+          <input type="text" id="pos-prod-input-name" required placeholder="เช่น cp อาหารปลากินพืช 9932 หรือ ปลาดุกบิ๊กอุย 2-3 นิ้ว" class="input-large text-xs py-2 px-3 w-full bg-white">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Category (หมวดหมู่สินค้า) <span class="text-rose-500">*</span></label>
+          <input type="text" id="pos-prod-input-category" list="pos-category-datalist" required placeholder="เช่น 1 ปลาตะเพียน, 201 อาหารสัตว์ กระสอบ, 202 อาหารสัตว์ แบ่งโล" class="input-large text-xs py-2 px-3 w-full bg-white">
+          <datalist id="pos-category-datalist"></datalist>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Quantity (จำนวนคงเหลือ)</label>
+            <input type="number" id="pos-prod-input-qty" step="any" value="0" required class="input-large text-xs py-2 px-3 w-full bg-white font-bold text-slate-800">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Cost (ราคาทุน ฿)</label>
+            <input type="number" id="pos-prod-input-cost" step="any" min="0" value="0" required class="input-large text-xs py-2 px-3 w-full bg-white font-bold text-amber-800">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Price (ราคาขาย ฿) <span class="text-rose-500">*</span></label>
+            <input type="number" id="pos-prod-input-price" step="any" min="0" value="0" required class="input-large text-xs py-2 px-3 w-full bg-white font-bold text-emerald-700">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal('modal-pos-product')" class="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition">
+            ยกเลิก
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>บันทึกข้อมูลสินค้า</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- SCRIPTS -->
-  <script src="js/data.js?v=20260916-2"></script>
-  <script src="js/inventory.js?v=20260916-2"></script>
-  <script src="js/portal.js?v=20260916-2"></script>
-  <script src="js/ai-supervisor.js?v=20260916-2"></script>
-  <script src="js/app.js?v=20260916-2"></script>
+  <script src="js/data.js?v=20261119-1"></script>
+  <script src="js/pos-products-data.js?v=20261119-1"></script>
+  <script src="js/inventory.js?v=20261119-1"></script>
+  <script src="js/portal.js?v=20261119-1"></script>
+  <script src="js/ai-supervisor.js?v=20261119-1"></script>
+  <script src="js/app.js?v=20261119-1"></script>
 
   <!-- Lucide Icons Initialize -->
   <script>
