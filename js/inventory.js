@@ -217,38 +217,248 @@ function deductStockForDeliveredOrder(order) {
 }
 
 // 3. UI RENDERING
-let currentInventorySubTab = 'ponds'; // 'ponds', 'supplies', 'inbound_grn', 'history'
-let currentInventoryViewMode = 'blueprint'; // 'blueprint' or 'cards'
+let currentInventorySubTab = 'ponds'; // 'ponds' (ค้นหาที่เก็บปลา), 'supplies', 'inbound_grn', 'history', 'mortality'
 
-function setInventoryViewMode(mode) {
-  currentInventoryViewMode = mode;
-  const btnBlueprint = document.getElementById('btn-view-blueprint');
-  const btnCards = document.getElementById('btn-view-cards');
-  const canvasEl = document.getElementById('visual-farm-map-canvas');
-  const gridEl = document.getElementById('ponds-grid-container');
+// 3.1 ค้นหาที่เก็บพันธุ์ปลา (Fish Location Search)
+// โหมด 'fish' = เลือก/ค้นจากรายชื่อพันธุ์ปลา, 'pond' = เลือก/ค้นจากรายชื่อกระชัง/อ่าง
+let fishLocSearchMode = 'fish';
+let fishLocPicked = ''; // ค่าที่เลือกจาก dropdown (ชื่อปลา หรือ pond id) — ใช้กรองแบบตรงตัว
 
-  if (mode === 'blueprint') {
-    if (btnBlueprint) {
-      btnBlueprint.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-sky-600 text-white shadow-xs';
-    }
-    if (btnCards) {
-      btnCards.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
-    }
-    if (canvasEl) canvasEl.classList.remove('hidden');
-    if (gridEl) gridEl.classList.add('hidden');
-    renderVisualFarmMap();
-  } else {
-    if (btnBlueprint) {
-      btnBlueprint.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
-    }
-    if (btnCards) {
-      btnCards.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-sky-600 text-white shadow-xs';
-    }
-    if (canvasEl) canvasEl.classList.add('hidden');
-    if (gridEl) gridEl.classList.remove('hidden');
-    renderPondsGrid();
+const FISH_LOC_ZONE_ORDER = ['sterile_cage', 'main_cage', 'small_tank', 'large_tank'];
+
+function invEsc(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function pondHasFish(p) {
+  return (p.totalQty || 0) > 0 && p.status !== 'empty';
+}
+
+function sortPondsByZoneAndCode(a, b) {
+  const za = FISH_LOC_ZONE_ORDER.indexOf(a.zone);
+  const zb = FISH_LOC_ZONE_ORDER.indexOf(b.zone);
+  if (za !== zb) return (za === -1 ? 99 : za) - (zb === -1 ? 99 : zb);
+  const na = parseInt(String(a.code || '').replace(/\D/g, ''), 10) || 0;
+  const nb = parseInt(String(b.code || '').replace(/\D/g, ''), 10) || 0;
+  return na - nb;
+}
+
+function getPondStatusBadge(p) {
+  if (!pondHasFish(p)) return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-slate-100 text-slate-600 border-slate-300">ว่าง</span>';
+  if (p.status === 'ready') return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-300">พร้อมขาย</span>';
+  if (p.status === 'growing') return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-sky-100 text-sky-800 border-sky-300">กำลังอนุบาล</span>';
+  return `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-amber-100 text-amber-800 border-amber-300">${invEsc(p.statusLabel || 'พักบ่อ')}</span>`;
+}
+
+function setFishLocSearchMode(mode) {
+  fishLocSearchMode = mode === 'pond' ? 'pond' : 'fish';
+  fishLocPicked = '';
+
+  const active = 'px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-1.5 bg-sky-600 text-white shadow-xs';
+  const inactive = 'px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
+  const btnFish = document.getElementById('btn-fish-loc-mode-fish');
+  const btnPond = document.getElementById('btn-fish-loc-mode-pond');
+  if (btnFish) btnFish.className = fishLocSearchMode === 'fish' ? active : inactive;
+  if (btnPond) btnPond.className = fishLocSearchMode === 'pond' ? active : inactive;
+
+  const input = document.getElementById('fish-loc-search-input');
+  if (input) {
+    input.value = '';
+    input.placeholder = fishLocSearchMode === 'fish'
+      ? 'พิมพ์ชื่อพันธุ์ปลา / รหัสปลา / ขนาด เช่น ดุก, ทับทิม...'
+      : 'พิมพ์ชื่อหรือรหัสกระชัง/อ่าง เช่น C5, M1, อ่างใหญ่...';
   }
-  lucide.createIcons();
+
+  populateFishLocPicker();
+  renderFishLocationSearch();
+}
+
+function populateFishLocPicker() {
+  const picker = document.getElementById('fish-loc-picker');
+  if (!picker) return;
+  const ponds = state.ponds || [];
+
+  if (fishLocSearchMode === 'fish') {
+    const groups = {};
+    ponds.filter(pondHasFish).forEach(p => {
+      const name = p.fishName || 'ไม่ระบุพันธุ์';
+      groups[name] = (groups[name] || 0) + 1;
+    });
+    const names = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'th'));
+    picker.innerHTML = `<option value="">— เลือกจากรายชื่อพันธุ์ปลา (${names.length} พันธุ์) —</option>` +
+      names.map(n => `<option value="${invEsc(n)}">${invEsc(n)} (${groups[n]} จุด)</option>`).join('');
+  } else {
+    const byZone = {};
+    ponds.slice().sort(sortPondsByZoneAndCode).forEach(p => {
+      const z = p.zoneName || p.typeName || 'อื่น ๆ';
+      (byZone[z] = byZone[z] || []).push(p);
+    });
+    picker.innerHTML = `<option value="">— เลือกจากรายชื่อกระชัง/อ่าง (${ponds.length} จุด) —</option>` +
+      Object.keys(byZone).map(z => `
+        <optgroup label="${invEsc(z)}">
+          ${byZone[z].map(p => `<option value="${invEsc(p.id)}">${invEsc(p.code || '')} • ${invEsc(p.name)}${pondHasFish(p) ? ' — ' + invEsc(p.fishName || '') : ' — (ว่าง)'}</option>`).join('')}
+        </optgroup>`).join('');
+  }
+  picker.value = fishLocPicked;
+  if (picker.value !== fishLocPicked) fishLocPicked = '';
+}
+
+function onFishLocPickerChange(value) {
+  fishLocPicked = value || '';
+  const input = document.getElementById('fish-loc-search-input');
+  if (input) input.value = '';
+  renderFishLocationSearch();
+}
+
+function onFishLocSearchInput() {
+  // พิมพ์ค้นหาเอง = ยกเลิกค่าที่เลือกจาก dropdown
+  fishLocPicked = '';
+  const picker = document.getElementById('fish-loc-picker');
+  if (picker) picker.value = '';
+  renderFishLocationSearch();
+}
+
+function clearFishLocSearch() {
+  fishLocPicked = '';
+  const input = document.getElementById('fish-loc-search-input');
+  const picker = document.getElementById('fish-loc-picker');
+  const zone = document.getElementById('fish-loc-zone-filter');
+  if (input) input.value = '';
+  if (picker) picker.value = '';
+  if (zone) zone.value = 'all';
+  renderFishLocationSearch();
+}
+
+function renderFishLocationSearch() {
+  const container = document.getElementById('fish-loc-results');
+  if (!container) return;
+  if (!state.ponds || state.ponds.length === 0) initInventoryState();
+
+  const picker = document.getElementById('fish-loc-picker');
+  if (picker && picker.options.length <= 1) populateFishLocPicker();
+
+  const query = (document.getElementById('fish-loc-search-input')?.value || '').trim().toLowerCase();
+  const zoneFilter = document.getElementById('fish-loc-zone-filter')?.value || 'all';
+  const summaryEl = document.getElementById('fish-loc-summary');
+
+  let ponds = (state.ponds || []).filter(p => zoneFilter === 'all' || p.zone === zoneFilter);
+
+  if (fishLocSearchMode === 'fish') {
+    // ---------- ค้นจากพันธุ์ปลา: แสดงว่าปลาแต่ละพันธุ์อยู่กระชัง/อ่างไหน ----------
+    ponds = ponds.filter(pondHasFish).filter(p => {
+      if (fishLocPicked) return (p.fishName || 'ไม่ระบุพันธุ์') === fishLocPicked;
+      if (!query) return true;
+      return [p.fishName, p.fishCode, p.fishSize].some(v => String(v || '').toLowerCase().includes(query));
+    });
+
+    const groups = {};
+    ponds.forEach(p => {
+      const name = p.fishName || 'ไม่ระบุพันธุ์';
+      (groups[name] = groups[name] || []).push(p);
+    });
+    const names = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'th'));
+
+    if (summaryEl) summaryEl.textContent = `พบ ${names.length} พันธุ์ปลา จัดเก็บอยู่ใน ${ponds.length} กระชัง/อ่าง`;
+
+    if (names.length === 0) {
+      container.innerHTML = `<div class="farm-card p-10 text-center text-slate-400">ไม่พบพันธุ์ปลาที่ค้นหาในกระชัง/อ่างใด ๆ</div>`;
+      return;
+    }
+
+    container.innerHTML = names.map(name => {
+      const list = groups[name].slice().sort(sortPondsByZoneAndCode);
+      const total = list.reduce((s, p) => s + (p.totalQty || 0), 0);
+      const reserved = list.reduce((s, p) => s + (p.reservedQty || 0), 0);
+      const avail = Math.max(0, total - reserved);
+      return `
+        <div class="farm-card overflow-hidden">
+          <div class="p-4 bg-sky-50/70 border-b border-sky-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🐟</span>
+              <div>
+                <h4 class="font-black text-slate-800 text-base">${invEsc(name)}</h4>
+                <p class="text-xs text-slate-500">จัดเก็บอยู่ ${list.length} จุด</p>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs font-bold">
+              <span class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700">รวม ${total.toLocaleString()} ตัว</span>
+              <span class="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700">ติดจอง ${reserved.toLocaleString()}</span>
+              <span class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700">พร้อมขาย ${avail.toLocaleString()}</span>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr class="bg-slate-50 text-xs font-bold text-slate-600 border-b border-slate-200">
+                  <th class="py-2 px-3">📍 ที่จัดเก็บ (กระชัง/อ่าง)</th>
+                  <th class="py-2 px-3">โซน</th>
+                  <th class="py-2 px-3">ขนาด</th>
+                  <th class="py-2 px-3 text-right">จำนวน</th>
+                  <th class="py-2 px-3 text-right">พร้อมขาย</th>
+                  <th class="py-2 px-3 text-center">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${list.map(p => `
+                  <tr class="hover:bg-sky-50/60 cursor-pointer" onclick="handlePondClick('${invEsc(p.id)}')" title="คลิกเพื่อดูรายละเอียด/จัดการจุดนี้">
+                    <td class="py-2 px-3 font-bold text-sky-800"><span class="inline-block min-w-[2.5rem] px-1.5 py-0.5 mr-1.5 rounded-md bg-sky-100 text-sky-900 text-xs text-center">${invEsc(p.code || '-')}</span>${invEsc(p.name)}</td>
+                    <td class="py-2 px-3 text-slate-600">${invEsc(p.zoneName || p.typeName || '-')}</td>
+                    <td class="py-2 px-3 text-slate-600">${invEsc(p.fishSize || '-')}</td>
+                    <td class="py-2 px-3 text-right font-semibold">${Number(p.totalQty || 0).toLocaleString()}</td>
+                    <td class="py-2 px-3 text-right font-semibold text-emerald-700">${Math.max(0, (p.totalQty || 0) - (p.reservedQty || 0)).toLocaleString()}</td>
+                    <td class="py-2 px-3 text-center">${getPondStatusBadge(p)}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }).join('');
+  } else {
+    // ---------- ค้นจากกระชัง/อ่าง: แสดงว่าแต่ละจุดเก็บปลาพันธุ์อะไร ----------
+    ponds = ponds.filter(p => {
+      if (fishLocPicked) return p.id === fishLocPicked;
+      if (!query) return true;
+      return [p.code, p.name, p.zoneName, p.typeName].some(v => String(v || '').toLowerCase().includes(query));
+    }).sort(sortPondsByZoneAndCode);
+
+    const withFish = ponds.filter(pondHasFish).length;
+    if (summaryEl) summaryEl.textContent = `พบ ${ponds.length} กระชัง/อ่าง (มีปลา ${withFish} จุด, ว่าง ${ponds.length - withFish} จุด)`;
+
+    if (ponds.length === 0) {
+      container.innerHTML = `<div class="farm-card p-10 text-center text-slate-400">ไม่พบกระชัง/อ่างที่ค้นหา</div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        ${ponds.map(p => {
+          const has = pondHasFish(p);
+          const avail = Math.max(0, (p.totalQty || 0) - (p.reservedQty || 0));
+          return `
+            <button type="button" onclick="handlePondClick('${invEsc(p.id)}')" class="text-left bg-white rounded-2xl border ${has ? 'border-sky-200' : 'border-slate-200'} shadow-xs hover:shadow-md hover:border-sky-400 transition p-4 space-y-2">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="font-black text-slate-800"><span class="inline-block px-1.5 py-0.5 mr-1 rounded-md bg-sky-100 text-sky-900 text-xs">${invEsc(p.code || '-')}</span>${invEsc(p.name)}</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">${invEsc(p.zoneName || p.typeName || '-')}${p.sizeDesc ? ' • ' + invEsc(p.sizeDesc) : ''}</div>
+                </div>
+                ${getPondStatusBadge(p)}
+              </div>
+              ${has ? `
+                <div class="pt-2 border-t border-slate-100">
+                  <div class="font-bold text-sky-900">🐟 ${invEsc(p.fishName || '-')}</div>
+                  <div class="text-xs text-slate-500">ขนาด ${invEsc(p.fishSize || '-')}</div>
+                  <div class="flex justify-between text-xs mt-1.5">
+                    <span class="text-slate-600">จำนวน <strong>${Number(p.totalQty || 0).toLocaleString()}</strong> ตัว</span>
+                    <span class="text-emerald-700">พร้อมขาย <strong>${avail.toLocaleString()}</strong></span>
+                  </div>
+                </div>` : `
+                <div class="pt-2 border-t border-slate-100 text-xs text-slate-400">ไม่มีปลาจัดเก็บอยู่</div>`}
+            </button>`;
+        }).join('')}
+      </div>`;
+  }
 }
 
 function switchInventorySubTab(subTab) {
@@ -269,13 +479,7 @@ function switchInventorySubTab(subTab) {
     if (el) el.classList.toggle('hidden', sec !== subTab);
   });
 
-  if (subTab === 'ponds') {
-    if (currentInventoryViewMode === 'blueprint') {
-      renderVisualFarmMap();
-    } else {
-      renderPondsGrid();
-    }
-  }
+  if (subTab === 'ponds') renderFishLocationSearch();
   if (subTab === 'supplies') renderSuppliesTable();
   if (subTab === 'inbound_grn') renderGrnTable();
   if (subTab === 'history') renderHistorySection();
@@ -290,466 +494,24 @@ function renderInventoryView() {
   const totalFish = (state.ponds || []).reduce((sum, p) => sum + (p.totalQty || 0), 0);
   const readyFish = (state.ponds || []).filter(p => p.status === 'ready').reduce((sum, p) => sum + Math.max(0, (p.totalQty || 0) - (p.reservedQty || 0)), 0);
   const reservedFish = (state.ponds || []).reduce((sum, p) => sum + (p.reservedQty || 0), 0);
-  const duePonds = getGradingDuePonds(7);
   const lowStockCount = (state.supplies || []).filter(s => s.stockQty <= s.minThreshold).length;
 
   const elTotalFish = document.getElementById('stat-inv-total-fish');
   const elReadyFish = document.getElementById('stat-inv-ready-fish');
   const elReservedFish = document.getElementById('stat-inv-reserved-fish');
-  const elDuePonds = document.getElementById('stat-inv-grading-due');
   const elLowStockCount = document.getElementById('stat-inv-low-stock');
 
   if (elTotalFish) elTotalFish.textContent = totalFish.toLocaleString() + ' ตัว';
   if (elReadyFish) elReadyFish.textContent = readyFish.toLocaleString() + ' ตัว';
   if (elReservedFish) elReservedFish.textContent = reservedFish.toLocaleString() + ' ตัว';
-  if (elDuePonds) {
-    elDuePonds.textContent = duePonds.length + ' บ่อ';
-    elDuePonds.className = duePonds.length > 0 ? 'text-lg sm:text-xl font-black text-amber-600' : 'text-lg sm:text-xl font-black text-emerald-600';
-  }
   if (elLowStockCount) {
     elLowStockCount.textContent = lowStockCount + ' รายการ';
     elLowStockCount.className = lowStockCount > 0 ? 'text-lg sm:text-xl font-black text-rose-600' : 'text-lg sm:text-xl font-black text-emerald-600';
   }
 
-  renderGradingDueBanner();
+  // รีเฟรชรายชื่อใน dropdown ค้นหาที่เก็บปลา (ข้อมูลบ่ออาจเปลี่ยนหลังย้าย/ขาย/รับเข้า)
+  populateFishLocPicker();
   switchInventorySubTab(currentInventorySubTab);
-}
-
-// 3.1 GRADING DUE ALERT BANNER
-function toggleGradingAlertData(hide) {
-  localStorage.setItem('hide_grading_alert_data', hide ? 'true' : 'false');
-  const details = document.getElementById('grading-due-details-section');
-  const icon = document.getElementById('chk-hide-grading-icon');
-  const chk = document.getElementById('chk-hide-grading-alert');
-  if (chk) chk.checked = hide;
-  if (details) {
-    if (hide) {
-      details.classList.add('hidden');
-    } else {
-      details.classList.remove('hidden');
-    }
-  }
-  if (icon) {
-    icon.setAttribute('data-lucide', hide ? 'eye' : 'eye-off');
-    if (window.lucide) lucide.createIcons();
-  }
-}
-window.toggleGradingAlertData = toggleGradingAlertData;
-
-function renderGradingDueBanner() {
-  const container = document.getElementById('grading-due-banner-container');
-  if (!container) return;
-
-  const duePonds = getGradingDuePonds(7);
-  if (duePonds.length === 0) {
-    container.innerHTML = '';
-    container.classList.add('hidden');
-    return;
-  }
-
-  const isAlertHidden = localStorage.getItem('hide_grading_alert_data') === 'true';
-
-  container.classList.remove('hidden');
-  container.innerHTML = `
-    <div class="bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-orange-500/10 border-2 border-amber-400 rounded-2xl p-4 shadow-sm animate-in fade-in duration-300">
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <div class="p-2.5 bg-amber-500 text-white rounded-xl shadow-xs flex-shrink-0">
-            <i data-lucide="scale" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <h4 class="font-bold text-slate-800 text-sm sm:text-base">แจ้งเตือนรอบคัดขนาดปลา (Grading Due Alert)</h4>
-              <span class="bg-amber-500 text-white text-[11px] font-black px-2 py-0.5 rounded-full">${duePonds.length} บ่อเกินกำหนด</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Action & Hide Data Toggle Controls -->
-        <div class="flex items-center gap-2 self-stretch sm:self-auto justify-end flex-wrap">
-          <label class="inline-flex items-center gap-2 cursor-pointer select-none bg-white hover:bg-amber-50/80 border border-amber-300 text-amber-950 px-3 py-2 rounded-xl shadow-2xs transition">
-            <input type="checkbox" id="chk-hide-grading-alert" ${isAlertHidden ? 'checked' : ''} onchange="toggleGradingAlertData(this.checked)" class="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-amber-400 cursor-pointer">
-            <span class="text-xs font-bold flex items-center gap-1.5">
-              <i id="chk-hide-grading-icon" data-lucide="${isAlertHidden ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5 text-amber-700"></i>
-              <span>ซ่อนข้อมูล</span>
-            </span>
-          </label>
-          <button onclick="openGradeFishModal('${duePonds[0].id}')" class="btn-large bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-3 text-xs sm:text-sm rounded-xl shadow-sm whitespace-nowrap flex items-center justify-center gap-1.5">
-            <i data-lucide="scale" class="w-4 h-4"></i>
-            <span>บันทึกการคัดขนาดด่วน</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Collapsible Data Details -->
-      <div id="grading-due-details-section" class="${isAlertHidden ? 'hidden' : ''} mt-3 pt-3 border-t border-amber-300/60">
-        <p class="text-xs text-slate-600 mb-2">
-          พบบ่อปลาที่ไม่ได้คัดขนาดเกิน 7-10 วัน ควรรีบทำการคัดแยกไซส์เพื่อควบคุมการเจริญเติบโตและป้องกันการกินกันเอง:
-        </p>
-        <div class="flex flex-wrap gap-2">
-          ${duePonds.map(p => {
-            const days = getDaysSinceGraded(p.lastGradedDate);
-            return `
-              <button onclick="openGradeFishModal('${p.id}')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white hover:bg-amber-100/80 border border-amber-300 text-amber-900 text-xs font-bold transition shadow-2xs">
-                <span>${p.name} (${p.fishName || 'ปลา'})</span>
-                <span class="text-rose-600 font-extrabold">• ${days} วัน</span>
-                <i data-lucide="arrow-right" class="w-3 h-3 text-amber-700"></i>
-              </button>
-            `;
-          }).join('')}
-        </div>
-      </div>
-    </div>
-  `;
-  if (window.lucide) lucide.createIcons();
-}
-
-// 3.1.1 RENDER VISUAL FARM BLUEPRINT (ผังสต็อกเสมือนจริง 48 หน่วย)
-function renderVisualFarmMap() {
-  const container = document.getElementById('visual-farm-map-canvas');
-  if (!container) return;
-
-  if (!state.ponds || state.ponds.length === 0) initInventoryState();
-  const ponds = state.ponds || [];
-
-  const filter = document.getElementById('farm-blueprint-filter')?.value || 'all';
-
-  // สรุปยอดภาพรวมฟาร์ม
-  const totalUnits = ponds.length;
-  const totalFish = ponds.reduce((s, p) => s + (p.totalQty || 0), 0);
-  const totalValue = ponds.reduce((s, p) => s + ((p.totalQty || 0) * (p.unitPrice || 0)), 0);
-  const readyFish = ponds.filter(p => p.status === 'ready').reduce((s, p) => s + Math.max(0, (p.totalQty || 0) - (p.reservedQty || 0)), 0);
-  const emptyPondsCount = ponds.filter(p => (p.totalQty || 0) === 0 || p.status === 'empty').length;
-
-  // แยกโซน 4 โซนตามแปลนจริงของฟาร์ม
-  const getCageNum = (id) => {
-    const m = (id || '').match(/^cage_c(\d+)$/);
-    return m ? parseInt(m[1], 10) : 0;
-  };
-  const sterileCages = ponds.filter(p => p.zone === 'sterile_cage'); // M1 - M5 (5 กระชัง)
-  const mainCagesTop = ponds.filter(p => {
-    const n = getCageNum(p.id);
-    return n >= 1 && n <= 11;
-  }); // C1 - C11 (11 กระชังบน)
-  const mainCagesBottom = ponds.filter(p => {
-    const n = getCageNum(p.id);
-    return n >= 12 && n <= 22;
-  }); // C12 - C22 (11 กระชังล่าง)
-  const smallTanks = ponds.filter(p => p.zone === 'small_tank'); // S1 - S5 (5 อ่างกลมเล็ก)
-  const largeTanks = ponds.filter(p => p.zone === 'large_tank'); // B1 - B16 (16 อ่างใหญ่)
-
-  const showSterile = filter === 'all' || filter === 'sterile_cage' || filter === 'has_fish' || filter === 'empty';
-  const showMain = filter === 'all' || filter === 'main_cage' || filter === 'has_fish' || filter === 'empty';
-  const showSmall = filter === 'all' || filter === 'small_tank' || filter === 'has_fish' || filter === 'empty';
-  const showLarge = filter === 'all' || filter === 'large_tank' || filter === 'has_fish' || filter === 'empty';
-
-  container.innerHTML = `
-    <div class="farm-dock-canvas rounded-3xl p-4 sm:p-6 shadow-xl border-2 border-sky-300 relative overflow-hidden bg-gradient-to-br from-slate-900 via-sky-950 to-blue-950 text-white">
-      <!-- Water ripple background effect -->
-      <div class="absolute inset-0 farm-dock-water-bg opacity-15 pointer-events-none"></div>
-
-      <!-- Blueprint Top Stats & Legend Bar -->
-      <div class="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-5 border-b border-sky-700/50">
-        <div>
-          <div class="flex items-center gap-2.5">
-            <span class="p-2 bg-sky-500/20 text-sky-400 rounded-xl border border-sky-400/30">
-              <i data-lucide="map-pin" class="w-5 h-5"></i>
-            </span>
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 class="font-black text-lg sm:text-xl text-white tracking-wide">ผังจุดสต็อกปลาในฟาร์ม (Live Blueprint)</h3>
-                <span class="bg-amber-400 text-amber-950 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full uppercase shadow-xs">48 จุดสต็อก</span>
-              </div>
-              <p class="text-xs text-sky-200/80 mt-0.5">คลิกลาก (Drag & Drop) บ่อเพื่อย้ายปลา หรือคลิกดูรายละเอียดและเปิดบิลขาย POS ได้ทันที</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- 4 Quick Stats Badges -->
-        <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <div class="bg-sky-900/60 backdrop-blur-xs border border-sky-600/40 rounded-xl py-2 px-3 text-center min-w-[90px]">
-            <span class="text-[10px] text-sky-300 block font-semibold">ปลารวมทั้งหมด</span>
-            <span class="font-black text-sm text-white">${totalFish.toLocaleString()} ตัว</span>
-          </div>
-          <div class="bg-emerald-950/60 backdrop-blur-xs border border-emerald-500/40 rounded-xl py-2 px-3 text-center min-w-[90px]">
-            <span class="text-[10px] text-emerald-300 block font-semibold">พร้อมขายจริง</span>
-            <span class="font-black text-sm text-emerald-300">${readyFish.toLocaleString()} ตัว</span>
-          </div>
-          <div class="bg-amber-950/60 backdrop-blur-xs border border-amber-500/40 rounded-xl py-2 px-3 text-center min-w-[90px]">
-            <span class="text-[10px] text-amber-300 block font-semibold">บ่อ/กระชังว่าง</span>
-            <span class="font-black text-sm text-amber-300">${emptyPondsCount} จุด</span>
-          </div>
-          <div class="bg-gradient-to-r from-amber-500/30 to-orange-600/30 backdrop-blur-xs border border-amber-400/50 rounded-xl py-2 px-3.5 text-right min-w-[120px]">
-            <span class="text-[10px] text-amber-200 block font-semibold">มูลค่าปลาในฟาร์ม</span>
-            <span class="font-black text-sm text-amber-300">฿${Math.round(totalValue).toLocaleString()}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Layout: Stacked Zones Vertically (แยกแต่ละโซนเรียงถัดลงมาเป็นชั้นๆ ไม่ให้อยู่ในระนาบเดียวกัน) -->
-      <div class="relative z-10 space-y-6 mt-6">
-        
-        <!-- โซนที่ 1: โซนกระชังลอยน้ำหลัก (Main Floating Cages) 22 กระชัง -->
-        ${showMain ? `
-          <div class="bg-slate-900/75 border border-sky-600/50 rounded-3xl p-4 sm:p-5 backdrop-blur-md shadow-xl">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-sky-600/40 gap-2">
-              <div class="flex items-center gap-2.5 text-sky-100 font-extrabold text-sm sm:text-base">
-                <span class="text-xl">🌊</span>
-                <span>โซนกระชังลอยน้ำหลัก (Main Floating Cages)</span>
-                <span class="text-xs bg-sky-700/90 text-sky-100 px-2.5 py-0.5 rounded-full font-mono font-bold border border-sky-500/40">22 กระชัง</span>
-              </div>
-              <div class="flex items-center gap-2 text-xs text-sky-300 font-medium">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>แถวบน C1 - C11 • แถวล่าง C12 - C22 (คลิกลากข้ามกระชังได้ทันที)</span>
-              </div>
-            </div>
-
-            <!-- Floating Pier Container with Horizontal Scroll for narrow screens -->
-            <div class="overflow-x-auto pb-2 scrollbar-thin">
-              <div class="min-w-[1100px] space-y-3">
-                <!-- Row 1: C1 - C11 -->
-                <div class="grid grid-cols-11 gap-2.5">
-                  ${mainCagesTop.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
-                </div>
-
-                <!-- Central Wooden Pier Walkway with Orange Ramp Arrow -->
-                <div class="dock-walkway py-2.5 px-5 rounded-xl flex items-center justify-between shadow-inner bg-gradient-to-r from-amber-950/70 via-amber-800/60 to-amber-950/70 border-y-2 border-amber-600/50 my-1">
-                  <div class="flex items-center gap-2.5 text-amber-200 text-xs sm:text-sm font-black tracking-wide">
-                    <i data-lucide="footprints" class="w-4 h-4 text-amber-400"></i>
-                    <span>สะพานไม้ทางเดินกลางแพ (Central Pier Walkway)</span>
-                  </div>
-                  
-                  <div class="dock-ramp-arrow animate-pulse-gentle bg-amber-500/20 text-amber-300 border border-amber-400/40 px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
-                    <span>ทางลงแพ ➔</span>
-                  </div>
-                </div>
-
-                <!-- Row 2: C12 - C22 -->
-                <div class="grid grid-cols-11 gap-2.5">
-                  ${mainCagesBottom.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
-                </div>
-              </div>
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- โซนที่ 2: โซนแพปลาหมัน (Sterile / Broodstock Cages) 5 กระชัง -->
-        ${showSterile ? `
-          <div class="bg-slate-900/75 border border-amber-600/50 rounded-3xl p-4 sm:p-5 backdrop-blur-md shadow-xl">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-amber-600/40 gap-2">
-              <div class="flex items-center gap-2.5 text-amber-100 font-extrabold text-sm sm:text-base">
-                <span class="text-xl">🛡️</span>
-                <span>โซนแพปลาหมัน (Sterile / Broodstock Cages)</span>
-                <span class="text-xs bg-amber-800/90 text-amber-100 px-2.5 py-0.5 rounded-full font-mono font-bold border border-amber-500/40">5 ช่องกระชัง (M1 - M5)</span>
-              </div>
-              <span class="text-xs text-amber-300 font-medium">โซนพักฟื้น / บำรุงสายพันธุ์ปลาหมันและพ่อแม่พันธุ์</span>
-            </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
-              ${sterileCages.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- โซนที่ 3: โซนอ่างสูง (Small Nursery Tanks S1 - S5) -->
-        ${showSmall ? `
-          <div class="bg-slate-900/75 border border-teal-600/50 rounded-3xl p-4 sm:p-5 backdrop-blur-md shadow-xl">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-teal-500/40 gap-2">
-              <div class="flex items-center gap-2.5 text-teal-100 font-extrabold text-sm sm:text-base">
-                <span class="text-xl">🔵</span>
-                <span>โซนอ่างสูง / อ่างกลมเล็ก (Small Nursery Tanks S1 - S5)</span>
-                <span class="text-xs bg-teal-800/90 text-teal-100 px-2.5 py-0.5 rounded-full font-mono font-bold border border-teal-500/40">5 อ่างกลม</span>
-              </div>
-              <span class="text-xs text-teal-300 font-medium">อนุบาลลูกปลาวัยอ่อน / ควบคุมอุณหภูมิและคุณภาพน้ำ</span>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
-              ${smallTanks.map(pond => renderBlueprintUnitCard(pond, filter, true)).join('')}
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- โซนที่ 4: โซนอ่างเตี้ย (Large Concrete Tanks B1 - B16) -->
-        ${showLarge ? `
-          <div class="bg-slate-900/75 border border-sky-700/50 rounded-3xl p-4 sm:p-5 backdrop-blur-md shadow-xl">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-sky-600/40 gap-2">
-              <div class="flex items-center gap-2.5 text-sky-100 font-extrabold text-sm sm:text-base">
-                <span class="text-xl">🧱</span>
-                <span>โซนอ่างเตี้ย / อ่างซีเมนต์ใหญ่ (Large Concrete Tanks B1 - B16)</span>
-                <span class="text-xs bg-sky-800/90 text-sky-100 px-2.5 py-0.5 rounded-full font-mono font-bold border border-sky-500/40">16 อ่างซีเมนต์</span>
-              </div>
-              <span class="text-xs text-sky-300 font-medium">จัดเรียง 2 แถว x 8 อ่าง (B1 - B16) สต็อกขนาดกลาง-ใหญ่</span>
-            </div>
-            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
-              ${largeTanks.map(pond => renderBlueprintUnitCard(pond, filter)).join('')}
-            </div>
-          </div>
-        ` : ''}
-
-      </div>
-    </div>
-  `;
-
-  lucide.createIcons();
-}
-
-// Helper: Render individual unit card on blueprint map
-function renderBlueprintUnitCard(pond, filter = 'all', isRound = false) {
-  const isEmpty = (pond.totalQty || 0) === 0 || pond.status === 'empty';
-  const hasFish = !isEmpty && (pond.totalQty || 0) > 0;
-  const isReady = pond.status === 'ready';
-  const isGrowing = pond.status === 'growing';
-
-  // Apply quick filter highlighting
-  if (filter === 'has_fish' && isEmpty) {
-    return `<div class="opacity-25 pointer-events-none rounded-2xl border border-slate-700 bg-slate-900/40 p-3 text-center text-xs text-slate-500">${pond.name} (ว่าง)</div>`;
-  }
-  if (filter === 'empty' && hasFish) {
-    return `<div class="opacity-25 pointer-events-none rounded-2xl border border-slate-700 bg-slate-900/40 p-3 text-center text-xs text-slate-500">${pond.name}</div>`;
-  }
-
-  const totalVal = hasFish ? Math.round((pond.totalQty || 0) * (pond.unitPrice || 0)) : 0;
-
-  // Visual appearance
-  let borderClass = 'border-slate-200';
-  let bgClass = 'bg-white text-slate-800';
-  let statusBadge = '';
-
-  if (isEmpty) {
-    borderClass = 'border-dashed border-slate-400/60 hover:border-sky-400';
-    bgClass = 'bg-slate-800/50 text-slate-400 hover:bg-slate-800/80';
-    statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700/80 text-slate-300">ว่าง</span>';
-  } else if (isReady) {
-    borderClass = 'border-emerald-400 hover:border-emerald-500 hover:shadow-md';
-    bgClass = 'bg-white text-slate-900 shadow-xs';
-    statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>พร้อมขาย</span>';
-  } else if (isGrowing) {
-    borderClass = 'border-sky-300 hover:border-sky-500 hover:shadow-md';
-    bgClass = 'bg-white text-slate-900 shadow-xs';
-    statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-100 text-sky-800">อนุบาล</span>';
-  } else {
-    borderClass = 'border-amber-300 hover:border-amber-500 hover:shadow-md';
-    bgClass = 'bg-amber-50/90 text-slate-900 shadow-xs';
-    statusBadge = '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800">พักบ่อ</span>';
-  }
-
-  const fishIcon = (pond.fishName || '').includes('ดุก') ? '🐡' : ((pond.fishName || '').includes('ทับทิม') ? '🐠' : '🐟');
-
-  return `
-    <div id="unit-card-${pond.id}"
-         draggable="${hasFish ? 'true' : 'false'}"
-         ondragstart="handlePondDragStart(event, '${pond.id}')"
-         ondragover="handlePondDragOver(event)"
-         ondragleave="handlePondDragLeave(event)"
-         ondrop="handlePondDrop(event, '${pond.id}')"
-         onclick="handlePondClick('${pond.id}')"
-         class="unit-cell relative rounded-2xl border ${borderClass} ${bgClass} p-3 transition-all duration-200 cursor-pointer select-none flex flex-col justify-between hover:scale-[1.02] group ${isRound ? 'border-2 border-teal-400/80 rounded-3xl' : ''}"
-         title="${pond.name}: คลิกดูข้อมูล/ขาย POS / ลากเพื่อย้ายปลา">
-      
-      <!-- Card Header: Pond Code & Status -->
-      <div class="flex items-center justify-between gap-1.5 mb-1.5">
-        <span class="font-black text-xs sm:text-sm text-slate-800 tracking-tight">${pond.name}</span>
-        ${statusBadge}
-      </div>
-
-      <!-- Fish Details Body -->
-      ${hasFish ? `
-        <div class="space-y-1.5 my-auto">
-          <!-- Fish Species Name with Icon -->
-          <div class="flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-900 leading-tight">
-            <span class="text-sm sm:text-base flex-shrink-0">${fishIcon}</span>
-            <span class="truncate" title="${pond.fishName}">${pond.fishName || 'พันธุ์ปลา'}</span>
-          </div>
-
-          <!-- Size & Mesh Sieve Code -->
-          <div class="flex items-center gap-1.5 text-[11px] text-slate-600 flex-wrap">
-            <span class="px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-200 font-bold whitespace-nowrap">
-              ${pond.fishSize || '-'}
-            </span>
-            ${pond.sieveCode ? `<span class="text-slate-500 font-medium text-[10px]">ตา: <strong class="text-slate-700">${pond.sieveCode}</strong></span>` : ''}
-          </div>
-
-          <!-- Large Fish Quantity Number -->
-          <div class="pt-0.5 flex items-baseline gap-1">
-            <span class="text-base sm:text-lg font-black text-sky-950">${Number(pond.totalQty || 0).toLocaleString()}</span>
-            <span class="text-xs text-slate-500 font-semibold">ตัว</span>
-          </div>
-
-          <!-- Neat Formula & Estimated Value Bar -->
-          <div class="bg-amber-50/90 border border-amber-200/90 rounded-lg px-2 py-1 flex items-center justify-between text-[11px] mt-1 shadow-2xs">
-            <span class="font-mono text-slate-600 text-[10px] sm:text-[11px]">@฿${Number(pond.unitPrice || 0).toFixed(2)}</span>
-            <span class="font-bold text-emerald-700 font-mono">฿${totalVal.toLocaleString()}</span>
-          </div>
-        </div>
-      ` : `
-        <div class="py-4 text-center text-slate-400 flex flex-col items-center justify-center my-auto">
-          <i data-lucide="waves" class="w-6 h-6 mb-1 opacity-40"></i>
-          <span class="text-xs font-bold text-slate-400">บ่อว่าง</span>
-          <span class="text-[10px] text-slate-400">พร้อมปล่อยปลา</span>
-        </div>
-      `}
-
-      <!-- Footer Micro Action Bar -->
-      <div class="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
-        <span class="font-mono text-[9px] text-slate-400">${pond.code || pond.id}</span>
-        ${hasFish ? `<span class="text-sky-600 font-bold flex items-center gap-0.5"><span>ลากย้าย</span> ➔</span>` : `<span class="text-emerald-600 font-bold">ว่าง</span>`}
-      </div>
-    </div>
-  `;
-}
-
-// 3.1.2 DRAG & DROP FISH TRANSFER
-let draggedPondId = null;
-
-function handlePondDragStart(e, pondId) {
-  const pond = (state.ponds || []).find(p => p.id === pondId);
-  if (!pond || !pond.totalQty || pond.totalQty <= 0) {
-    e.preventDefault();
-    return false;
-  }
-  draggedPondId = pondId;
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', pondId);
-  if (e.currentTarget) e.currentTarget.classList.add('opacity-50', 'ring-2', 'ring-sky-500');
-}
-
-function handlePondDragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  const target = e.currentTarget;
-  if (target && !target.classList.contains('drag-over')) {
-    target.classList.add('drag-over');
-  }
-}
-
-function handlePondDragLeave(e) {
-  const target = e.currentTarget;
-  if (target) {
-    target.classList.remove('drag-over');
-  }
-}
-
-function handlePondDrop(e, targetPondId) {
-  e.preventDefault();
-  const target = e.currentTarget;
-  if (target) {
-    target.classList.remove('drag-over');
-  }
-
-  // ล้าง visual styles ทุกอัน
-  document.querySelectorAll('.unit-cell').forEach(el => el.classList.remove('opacity-50', 'ring-2', 'ring-sky-500', 'drag-over'));
-
-  const fromId = draggedPondId || e.dataTransfer.getData('text/plain');
-  draggedPondId = null;
-
-  if (!fromId || fromId === targetPondId) return;
-
-  const sourcePond = (state.ponds || []).find(p => p.id === fromId);
-  if (!sourcePond || !sourcePond.totalQty || sourcePond.totalQty <= 0) {
-    showNotification('กระชังต้นทางไม่มีปลาให้ย้าย', 'warning');
-    return;
-  }
-
-  openTransferFishModal(fromId, targetPondId);
 }
 
 // 3.1.3 TRANSFER MODAL LOGIC
@@ -969,14 +731,6 @@ function handlePondClick(pondId) {
     };
   }
 
-  const btnGrade = document.getElementById('inspect-btn-grade');
-  if (btnGrade) {
-    btnGrade.onclick = () => {
-      closeModal('modal-inspect-pond');
-      openGradeFishModal(pond.id);
-    };
-  }
-
   const btnPos = document.getElementById('inspect-btn-pos');
   if (btnPos) {
     btnPos.onclick = () => {
@@ -1040,142 +794,6 @@ function quickClearPond(pondId) {
   closeModal('modal-inspect-pond');
   renderInventoryView();
   showNotification(`เปลี่ยนสถานะ ${pond.name} เป็นบ่อว่างเรียบร้อย`, 'info');
-}
-
-// 3.2 RENDER PONDS GRID
-function renderPondsGrid() {
-  const container = document.getElementById('ponds-grid-container');
-  if (!container) return;
-
-  if (!state.ponds || state.ponds.length === 0) {
-    container.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400">ยังไม่มีข้อมูลบ่อปลา</div>`;
-    return;
-  }
-
-  const statusConfig = {
-    ready: { label: 'พร้อมขาย', badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-300', dot: 'bg-emerald-500' },
-    growing: { label: 'กำลังอนุบาล', badgeBg: 'bg-sky-100 text-sky-800 border-sky-300', dot: 'bg-sky-500' },
-    resting: { label: 'พักบ่อ/ตากบ่อ', badgeBg: 'bg-amber-100 text-amber-800 border-amber-300', dot: 'bg-amber-500' },
-    empty: { label: 'บ่อว่าง', badgeBg: 'bg-slate-100 text-slate-600 border-slate-300', dot: 'bg-slate-400' }
-  };
-
-  const typeConfig = {
-    earthen: '🏞️ บ่อดินธรรมชาติ',
-    concrete: '🧱 บ่อปูนซีเมนต์',
-    cage: '🌊 กระชังลอยน้ำ'
-  };
-
-  container.innerHTML = state.ponds.map(pond => {
-    const st = statusConfig[pond.status] || statusConfig.ready;
-    const available = Math.max(0, (pond.totalQty || 0) - (pond.reservedQty || 0));
-    const percentAvailable = pond.totalQty > 0 ? Math.round((available / pond.totalQty) * 100) : 0;
-    const daysSinceGraded = getDaysSinceGraded(pond.lastGradedDate);
-    const isGradingDue = (pond.status === 'ready' || pond.status === 'growing') && pond.totalQty > 0 && daysSinceGraded >= 7;
-
-    return `
-      <div class="bg-white rounded-2xl border ${isGradingDue ? 'border-amber-400 ring-2 ring-amber-400/20' : 'border-slate-200'} shadow-xs hover:shadow-md transition overflow-hidden flex flex-col">
-        <!-- Header -->
-        <div class="p-4 border-b border-slate-100 ${isGradingDue ? 'bg-amber-50/50' : 'bg-slate-50/50'} flex items-center justify-between">
-          <div>
-            <div class="flex items-center gap-2">
-              <h3 class="font-bold text-base text-slate-800">${pond.name}</h3>
-              <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border ${st.badgeBg}">
-                <span class="w-1.5 h-1.5 rounded-full ${st.dot}"></span>
-                ${st.label}
-              </span>
-            </div>
-            <p class="text-xs text-slate-400 mt-0.5">${typeConfig[pond.type] || pond.typeName || 'บ่อเลี้ยง'} • ${pond.sizeDesc || '-'}</p>
-          </div>
-          <div class="flex items-center gap-1">
-            <button onclick="openEditPondModal('${pond.id}')" class="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition" title="แก้ไขข้อมูลบ่อ">
-              <i data-lucide="edit-3" class="w-4 h-4"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Body -->
-        <div class="p-4 flex-1 space-y-3.5">
-          <!-- Fish Info -->
-          <div>
-            <span class="text-xs text-slate-400 block mb-0.5">สายพันธุ์และไซส์:</span>
-            <div class="flex items-center justify-between gap-2">
-              <span class="font-bold text-slate-800 text-sm truncate">${pond.fishName || 'ไม่มีปลา'}</span>
-              ${pond.fishSize && pond.fishSize !== '-' ? `
-                <span class="text-xs bg-sky-50 text-sky-800 border border-sky-200 px-2 py-0.5 rounded-md font-bold whitespace-nowrap">
-                  ${pond.fishSize}
-                </span>` : ''}
-            </div>
-            <div class="flex items-center justify-between text-xs text-slate-500 mt-1">
-              <span>ตาคัด: <strong class="text-slate-700 font-semibold">${pond.sieveCode || '-'}</strong></span>
-              <span>ราคาขาย: <strong class="text-emerald-700 font-bold">฿${Number(pond.unitPrice || 0).toFixed(2)}</strong>/ตัว</span>
-            </div>
-          </div>
-
-          <!-- Numbers Grid (3 metrics) -->
-          <div class="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center">
-            <div>
-              <span class="text-[11px] text-slate-500 block">คงเหลือ</span>
-              <span class="font-black text-sm text-slate-800">${Number(pond.totalQty || 0).toLocaleString()}</span>
-              <span class="text-[10px] text-slate-400 block">ตัว</span>
-            </div>
-            <div>
-              <span class="text-[11px] text-amber-600 font-medium block">ติดจอง (Hold)</span>
-              <span class="font-black text-sm text-amber-600">${Number(pond.reservedQty || 0).toLocaleString()}</span>
-              <span class="text-[10px] text-slate-400 block">ตัว</span>
-            </div>
-            <div>
-              <span class="text-[11px] text-emerald-600 font-medium block">พร้อมขายจริง</span>
-              <span class="font-black text-sm text-emerald-700">${available.toLocaleString()}</span>
-              <span class="text-[10px] text-slate-400 block">ตัว</span>
-            </div>
-          </div>
-
-          <!-- Progress Bar: พร้อมขาย vs ติดจอง -->
-          ${pond.totalQty > 0 ? `
-            <div>
-              <div class="flex justify-between text-[10px] text-slate-500 mb-1">
-                <span>พร้อมขาย (${percentAvailable}%)</span>
-                <span>ติดจอง (${100 - percentAvailable}%)</span>
-              </div>
-              <div class="w-full bg-amber-100 h-2 rounded-full overflow-hidden flex">
-                <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: ${percentAvailable}%"></div>
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- Grading Status Badge -->
-          <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
-            <span class="text-slate-400 text-[11px]">คัดขนาดล่าสุด:</span>
-            ${pond.lastGradedDate ? `
-              <span class="inline-flex items-center gap-1 font-bold text-[11px] ${isGradingDue ? 'text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-300 animate-pulse' : 'text-slate-600'}">
-                <i data-lucide="${isGradingDue ? 'alert-triangle' : 'check-circle'}" class="w-3 h-3"></i>
-                ${formatThaiDate(pond.lastGradedDate)} (${daysSinceGraded} วันก่อน)
-              </span>
-            ` : `<span class="text-slate-400 text-[11px]">- ยังไม่เคยคัด -</span>`}
-          </div>
-
-          <!-- Notes -->
-          ${pond.notes ? `
-            <div class="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100 line-clamp-2">
-              💡 ${pond.notes}
-            </div>
-          ` : ''}
-        </div>
-
-        <!-- Footer Actions -->
-        <div class="p-3 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5">
-          <button onclick="openGradeFishModal('${pond.id}')" class="flex-1 py-1.5 px-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-xs" title="บันทึกการคัดขนาดบ่อนี้">
-            <i data-lucide="scale" class="w-3.5 h-3.5"></i>
-            <span>คัดขนาดบ่อนี้</span>
-          </button>
-          <button onclick="openRecordMortalityModal('${pond.id}')" class="py-1.5 px-2.5 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1" title="แจ้งปลาตาย">
-            <i data-lucide="skull" class="w-3.5 h-3.5"></i>
-            <span class="hidden sm:inline">แจ้งตาย</span>
-          </button>
-        </div>
-      </div>
-    `;
-  }).join('');
 }
 
 // 3.3 RENDER SUPPLIES TABLE
@@ -2551,8 +2169,7 @@ function handleSaveEditPond(e) {
 // 7. BADGES UPDATE
 function updateInventoryBadges() {
   const lowStockCount = (state.supplies || []).filter(s => s.stockQty <= s.minThreshold).length;
-  const dueCount = typeof getGradingDuePonds === 'function' ? getGradingDuePonds(7).length : 0;
-  const totalAlerts = lowStockCount + dueCount;
+  const totalAlerts = lowStockCount;
 
   const badge = document.getElementById('badge-inventory-alert');
   if (badge) {
