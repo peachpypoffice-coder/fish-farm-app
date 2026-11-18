@@ -44,7 +44,7 @@ const FARM_MODULES = [
     tags: ['ผังบ่อเลี้ยง', 'ตาคัดขนาดปลา', 'คลังอาหาร/ยา', 'ใบรับ GRN'],
     defaultTab: 'inventory',
     subtabs: [
-      { id: 'inventory-ponds', label: 'ผังบ่อเลี้ยง & คัดขนาด', icon: 'scale', subtabParam: 'ponds' },
+      { id: 'inventory-ponds', label: 'ค้นหาที่เก็บปลา', icon: 'search', subtabParam: 'ponds' },
       { id: 'inventory-supplies', label: 'คลังอาหาร & พัสดุ', icon: 'package', subtabParam: 'supplies' },
       { id: 'inventory-grn', label: 'ใบรับสินค้า (GRN)', icon: 'file-check', subtabParam: 'inbound_grn' },
       { id: 'inventory-history', label: 'ประวัติการคัดและสูญเสีย', icon: 'history', subtabParam: 'history' },

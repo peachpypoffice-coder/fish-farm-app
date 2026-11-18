@@ -268,7 +268,7 @@ function setFishLocSearchMode(mode) {
     input.value = '';
     input.placeholder = fishLocSearchMode === 'fish'
       ? 'พิมพ์ชื่อพันธุ์ปลา / รหัสปลา / ขนาด เช่น ดุก, ทับทิม...'
-      : 'พิมพ์ชื่อหรือรหัสกระชัง/อ่าง เช่น C5, M1, อ่างใหญ่...';
+      : 'พิมพ์ชื่อกระชังหรืออ่าง เช่น กระชัง 1, อ่างใหญ่...';
   }
 
   populateFishLocPicker();
@@ -298,7 +298,7 @@ function populateFishLocPicker() {
     picker.innerHTML = `<option value="">— เลือกจากรายชื่อกระชัง/อ่าง (${ponds.length} จุด) —</option>` +
       Object.keys(byZone).map(z => `
         <optgroup label="${invEsc(z)}">
-          ${byZone[z].map(p => `<option value="${invEsc(p.id)}">${invEsc(p.code || '')} • ${invEsc(p.name)}${pondHasFish(p) ? ' — ' + invEsc(p.fishName || '') : ' — (ว่าง)'}</option>`).join('')}
+          ${byZone[z].map(p => `<option value="${invEsc(p.id)}">${invEsc(p.name)}${pondHasFish(p) ? ' — ' + invEsc(p.fishName || '') : ' — (ว่าง)'}</option>`).join('')}
         </optgroup>`).join('');
   }
   picker.value = fishLocPicked;
@@ -403,7 +403,7 @@ function renderFishLocationSearch() {
               <tbody class="divide-y divide-slate-100">
                 ${list.map(p => `
                   <tr class="hover:bg-sky-50/60 cursor-pointer" onclick="handlePondClick('${invEsc(p.id)}')" title="คลิกเพื่อดูรายละเอียด/จัดการจุดนี้">
-                    <td class="py-2 px-3 font-bold text-sky-800"><span class="inline-block min-w-[2.5rem] px-1.5 py-0.5 mr-1.5 rounded-md bg-sky-100 text-sky-900 text-xs text-center">${invEsc(p.code || '-')}</span>${invEsc(p.name)}</td>
+                    <td class="py-2 px-3 font-bold text-sky-800">${invEsc(p.name)}</td>
                     <td class="py-2 px-3 text-slate-600">${invEsc(p.zoneName || p.typeName || '-')}</td>
                     <td class="py-2 px-3 text-slate-600">${invEsc(p.fishSize || '-')}</td>
                     <td class="py-2 px-3 text-right font-semibold">${Number(p.totalQty || 0).toLocaleString()}</td>
@@ -440,7 +440,7 @@ function renderFishLocationSearch() {
             <button type="button" onclick="handlePondClick('${invEsc(p.id)}')" class="text-left bg-white rounded-2xl border ${has ? 'border-sky-200' : 'border-slate-200'} shadow-xs hover:shadow-md hover:border-sky-400 transition p-4 space-y-2">
               <div class="flex items-start justify-between gap-2">
                 <div>
-                  <div class="font-black text-slate-800"><span class="inline-block px-1.5 py-0.5 mr-1 rounded-md bg-sky-100 text-sky-900 text-xs">${invEsc(p.code || '-')}</span>${invEsc(p.name)}</div>
+                  <div class="font-black text-slate-800">${invEsc(p.name)}</div>
                   <div class="text-[11px] text-slate-500 mt-0.5">${invEsc(p.zoneName || p.typeName || '-')}${p.sizeDesc ? ' • ' + invEsc(p.sizeDesc) : ''}</div>
                 </div>
                 ${getPondStatusBadge(p)}
