@@ -355,7 +355,7 @@ function renderPortalBookingCalendar() {
     const dayStr = String(day).padStart(2, '0');
     const dateKey = `${portalCalYear}-${monthStr}-${dayStr}`;
 
-    const dayOrders = (state.orders || []).filter(o => o.deliveryDate === dateKey && o.status !== 'cancelled');
+    const dayOrders = (state.orders || []).filter(o => o.deliveryDate === dateKey && o.status !== 'cancelled' && !(o.id && o.id.startsWith('POS-')) && !o.isPosWalkIn);
     const isToday = dateKey === todayStr;
 
     monthOrdersCount += dayOrders.length;
@@ -510,7 +510,7 @@ function updatePortalSalesMetrics() {
 // 2.2 อัปเดตตัวเลขสดบนหน้า Portal Hub (Live KPIs & Hero Grid)
 function updatePortalKPIs() {
   const todayStr = getTodayString();
-  const todayOrders = (state.orders || []).filter(o => o.deliveryDate === todayStr && o.status !== 'cancelled');
+  const todayOrders = (state.orders || []).filter(o => o.deliveryDate === todayStr && o.status !== 'cancelled' && !(o.id && o.id.startsWith('POS-')) && !o.isPosWalkIn);
   const readyPonds = (state.ponds || []).filter(p => p.status === 'ready');
   const totalReadyFish = readyPonds.reduce((sum, p) => sum + Math.max(0, (p.totalQty || 0) - (p.reservedQty || 0)), 0);
   const duePonds = typeof getGradingDuePonds === 'function' ? getGradingDuePonds(7) : [];
@@ -1502,13 +1502,100 @@ function updatePosCartPrice(index, newPrice) {
   renderPosCart();
 }
 
+let posLinkedOrderId = null;
+
+function canCurrentUserSellPos() {
+  const role = state.currentUser?.role;
+  return ['CEO', 'Manager', 'Sales', 'Accountant'].includes(role);
+}
+
+function sendOrderToPos(orderId) {
+  if (!canCurrentUserSellPos()) {
+    showNotification('เฉพาะผู้มีสิทธิ์ขาย (CEO, ผู้จัดการ, ฝ่ายขาย/POS, บัญชี) เท่านั้นที่ส่งออเดอร์ไปหน้า POS ได้', 'error');
+    return;
+  }
+
+  const order = (state.orders || []).find(o => o.id === orderId);
+  if (!order) {
+    showNotification('ไม่พบข้อมูลออเดอร์ที่ต้องการส่งไป POS', 'error');
+    return;
+  }
+
+  posLinkedOrderId = order.id;
+  posCart = [];
+
+  // โอนรายการสินค้าที่สั่งจองไว้เข้าสู่ตะกร้า POS โดยอัตโนมัติ
+  (order.items || []).forEach(it => {
+    const isFish = it.category === 'พันธุ์ปลา';
+    let targetId = it.pondId || it.id || ('item_' + Math.random().toString(36).substr(2, 5));
+    let maxAvail = Math.max(Number(it.qty) || 1, 999999);
+
+    if (isFish) {
+      let pond = it.pondId ? (state.ponds || []).find(p => p.id === it.pondId) : null;
+      if (!pond && typeof getAvailableFishStock === 'function') {
+        const stock = getAvailableFishStock(it.name, it.size);
+        if (stock.matchingPonds && stock.matchingPonds.length > 0) {
+          pond = stock.matchingPonds[0];
+        }
+      }
+      if (pond) {
+        targetId = pond.id;
+        maxAvail = Math.max(Number(it.qty) || 1, pond.totalQty || 0);
+      }
+    } else {
+      const sup = (state.supplies || []).find(s => s.name.includes(it.name) || it.name.includes(s.name));
+      if (sup) {
+        targetId = sup.id;
+        maxAvail = Math.max(Number(it.qty) || 1, sup.stockQty || 0);
+      }
+    }
+
+    const unitPrice = Number(it.unitPrice !== undefined ? it.unitPrice : (it.netUnitPrice || 0));
+
+    posCart.push({
+      type: isFish ? 'fish' : 'supply',
+      id: targetId,
+      category: it.category || (isFish ? 'พันธุ์ปลา' : 'อาหารปลา'),
+      name: it.name,
+      size: it.size || '',
+      unit: it.unit || (isFish ? 'ตัว' : 'ชิ้น'),
+      unitPrice,
+      qty: Number(it.qty) || 1,
+      maxAvail
+    });
+  });
+
+  // เปิดโมดูลที่ 3 (POS) และสลับไปหน้าแคชเชียร์ขายสดหน้าร้านทันที
+  openModule('pos');
+  switchPosSubTab('pos-cashier');
+
+  // เติมข้อมูลลูกค้า ส่วนลด และวิธีชำระเงินจากออเดอร์จอง
+  const nameInp = document.getElementById('pos-customer-name');
+  const phoneInp = document.getElementById('pos-customer-phone');
+  const discInp = document.getElementById('pos-bill-discount');
+
+  if (nameInp) nameInp.value = order.customerName || 'ลูกค้าหน้าร้าน';
+  if (phoneInp) phoneInp.value = order.customerPhone || '';
+  if (discInp) discInp.value = Number(order.totalDiscount || 0);
+
+  const method = (order.paymentMethod === 'โอน' || order.paymentMethod === 'โอนเงิน')
+    ? 'โอนเงิน'
+    : (order.paymentMethod === 'สแกน QR' ? 'สแกน QR' : 'เงินสด');
+  selectPosPaymentMethod(method);
+
+  renderPosCart();
+  showNotification(`ดึงออเดอร์ ${order.id} (${order.customerName}) เข้าสู่หน้า POS พร้อมชำระเงินและออกบิลแล้ว`, 'success');
+}
+
 function handlePosDiscountInput(val) {
   const discount = Math.max(0, Number(val) || 0);
   const subtotal = posCart.reduce((sum, it) => sum + (it.qty * it.unitPrice), 0);
-  const netTotal = Math.max(0, subtotal - discount);
+  const linkedOrder = posLinkedOrderId ? (state.orders || []).find(o => o.id === posLinkedOrderId) : null;
+  const deposit = linkedOrder ? Number(linkedOrder.deposit || 0) : 0;
+  const netPayable = Math.max(0, subtotal - discount - deposit);
   const totalEl = document.getElementById('pos-cart-total');
   if (totalEl) {
-    totalEl.textContent = '฿' + netTotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    totalEl.textContent = '฿' + netPayable.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 }
 
@@ -1533,6 +1620,7 @@ function removePosCartItem(index) {
 
 function clearPosCart() {
   posCart = [];
+  posLinkedOrderId = null;
   const discInput = document.getElementById('pos-bill-discount');
   if (discInput) discInput.value = 0;
   renderPosCart();
@@ -1542,9 +1630,46 @@ function renderPosCart() {
   const container = document.getElementById('pos-cart-items');
   const subtotalEl = document.getElementById('pos-cart-subtotal');
   const totalEl = document.getElementById('pos-cart-total');
+  const totalLabelEl = document.getElementById('pos-cart-total-label');
   const countEl = document.getElementById('pos-cart-count');
   const discInput = document.getElementById('pos-bill-discount');
+  const linkedBanner = document.getElementById('pos-linked-order-banner');
+  const linkedIdEl = document.getElementById('pos-linked-order-id');
+  const linkedDepositBadge = document.getElementById('pos-linked-deposit-badge');
+  const depositRow = document.getElementById('pos-cart-deposit-row');
+  const depositValEl = document.getElementById('pos-cart-deposit-val');
   if (!container) return;
+
+  const linkedOrder = posLinkedOrderId ? (state.orders || []).find(o => o.id === posLinkedOrderId) : null;
+  const depositAmt = linkedOrder ? Number(linkedOrder.deposit || 0) : 0;
+
+  if (linkedBanner) {
+    if (linkedOrder) {
+      linkedBanner.classList.remove('hidden');
+      if (linkedIdEl) linkedIdEl.textContent = `${linkedOrder.id} (${linkedOrder.deliveryType === 'delivery' ? '🚚 จัดส่ง' : '🏠 รับเอง'})`;
+      if (linkedDepositBadge) {
+        if (depositAmt > 0) {
+          linkedDepositBadge.textContent = `มัดจำแล้ว ฿${depositAmt.toLocaleString()}`;
+          linkedDepositBadge.classList.remove('hidden');
+        } else {
+          linkedDepositBadge.classList.add('hidden');
+        }
+      }
+    } else {
+      linkedBanner.classList.add('hidden');
+    }
+  }
+
+  if (depositRow) {
+    if (linkedOrder && depositAmt > 0) {
+      depositRow.classList.remove('hidden');
+      if (depositValEl) depositValEl.textContent = '-฿' + depositAmt.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (totalLabelEl) totalLabelEl.textContent = 'ยอดรับชำระคงเหลือสุทธิ:';
+    } else {
+      depositRow.classList.add('hidden');
+      if (totalLabelEl) totalLabelEl.textContent = 'ยอดรวมสุทธิทั้งสิ้น:';
+    }
+  }
 
   if (posCart.length === 0) {
     container.innerHTML = `
@@ -1606,10 +1731,10 @@ function renderPosCart() {
   }).join('');
 
   const billDiscount = Math.max(0, Number(discInput?.value) || 0);
-  const netGrandTotal = Math.max(0, subtotal - billDiscount);
+  const netPayable = Math.max(0, subtotal - billDiscount - depositAmt);
 
   if (subtotalEl) subtotalEl.textContent = '฿' + subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (totalEl) totalEl.textContent = '฿' + netGrandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (totalEl) totalEl.textContent = '฿' + netPayable.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (countEl) countEl.textContent = `${totalItemsCount.toLocaleString()} ชิ้น (${posCart.length} รายการ)`;
 
   lucide.createIcons();
@@ -1648,11 +1773,70 @@ function handlePosCheckout() {
   const totalDiscount = Math.min(grossTotal, billDiscountRaw);
   const netTotal = Math.max(0, grossTotal - totalDiscount);
 
+  // กรณีที่ 1: เป็นออเดอร์ที่ส่งมาจากโมดูลจองปลา (ปุ่ม POS)
+  if (posLinkedOrderId) {
+    const existingOrder = (state.orders || []).find(o => o.id === posLinkedOrderId);
+    if (existingOrder) {
+      const prevStatus = existingOrder.status;
+      const depositAmt = Number(existingOrder.deposit || 0);
+      const collectedNow = Math.max(0, netTotal - depositAmt);
+
+      existingOrder.customerName = custName;
+      existingOrder.customerPhone = custPhone;
+      existingOrder.items = items;
+      existingOrder.grossTotal = grossTotal;
+      existingOrder.totalDiscount = totalDiscount;
+      existingOrder.netTotal = netTotal;
+      existingOrder.remainingBalance = 0;
+      existingOrder.actualCollected = collectedNow;
+      existingOrder.paymentStatus = 'paid_full';
+      existingOrder.paymentMethod = payMethod;
+      existingOrder.collectedMethod = payMethod === 'โอนเงิน' ? 'โอน' : payMethod;
+      existingOrder.paymentLocked = true;
+      existingOrder.paidViaPos = true;
+      existingOrder.posPaidAt = dateStr + ' ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+      // หากเป็นลูกค้ารับเองหน้าฟาร์ม ให้เปลี่ยนเป็นส่งสำเร็จทันที
+      if (existingOrder.deliveryType === 'pickup' && existingOrder.status !== 'delivered') {
+        existingOrder.status = 'delivered';
+      }
+
+      // ตัดสต็อกจริงเมื่อชำระเงินและออกบิลที่ POS (หากยังไม่เคยตัดสต็อกมาก่อน)
+      if (prevStatus !== 'delivered' && !existingOrder.stockDeductedByPos) {
+        if (typeof deductStockForDeliveredOrder === 'function') {
+          deductStockForDeliveredOrder(existingOrder);
+        }
+        existingOrder.stockDeductedByPos = true;
+      }
+
+      existingOrder.editHistory = existingOrder.editHistory || [];
+      existingOrder.editHistory.unshift({
+        id: 'hist_' + Date.now(),
+        timestamp: new Date().toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
+        editorName: state.currentUser ? state.currentUser.name : 'แคชเชียร์ POS',
+        editorRole: state.currentUser ? state.currentUser.roleLabel : 'POS',
+        reason: 'ชำระเงินและออกบิลผ่านระบบขายหน้าร้าน (POS)',
+        changeSummary: `รับชำระสุทธิ ฿${collectedNow.toLocaleString()} (${payMethod}) • ยอดรวมบิล ฿${netTotal.toLocaleString()}`
+      });
+
+      const targetOrderId = existingOrder.id;
+      saveState();
+
+      showNotification(`รับชำระเงินและออกบิล ${targetOrderId} ยอดรับ ฿${collectedNow.toLocaleString()} (${payMethod}) สำเร็จ!`, 'success');
+      clearPosCart();
+      renderPosView();
+      viewOrderSlip(targetOrderId);
+      return;
+    }
+  }
+
+  // กรณีที่ 2: ลูกค้าที่มาซื้อสดหน้าร้านโดยตรง (Walk-in POS) -> โชว์เฉพาะในโมดูล POS ไม่เอาไปปนในโมดูลจองปลา
   const orderId = 'POS-' + dateStr.replace(/-/g, '') + '-' + String((state.orders || []).length + 1).padStart(3, '0');
 
   const newPosOrder = {
     id: orderId,
     orderNumber: 'POS-' + String((state.orders || []).length + 1).padStart(3, '0'),
+    isPosWalkIn: true,
     customerId: 'cust_walkin',
     customerName: custName,
     customerPhone: custPhone,
@@ -1699,6 +1883,8 @@ function openPosNewBill() {
   clearPosCart();
   selectPosPaymentMethod('เงินสด');
   const inp = document.getElementById('pos-customer-name');
+  const phoneInp = document.getElementById('pos-customer-phone');
+  if (phoneInp) phoneInp.value = '';
   if (inp) {
     inp.value = 'ลูกค้าหน้าร้าน (เงินสด)';
     inp.focus();
@@ -1719,29 +1905,121 @@ function switchPosSubTab(subtabId) {
   }
 }
 
+function isOrderPaidForPosSummary(o) {
+  if (!o || o.status === 'cancelled') return false;
+  // 1. บิลขายสดหน้าร้าน POS
+  if ((o.id && o.id.startsWith('POS-')) || o.isPosWalkIn) return true;
+  // 2. ออเดอร์จัดส่งหรือสั่งจองที่ชำระเงินแล้ว (ผ่าน POS หรือชำระหน้างานแล้ว)
+  if (o.paidViaPos) return true;
+  if (o.paymentStatus === 'paid_full') return true;
+  if (Number(o.actualCollected || 0) > 0 && o.collectedMethod && o.collectedMethod !== 'ค้างจ่าย' && o.collectedMethod !== 'ยังไม่ได้เก็บ') return true;
+  if (o.status === 'delivered' && Number(o.remainingBalance || 0) <= 0 && o.collectedMethod !== 'ค้างจ่าย') return true;
+  return false;
+}
+
 function renderPosHistory() {
   const tbody = document.getElementById('pos-history-tbody');
   if (!tbody) return;
 
-  const posOrders = (state.orders || []).filter(o => o.id && o.id.startsWith('POS-'));
+  const dateFilterEl = document.getElementById('pos-history-date-filter');
+  const selectedDate = dateFilterEl ? dateFilterEl.value : '';
 
-  if (posOrders.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">ยังไม่มีประวัติบิลขายหน้าร้าน</td></tr>`;
+  // รวมบิลขายหน้าร้าน (POS-...) และออเดอร์จัดส่งที่ชำระเงินแล้วทั้งหมด เพื่อสรุปยอดรายวันได้ในที่เดียว
+  let paidOrders = (state.orders || []).filter(o => isOrderPaidForPosSummary(o));
+
+  if (selectedDate) {
+    paidOrders = paidOrders.filter(o => o.deliveryDate === selectedDate);
+  }
+
+  // คำนวณสรุปยอดรวม (หน้าร้าน + จัดส่งที่ชำระเงินแล้ว)
+  let sumTotal = 0;
+  let sumWalkin = 0;
+  let countWalkin = 0;
+  let sumDelivery = 0;
+  let countDelivery = 0;
+  let sumCash = 0;
+  let sumTransfer = 0;
+
+  paidOrders.forEach(o => {
+    const isWalkIn = Boolean((o.id && o.id.startsWith('POS-')) || o.isPosWalkIn);
+    const amt = Number(o.netTotal || 0);
+    sumTotal += amt;
+
+    if (isWalkIn) {
+      sumWalkin += amt;
+      countWalkin += 1;
+    } else {
+      sumDelivery += amt;
+      countDelivery += 1;
+    }
+
+    const m = o.collectedMethod || o.paymentMethod || 'เงินสด';
+    if (m === 'เงินสด+โอน') {
+      sumCash += Number(o.cashSplitAmount || 0) + Number(o.deposit || 0);
+      sumTransfer += Number(o.transferSplitAmount || 0);
+    } else if (m === 'เงินสด') {
+      sumCash += amt;
+    } else {
+      sumTransfer += amt;
+    }
+  });
+
+  const elSumTotal = document.getElementById('pos-hist-sum-total');
+  const elSumCount = document.getElementById('pos-hist-sum-count');
+  const elSumWalkin = document.getElementById('pos-hist-sum-walkin');
+  const elSumWalkinCount = document.getElementById('pos-hist-sum-walkin-count');
+  const elSumDel = document.getElementById('pos-hist-sum-delivery');
+  const elSumDelCount = document.getElementById('pos-hist-sum-delivery-count');
+  const elSumMethods = document.getElementById('pos-hist-sum-methods');
+
+  if (elSumTotal) elSumTotal.textContent = '฿' + sumTotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (elSumCount) elSumCount.textContent = `รวมทั้งหมด ${paidOrders.length} รายการ${selectedDate ? ` (วันที่ ${formatThaiDate(selectedDate)})` : ''}`;
+  if (elSumWalkin) elSumWalkin.textContent = '฿' + sumWalkin.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (elSumWalkinCount) elSumWalkinCount.textContent = `${countWalkin} บิลขายหน้าร้าน`;
+  if (elSumDel) elSumDel.textContent = '฿' + sumDelivery.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (elSumDelCount) elSumDelCount.textContent = `${countDelivery} ออเดอร์จัดส่งที่ชำระแล้ว`;
+  if (elSumMethods) {
+    elSumMethods.innerHTML = `
+      <div class="text-emerald-700">💵 เงินสด: ฿${sumCash.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</div>
+      <div class="text-sky-700">📲 โอน/QR: ฿${sumTransfer.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</div>
+    `;
+  }
+
+  if (paidOrders.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">ยังไม่มีรายการบิลขายหน้าร้านหรือออเดอร์จัดส่งที่ชำระเงินแล้ว${selectedDate ? ` ในวันที่ ${formatThaiDate(selectedDate)}` : ''}</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = posOrders.map(o => `
-    <tr class="border-b border-slate-100 hover:bg-slate-50 transition text-xs">
-      <td class="p-3 font-bold text-sky-900">${o.id}</td>
-      <td class="p-3">${formatThaiDate(o.deliveryDate)}</td>
-      <td class="p-3 font-semibold">${o.customerName}</td>
-      <td class="p-3">${o.items.map(it => `${it.name} x ${Number(it.qty).toLocaleString()} ${it.unit}`).join(', ')}</td>
-      <td class="p-3 text-right font-black text-emerald-700">฿${Number(o.netTotal).toLocaleString()}</td>
-      <td class="p-3 text-right">
-        <button onclick="viewOrderSlip('${o.id}')" class="px-2 py-1 text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 rounded-lg hover:bg-sky-100">ดูใบเสร็จ</button>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = paidOrders.map(o => {
+    const isWalkIn = Boolean((o.id && o.id.startsWith('POS-')) || o.isPosWalkIn);
+    const payLabel = o.collectedMethod && o.collectedMethod !== 'ยังไม่ได้เก็บ' ? o.collectedMethod : (o.paymentMethod || 'เงินสด');
+    return `
+      <tr class="border-b border-slate-100 hover:bg-slate-50 transition text-xs">
+        <td class="p-3 font-bold text-sky-900 whitespace-nowrap">${o.id}</td>
+        <td class="p-3 whitespace-nowrap">
+          <span class="px-2 py-0.5 rounded-full text-[11px] font-bold border ${
+            isWalkIn
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : 'bg-sky-50 text-sky-800 border-sky-200'
+          }">
+            ${isWalkIn ? '🛒 ขายหน้าร้าน (POS)' : '🚚 จัดส่ง (ชำระแล้ว)'}
+          </span>
+        </td>
+        <td class="p-3 whitespace-nowrap">${formatThaiDate(o.deliveryDate)}</td>
+        <td class="p-3 font-semibold">${o.customerName}</td>
+        <td class="p-3">${(o.items || []).map(it => `${it.name} x ${Number(it.qty).toLocaleString()} ${it.unit}`).join(', ')}</td>
+        <td class="p-3 text-center whitespace-nowrap">
+          <span class="px-2 py-0.5 rounded-md font-bold text-[11px] bg-slate-100 text-slate-700 border border-slate-200">
+            ${payLabel}
+          </span>
+        </td>
+        <td class="p-3 text-right font-black text-emerald-700 whitespace-nowrap">฿${Number(o.netTotal).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td class="p-3 text-right whitespace-nowrap">
+          <button onclick="viewOrderSlip('${o.id}')" class="px-2.5 py-1 text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 rounded-lg hover:bg-sky-100">ดูใบเสร็จ</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 // 5. PRODUCTION & BREEDING (โมดูลที่ 4: ฝ่ายผลิตและเพาะพันธุ์)

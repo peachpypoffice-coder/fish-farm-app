@@ -338,12 +338,19 @@ async function checkServerSync() {
   }
 }
 
+// Helper: ตรวจสอบว่าเป็นบิลขายสดหน้าร้าน POS (ไม่ต้องแสดงในโมดูลจองปลา)
+function isPosWalkInOrder(o) {
+  return Boolean(o && ((o.id && o.id.startsWith('POS-')) || o.isPosWalkIn));
+}
+
 // Update Header Notification Badges
 function updateBadges() {
   const todayStr = getTodayString();
-  const todayOrders = state.orders.filter(o => o.deliveryDate === todayStr);
+  const todayOrders = state.orders.filter(o => o.deliveryDate === todayStr && !isPosWalkInOrder(o));
   const todayCountBadge = document.getElementById('badge-today-count');
   if (todayCountBadge) todayCountBadge.textContent = todayOrders.length;
+  const subDailyBadge = document.getElementById('badge-daily-count-sub');
+  if (subDailyBadge) subDailyBadge.textContent = todayOrders.filter(o => o.status !== 'cancelled').length;
 
   const claimsCountBadge = document.getElementById('badge-claims-count');
   if (claimsCountBadge) claimsCountBadge.textContent = state.claims.length;
@@ -789,7 +796,7 @@ function renderMonthlyCalendar() {
     const dayStr = String(day).padStart(2, '0');
     const dateKey = `${state.currentYear}-${monthStr}-${dayStr}`;
 
-    const dayOrders = state.orders.filter(o => o.deliveryDate === dateKey);
+    const dayOrders = state.orders.filter(o => o.deliveryDate === dateKey && !isPosWalkInOrder(o));
     const isToday = dateKey === todayStr;
     const isSelected = dateKey === state.selectedDate;
 
@@ -913,7 +920,7 @@ function renderSelectedDayInspector() {
   if (!titleEl || !listContainer) return;
 
   titleEl.textContent = `วันที่ ${formatThaiDate(state.selectedDate)}`;
-  const dayOrders = state.orders.filter(o => o.deliveryDate === state.selectedDate);
+  const dayOrders = state.orders.filter(o => o.deliveryDate === state.selectedDate && !isPosWalkInOrder(o));
 
   if (dayOrders.length === 0) {
     listContainer.innerHTML = `
@@ -929,6 +936,7 @@ function renderSelectedDayInspector() {
     return;
   }
 
+  const canSellPos = ['CEO', 'Manager', 'Sales', 'Accountant'].includes(state.currentUser?.role);
   let html = '';
   dayOrders.forEach(order => {
     const statusBadge = getStatusBadgeHtml(order.status);
@@ -969,6 +977,12 @@ function renderSelectedDayInspector() {
           <div>${statusBadge}</div>
 
           <div class="flex items-center gap-1">
+            ${canSellPos && order.status !== 'cancelled' ? `
+            <button onclick="sendOrderToPos('${order.id}')" title="ส่งออเดอร์ไปหน้า POS เพื่อชำระเงินและออกบิล" class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black tracking-wide shadow-2xs flex items-center gap-1">
+              <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i>
+              <span>POS</span>
+            </button>
+            ` : ''}
             <button onclick="viewOrderSlip('${order.id}')" title="พิมพ์ใบจอง/ใบส่งของ" class="p-2 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700">
               <i data-lucide="printer" class="w-4 h-4"></i>
             </button>
@@ -1027,7 +1041,12 @@ function renderDailyQueue() {
   const prepGrid = document.getElementById('daily-prep-summary-grid');
   if (!container || !prepGrid) return;
 
-  const dayOrders = state.orders.filter(o => o.deliveryDate === targetDate && o.status !== 'cancelled');
+  // กรองไม่แสดงบิลลูกค้าที่มาซื้อสดหน้าร้าน (POS-...) ในโมดูลจองปลา
+  const dayOrders = state.orders.filter(o => o.deliveryDate === targetDate && o.status !== 'cancelled' && !isPosWalkInOrder(o));
+
+  // อัปเดตตัวเลข badge บนปุ่ม subtab คิวจัดส่งประจำวัน
+  const subDailyBadge = document.getElementById('badge-daily-count-sub');
+  if (subDailyBadge) subDailyBadge.textContent = dayOrders.length;
 
   // 1. Calculate Prep Summary (สรุปยอดรวมปลาที่ต้องเตรียมตัก/ขึ้นรถในวันนั้น)
   const itemMap = {};
@@ -1085,6 +1104,7 @@ function renderDailyQueue() {
     return;
   }
 
+  const canSellPos = ['CEO', 'Manager', 'Sales', 'Accountant'].includes(state.currentUser?.role);
   let html = '';
   dayOrders.forEach((order, index) => {
     const isPickup = order.deliveryType === 'pickup';
@@ -1221,6 +1241,14 @@ function renderDailyQueue() {
           </div>
 
           <div class="flex flex-wrap items-center gap-1.5 ml-auto">
+            <!-- ปุ่ม POS สำหรับผู้มีสิทธิ์ขาย: ส่งข้อมูลลูกค้าและรายการที่สั่งจองไปหน้า POS เพื่อชำระเงินและออกบิลทันที -->
+            ${canSellPos && order.status !== 'cancelled' ? `
+            <button type="button" onclick="sendOrderToPos('${order.id}')" title="ส่งออเดอร์ไปหน้า POS เพื่อชำระเงินและออกบิล" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 text-xs font-black rounded-xl shadow-xs flex items-center gap-1.5">
+              <i data-lucide="shopping-cart" class="w-4 h-4"></i>
+              <span>POS</span>
+            </button>
+            ` : ''}
+
             <!-- ปุ่มสถานะและวิธีชำระเงินหน้างาน (เงินสด / โอน / ค้างจ่าย) -->
             ${renderPaymentMethodButtonHtml(order)}
 
@@ -2914,9 +2942,10 @@ function saveDeliveryUpdate() {
     order.remainingBalance = Math.max(0, order.netTotal - (order.deposit || 0) - finalCollected);
   } else if (newStatus === 'delivered') {
     order.remainingBalance = Math.max(0, order.remainingBalance - finalCollected);
-    // ตัดสต็อกจริงเมื่อส่งมอบสำเร็จ
-    if (typeof deductStockForDeliveredOrder === 'function') {
+    // ตัดสต็อกจริงเมื่อส่งมอบสำเร็จ (หากยังไม่เคยตัดสต็อกตอนคิดเงินที่ POS)
+    if (!order.stockDeductedByPos && typeof deductStockForDeliveredOrder === 'function') {
       deductStockForDeliveredOrder(order);
+      order.stockDeductedByPos = true;
     }
   } else if (newStatus === 'cancelled') {
     if (typeof releaseStockForOrder === 'function') {
@@ -3494,6 +3523,9 @@ function renderOrdersList() {
   if (dateFrom && dateTo && dateFrom > dateTo) [dateFrom, dateTo] = [dateTo, dateFrom];
 
   let filtered = state.orders.filter(o => {
+    // ลูกค้าที่มาซื้อหน้าร้านไม่ต้องโชว์ในโมดูลจองปลา ให้โชว์เฉพาะในโมดูล POS
+    if (isPosWalkInOrder(o)) return false;
+
     const matchSearch = o.customerName.toLowerCase().includes(search) ||
                         o.customerPhone.includes(search) ||
                         o.id.toLowerCase().includes(search) ||
@@ -3547,6 +3579,7 @@ function renderOrdersList() {
     return;
   }
 
+  const canSellPos = ['CEO', 'Manager', 'Sales', 'Accountant'].includes(state.currentUser?.role);
   let html = '';
   filtered.forEach(o => {
     const isPickup = o.deliveryType === 'pickup';
@@ -3647,7 +3680,13 @@ function renderOrdersList() {
           </div>
 
           <!-- ปุ่มจัดการ -->
-          <div class="flex items-center justify-center flex-wrap gap-1 max-w-[170px] mx-auto">
+          <div class="flex items-center justify-center flex-wrap gap-1 max-w-[180px] mx-auto">
+            ${canSellPos && o.status !== 'cancelled' ? `
+              <button onclick="sendOrderToPos('${o.id}')" title="ส่งออเดอร์ไปหน้า POS เพื่อชำระเงินและออกบิล" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] py-1 px-2 rounded-lg flex items-center gap-1 shadow-xs transition">
+                <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i>
+                <span>POS</span>
+              </button>
+            ` : ''}
             ${canCompleteBackorder ? `
               <button onclick="openCompleteBackorderModal('${o.id}')" title="ส่งมอบส่วนที่ค้างครบแล้ว (ปิดจ็อบ)" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] py-1 px-2 rounded-lg flex items-center gap-1 shadow-xs transition">
                 <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
@@ -3808,6 +3847,12 @@ function renderOrdersList() {
 
             <!-- Mobile Action Buttons (จัดเรียงสวยงามใต้ ยอดเงินคงเหลือ) -->
             <div class="pt-2.5 border-t border-slate-100 flex items-center justify-end gap-1.5 flex-wrap">
+              ${canSellPos && o.status !== 'cancelled' ? `
+                <button onclick="sendOrderToPos('${o.id}')" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-1.5 px-2.5 rounded-lg flex items-center gap-1 shadow-xs">
+                  <i data-lucide="shopping-cart" class="w-3.5 h-3.5"></i>
+                  <span>POS</span>
+                </button>
+              ` : ''}
               ${canCompleteBackorder ? `
                 <button onclick="openCompleteBackorderModal('${o.id}')" class="btn-large bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-1.5 px-2.5 rounded-lg flex items-center gap-1 shadow-xs">
                   <i data-lucide="check-check" class="w-3.5 h-3.5"></i>

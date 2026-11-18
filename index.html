@@ -2067,6 +2067,15 @@
 
             <!-- Customer Info -->
             <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <!-- แถบแสดงสถานะกรณีส่งออเดอร์มาจากโมดูลจองปลา -->
+              <div id="pos-linked-order-banner" class="hidden bg-sky-100/90 border border-sky-300 text-sky-900 px-2.5 py-1.5 rounded-lg text-[11px] flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <i data-lucide="file-symlink" class="w-3.5 h-3.5 text-sky-700 shrink-0"></i>
+                  <span class="font-bold truncate">เชื่อมบิลจอง: <strong id="pos-linked-order-id">-</strong></span>
+                </div>
+                <span id="pos-linked-deposit-badge" class="hidden bg-emerald-600 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded shrink-0">มัดจำ ฿0</span>
+              </div>
+
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label class="block text-[11px] font-bold text-slate-600 mb-1">ชื่อลูกค้า:</label>
@@ -2096,6 +2105,12 @@
               <div class="flex items-center justify-between text-xs text-slate-600">
                 <span class="font-semibold">ยอดรวมสินค้า:</span>
                 <span id="pos-cart-subtotal" class="font-bold text-slate-800">฿0.00</span>
+              </div>
+
+              <!-- หักเงินมัดจำเดิม (แสดงเมื่อดึงออเดอร์จองที่มีมัดจำมาคิดเงิน) -->
+              <div id="pos-cart-deposit-row" class="hidden flex items-center justify-between text-xs text-sky-700">
+                <span class="font-semibold">หักเงินมัดจำที่รับไว้แล้ว:</span>
+                <span id="pos-cart-deposit-val" class="font-bold">-฿0.00</span>
               </div>
 
               <!-- ส่วนลดท้ายบิล (Bill Discount) -->
@@ -2141,7 +2156,7 @@
 
               <!-- Net Grand Total -->
               <div class="flex items-baseline justify-between pt-1 border-t border-slate-100">
-                <span class="text-xs font-bold text-slate-700">ยอดรวมสุทธิทั้งสิ้น:</span>
+                <span id="pos-cart-total-label" class="text-xs font-bold text-slate-700">ยอดรวมสุทธิทั้งสิ้น:</span>
                 <span id="pos-cart-total" class="text-2xl font-black text-emerald-700">฿0.00</span>
               </div>
 
@@ -2155,34 +2170,72 @@
 
       </div>
 
-      <!-- POS History Section (เมื่อเลือก Subtab ประวัติบิล) -->
-      <div id="pos-section-history" class="hidden farm-card overflow-hidden">
-        <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-            <i data-lucide="receipt" class="w-4 h-4 text-emerald-600"></i>
-            <span>ประวัติบิลขายหน้าร้าน (POS Order Records)</span>
-          </h3>
-          <button onclick="renderPosHistory()" class="text-xs text-sky-600 hover:underline font-semibold flex items-center gap-1">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            <span>รีเฟรช</span>
-          </button>
+      <!-- POS History Section (เมื่อเลือก Subtab ประวัติบิล & สรุปยอดขายรายวันรวมทั้งหน้าร้านและจัดส่งที่ชำระเงินแล้ว) -->
+      <div id="pos-section-history" class="hidden space-y-4">
+        
+        <!-- Daily Revenue Summary Bar (สรุปยอดขายรายวัน: หน้าร้าน + จัดส่งที่ชำระเงินแล้ว) -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div class="farm-card p-4 bg-white border-l-4 border-l-emerald-600">
+            <div class="text-xs font-bold text-slate-500">💰 รวมยอดรับชำระทั้งหมด</div>
+            <div id="pos-hist-sum-total" class="text-xl font-black text-emerald-700 mt-1">฿0.00</div>
+            <div id="pos-hist-sum-count" class="text-[11px] text-slate-400 mt-0.5">0 บิล</div>
+          </div>
+          <div class="farm-card p-4 bg-white border-l-4 border-l-teal-500">
+            <div class="text-xs font-bold text-slate-500">🛒 ยอดขายหน้าร้าน (Walk-in)</div>
+            <div id="pos-hist-sum-walkin" class="text-xl font-black text-teal-700 mt-1">฿0.00</div>
+            <div id="pos-hist-sum-walkin-count" class="text-[11px] text-slate-400 mt-0.5">0 บิลหน้าร้าน</div>
+          </div>
+          <div class="farm-card p-4 bg-white border-l-4 border-l-sky-500">
+            <div class="text-xs font-bold text-slate-500">🚚 ยอดจัดส่ง/จอง (ชำระเงินแล้ว)</div>
+            <div id="pos-hist-sum-delivery" class="text-xl font-black text-sky-700 mt-1">฿0.00</div>
+            <div id="pos-hist-sum-delivery-count" class="text-[11px] text-slate-400 mt-0.5">0 ออเดอร์จัดส่ง</div>
+          </div>
+          <div class="farm-card p-4 bg-white border-l-4 border-l-amber-500">
+            <div class="text-xs font-bold text-slate-500">💵 แยกตามช่องทางรับเงิน</div>
+            <div id="pos-hist-sum-methods" class="text-xs font-bold text-slate-800 mt-1.5 space-y-0.5">
+              <div>เงินสด: ฿0 • โอน/QR: ฿0</div>
+            </div>
+          </div>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-slate-100 text-xs font-bold text-slate-700 uppercase border-b border-slate-200">
-                <th class="p-3">เลขที่บิล POS</th>
-                <th class="p-3">วันที่ขาย</th>
-                <th class="p-3">ลูกค้า</th>
-                <th class="p-3">รายการสินค้า</th>
-                <th class="p-3 text-right">ยอดรวม</th>
-                <th class="p-3 text-right">การจัดการ</th>
-              </tr>
-            </thead>
-            <tbody id="pos-history-tbody">
-              <!-- Populated by JS -->
-            </tbody>
-          </table>
+
+        <div class="farm-card overflow-hidden">
+          <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                <i data-lucide="receipt" class="w-4 h-4 text-emerald-600"></i>
+                <span>ประวัติบิลขายหน้าร้าน & ออเดอร์จัดส่งที่ชำระเงินแล้ว (สรุปยอดรายวัน)</span>
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">รวมรายการขายสดหน้าร้าน และรายการลูกค้าจัดส่งที่ชำระเงินแล้วทั้งหมด</p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <input type="date" id="pos-history-date-filter" onchange="renderPosHistory()" class="input-large text-xs py-1.5 px-2.5 bg-white font-bold">
+              <button type="button" onclick="document.getElementById('pos-history-date-filter').value = getTodayString(); renderPosHistory();" class="px-2.5 py-1.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition">
+                วันนี้
+              </button>
+              <button type="button" onclick="document.getElementById('pos-history-date-filter').value = ''; renderPosHistory();" class="px-2.5 py-1.5 text-xs font-bold bg-white text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-100 transition">
+                ทั้งหมด
+              </button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-100 text-xs font-bold text-slate-700 uppercase border-b border-slate-200">
+                  <th class="p-3">เลขที่บิล / รหัส</th>
+                  <th class="p-3">ประเภท</th>
+                  <th class="p-3">วันที่</th>
+                  <th class="p-3">ลูกค้า</th>
+                  <th class="p-3">รายการสินค้า</th>
+                  <th class="p-3 text-center">วิธีชำระเงิน</th>
+                  <th class="p-3 text-right">ยอดสุทธิ</th>
+                  <th class="p-3 text-right">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="pos-history-tbody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
