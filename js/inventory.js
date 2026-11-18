@@ -2348,3 +2348,196 @@ function updateInventoryBadges() {
     badge.classList.toggle('hidden', totalAlerts === 0);
   }
 }
+
+// 8. EXPORT & IMPORT INVENTORY EXCEL (.xlsx)
+function exportInventoryToExcel() {
+  try {
+    if (typeof XLSX === 'undefined') {
+      showNotification('ไม่พบไลบรารี SheetJS (XLSX) กรุณารีเฟรชหน้าจอ', 'error');
+      return;
+    }
+
+    if (!state.ponds || state.ponds.length === 0) initInventoryState();
+    const statusTextMap = {
+      ready: 'พร้อมขาย',
+      growing: 'กำลังอนุบาล',
+      resting: 'พักบ่อ / ตากบ่อ',
+      empty: 'บ่อว่าง',
+      sick: 'ปลาป่วย / งดขาย'
+    };
+
+    const pondRows = (state.ponds || []).slice().sort(sortPondsByZoneAndCode).map(p => ({
+      'รหัสบ่อ': p.id || '',
+      'ชื่อกระชัง/อ่าง': p.name || '',
+      'โซน': p.zoneName || p.typeName || '',
+      'พันธุ์ปลา': p.fishName || '',
+      'ขนาด': p.fishSize || '',
+      'ตาคัด': p.sieveCode || '',
+      'จำนวนคงเหลือ': Number(p.totalQty || 0),
+      'ติดจอง': Number(p.reservedQty || 0),
+      'พร้อมขายจริง': p.status === 'ready' ? Math.max(0, Number(p.totalQty || 0) - Number(p.reservedQty || 0)) : 0,
+      'ราคาต่อตัว': Number(p.unitPrice || 0),
+      'สถานะ': statusTextMap[p.status] || p.statusLabel || p.status || '',
+      'หมายเหตุ': p.notes || ''
+    }));
+
+    const supplyRows = (state.supplies || []).map(s => ({
+      'รหัสสินค้า': s.id || '',
+      'หมวดหมู่': s.category || '',
+      'ชื่อสินค้า': s.name || '',
+      'คงเหลือ': Number(s.stockQty || 0),
+      'หน่วย': s.unit || '',
+      'จุดสั่งซื้อ (ROP)': Number(s.minThreshold || 0),
+      'ราคาต่อหน่วย': Number(s.unitPrice || 0)
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const wsPonds = XLSX.utils.json_to_sheet(pondRows);
+    XLSX.utils.book_append_sheet(wb, wsPonds, 'สต็อกปลาในฟาร์ม');
+    if (supplyRows.length > 0) {
+      const wsSupplies = XLSX.utils.json_to_sheet(supplyRows);
+      XLSX.utils.book_append_sheet(wb, wsSupplies, 'คลังอาหารและเวชภัณฑ์');
+    }
+
+    const dateStr = typeof getTodayString === 'function' ? getTodayString() : new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `สต็อกปลาในฟาร์ม_ผู้ใหญ่พร_${dateStr}.xlsx`);
+    showNotification('ส่งออกไฟล์ Excel สต็อกในฟาร์มเรียบร้อยแล้ว', 'success');
+  } catch (err) {
+    console.error('Export inventory Excel error:', err);
+    showNotification('เกิดข้อผิดพลาดในการส่งออกไฟล์ Excel', 'error');
+  }
+}
+
+function triggerImportInventoryExcel() {
+  const input = document.getElementById('inventory-excel-import-input');
+  if (!input) return;
+  input.value = '';
+  input.click();
+}
+
+function parseThaiPondStatus(val) {
+  const s = String(val || '').trim().toLowerCase();
+  if (!s) return null;
+  if (s === 'ready' || s.includes('พร้อมขาย')) return 'ready';
+  if (s === 'growing' || s.includes('อนุบาล')) return 'growing';
+  if (s === 'resting' || s.includes('พักบ่อ') || s.includes('ตากบ่อ')) return 'resting';
+  if (s === 'sick' || s.includes('ป่วย') || s.includes('งดขาย')) return 'sick';
+  if (s === 'empty' || s.includes('ว่าง')) return 'empty';
+  return null;
+}
+
+function importInventoryFromExcel(event) {
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+
+  if (typeof XLSX === 'undefined') {
+    showNotification('ไม่พบไลบรารี SheetJS (XLSX) กรุณารีเฟรชหน้าจอ', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      if (!state.ponds || state.ponds.length === 0) initInventoryState();
+
+      let updatedPonds = 0;
+      let updatedSupplies = 0;
+      const statusLabels = { ready: 'พร้อมขาย', growing: 'กำลังอนุบาล', resting: 'พักบ่อ / ตากบ่อ', empty: 'บ่อว่าง', sick: 'ปลาป่วย / งดขาย' };
+
+      wb.SheetNames.forEach(sheetName => {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
+        rows.forEach(row => {
+          // 1) ตรวจสอบแถวสต็อกบ่อปลา/กระชัง/อ่าง
+          const pondId = String(row['รหัสบ่อ'] || row['id'] || row['pondId'] || '').trim();
+          const pondName = String(row['ชื่อกระชัง/อ่าง'] || row['ชื่อบ่อ'] || row['กระชัง/อ่าง'] || row['ที่จัดเก็บ'] || row['name'] || '').trim();
+          const pondCode = String(row['รหัส'] || row['code'] || '').trim();
+
+          let pond = null;
+          if (pondId) pond = (state.ponds || []).find(p => p.id === pondId);
+          if (!pond && pondName) pond = (state.ponds || []).find(p => p.name === pondName);
+          if (!pond && pondCode) pond = (state.ponds || []).find(p => (p.code || '').toLowerCase() === pondCode.toLowerCase());
+
+          if (pond) {
+            if (pondName) pond.name = pondName;
+            if ('พันธุ์ปลา' in row || 'สายพันธุ์ปลา' in row || 'fishName' in row) {
+              pond.fishName = String(row['พันธุ์ปลา'] ?? row['สายพันธุ์ปลา'] ?? row['fishName'] ?? '').trim();
+            }
+            if ('ขนาด' in row || 'ไซส์' in row || 'fishSize' in row) {
+              pond.fishSize = String(row['ขนาด'] ?? row['ไซส์'] ?? row['fishSize'] ?? '').trim();
+            }
+            if ('ตาคัด' in row || 'sieveCode' in row) {
+              pond.sieveCode = String(row['ตาคัด'] ?? row['sieveCode'] ?? '').trim();
+            }
+            if ('จำนวนคงเหลือ' in row || 'จำนวน' in row || 'totalQty' in row) {
+              const q = Number(String(row['จำนวนคงเหลือ'] ?? row['จำนวน'] ?? row['totalQty'] ?? 0).replace(/,/g, ''));
+              if (!isNaN(q)) pond.totalQty = Math.max(0, q);
+            }
+            if ('ติดจอง' in row || 'reservedQty' in row) {
+              const r = Number(String(row['ติดจอง'] ?? row['reservedQty'] ?? 0).replace(/,/g, ''));
+              if (!isNaN(r)) pond.reservedQty = Math.max(0, r);
+            }
+            if ('ราคาต่อตัว' in row || 'ราคา' in row || 'unitPrice' in row) {
+              const pr = Number(String(row['ราคาต่อตัว'] ?? row['ราคา'] ?? row['unitPrice'] ?? 0).replace(/,/g, ''));
+              if (!isNaN(pr)) pond.unitPrice = Math.max(0, pr);
+            }
+            if ('สถานะ' in row || 'status' in row) {
+              const st = parseThaiPondStatus(row['สถานะ'] ?? row['status']);
+              if (st) {
+                pond.status = st;
+                pond.statusLabel = statusLabels[st] || st;
+              }
+            }
+            if ('หมายเหตุ' in row || 'notes' in row) {
+              pond.notes = String(row['หมายเหตุ'] ?? row['notes'] ?? '').trim();
+            }
+            updatedPonds++;
+            return;
+          }
+
+          // 2) ตรวจสอบแถวคลังอาหารและเวชภัณฑ์
+          const supId = String(row['รหัสสินค้า'] || '').trim();
+          const supName = String(row['ชื่อสินค้า'] || '').trim();
+          let supply = null;
+          if (supId) supply = (state.supplies || []).find(s => s.id === supId);
+          if (!supply && supName) supply = (state.supplies || []).find(s => s.name === supName);
+          if (supply) {
+            if ('คงเหลือ' in row || 'stockQty' in row) {
+              const sq = Number(String(row['คงเหลือ'] ?? row['stockQty'] ?? 0).replace(/,/g, ''));
+              if (!isNaN(sq)) supply.stockQty = Math.max(0, sq);
+            }
+            if ('จุดสั่งซื้อ (ROP)' in row || 'minThreshold' in row) {
+              const rop = Number(String(row['จุดสั่งซื้อ (ROP)'] ?? row['minThreshold'] ?? 0).replace(/,/g, ''));
+              if (!isNaN(rop)) supply.minThreshold = Math.max(0, rop);
+            }
+            if ('ราคาต่อหน่วย' in row || 'unitPrice' in row) {
+              const sp = Number(String(row['ราคาต่อหน่วย'] ?? row['unitPrice'] ?? 0).replace(/,/g, ''));
+              if (!isNaN(sp)) supply.unitPrice = Math.max(0, sp);
+            }
+            updatedSupplies++;
+          }
+        });
+      });
+
+      if (updatedPonds === 0 && updatedSupplies === 0) {
+        showNotification('ไม่พบรายการที่ตรงกับรหัสบ่อหรือชื่อกระชัง/อ่างในไฟล์ Excel', 'warning');
+        return;
+      }
+
+      saveInventoryState();
+      renderInventoryView();
+      if (typeof updatePortalKPIs === 'function') updatePortalKPIs();
+      showNotification(`นำเข้าข้อมูล Excel สำเร็จ (อัปเดตบ่อปลา ${updatedPonds} จุด${updatedSupplies > 0 ? `, พัสดุ ${updatedSupplies} รายการ` : ''})`, 'success');
+    } catch (err) {
+      console.error('Import inventory Excel error:', err);
+      showNotification('ไม่สามารถอ่านไฟล์ Excel ได้ กรุณาตรวจสอบรูปแบบไฟล์', 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+window.exportInventoryToExcel = exportInventoryToExcel;
+window.triggerImportInventoryExcel = triggerImportInventoryExcel;
+window.importInventoryFromExcel = importInventoryFromExcel;
+

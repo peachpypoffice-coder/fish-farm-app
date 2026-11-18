@@ -1473,6 +1473,15 @@
         </div>
 
         <div class="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <input type="file" id="inventory-excel-import-input" accept=".xlsx,.xls,.csv" class="hidden" onchange="importInventoryFromExcel(event)">
+          <button type="button" onclick="exportInventoryToExcel()" class="btn-large bg-white hover:bg-rose-50 text-rose-600 border-2 border-rose-500 py-2 px-3 sm:px-4 text-xs sm:text-sm font-bold shadow-xs flex items-center gap-1.5">
+            <i data-lucide="file-down" class="w-4 h-4"></i>
+            <span>ส่งออก/excel</span>
+          </button>
+          <button type="button" onclick="triggerImportInventoryExcel()" class="btn-large bg-white hover:bg-emerald-50 text-emerald-600 border-2 border-emerald-500 py-2 px-3 sm:px-4 text-xs sm:text-sm font-bold shadow-xs flex items-center gap-1.5">
+            <i data-lucide="file-up" class="w-4 h-4"></i>
+            <span>นำเข้า/excel</span>
+          </button>
           <button onclick="openInboundGrnModal()" class="btn-large btn-primary-blue py-2 px-3 sm:px-4 text-xs sm:text-sm font-bold shadow-xs flex items-center gap-1.5">
             <i data-lucide="file-plus" class="w-4 h-4"></i>
             <span>รับเข้าสินค้า (GRN)</span>
